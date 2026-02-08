@@ -15,9 +15,42 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TinkerSchool - Learn Everything with Chip!",
+  title: {
+    default: "TinkerSchool - Learn Everything with Chip!",
+    template: "%s | TinkerSchool",
+  },
   description:
-    "An open-source AI-powered education platform for K-6 kids. Learn math, reading, science, music, art, problem solving, and coding with your AI buddy Chip and M5StickC Plus 2.",
+    "Where every kid is a genius waiting to bloom. An open-source AI-powered education platform for K-6 kids. Learn math, reading, science, music, art, problem solving, and coding with your AI buddy Chip.",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://tinkerschool.ai"
+  ),
+  openGraph: {
+    type: "website",
+    siteName: "TinkerSchool",
+    title: "TinkerSchool - Learn Everything with Chip!",
+    description:
+      "Where every kid is a genius waiting to bloom. An open-source AI-powered education platform for K-6 kids.",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TinkerSchool - Learn Everything with Chip!",
+    description:
+      "Where every kid is a genius waiting to bloom. An open-source AI-powered education platform for K-6 kids.",
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
+  manifest: "/site.webmanifest",
+  other: {
+    "theme-color": "#F97316",
+    "msapplication-TileColor": "#F97316",
+  },
 };
 
 export default function RootLayout({

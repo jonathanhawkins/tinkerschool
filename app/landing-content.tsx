@@ -1265,7 +1265,7 @@ export function LandingContent() {
                   label: "GitHub",
                   href: "https://github.com/jonathanhawkins/tinkerschool",
                 },
-                { label: "Discord", href: "#" },
+                { label: "Discord", href: "https://github.com/jonathanhawkins/tinkerschool/discussions" },
                 {
                   label: "Contributing",
                   href: "https://github.com/jonathanhawkins/tinkerschool",
@@ -1297,8 +1297,8 @@ export function LandingContent() {
             <ul className="space-y-2">
               {[
                 { label: "Dashboard", href: "/dashboard" },
-                { label: "Safety", href: "#" },
-                { label: "Privacy Policy", href: "#" },
+                { label: "Safety", href: "/safety" },
+                { label: "Privacy Policy", href: "/privacy" },
               ].map((item) => (
                 <li key={item.label}>
                   <Link
@@ -1316,13 +1316,18 @@ export function LandingContent() {
           <div className="space-y-3">
             <h4 className="text-sm font-semibold text-foreground">Company</h4>
             <ul className="space-y-2">
-              {["About", "Blog", "Contact"].map((item) => (
-                <li key={item}>
+              {[
+                { label: "About", href: "https://github.com/jonathanhawkins/tinkerschool" },
+                { label: "Contact", href: "mailto:hello@tinkerschool.ai" },
+              ].map((item) => (
+                <li key={item.label}>
                   <a
-                    href="#"
+                    href={item.href}
+                    target={item.href.startsWith("http") ? "_blank" : undefined}
+                    rel={item.href.startsWith("http") ? "noopener noreferrer" : undefined}
                     className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                   >
-                    {item}
+                    {item.label}
                   </a>
                 </li>
               ))}

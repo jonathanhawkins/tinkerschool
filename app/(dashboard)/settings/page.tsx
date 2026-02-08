@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import {
   User,
   Layers,
@@ -13,6 +14,8 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+
+export const metadata: Metadata = { title: "Settings" };
 
 import { requireAuth } from "@/lib/auth/require-auth";
 import { FadeIn, Stagger, StaggerItem } from "@/components/motion";

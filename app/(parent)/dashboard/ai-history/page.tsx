@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { MessageSquare, ShieldCheck, Bot, User } from "lucide-react";
+
+export const metadata: Metadata = { title: "AI Chat History" };
 
 import { requireAuth } from "@/lib/auth/require-auth";
 import { FadeIn } from "@/components/motion";

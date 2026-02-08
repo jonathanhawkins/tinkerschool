@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
+
 import { requireAuth } from "@/lib/auth/require-auth";
+
+export const metadata: Metadata = { title: "Achievements" };
 import { BadgeIcon } from "@/lib/badge-icons";
 import { formatDate } from "@/lib/format-date";
 import { cn } from "@/lib/utils";

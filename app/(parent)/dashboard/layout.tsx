@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import {
-  Lightbulb,
   LayoutDashboard,
   BarChart3,
   MessageSquare,
@@ -55,9 +55,13 @@ export default async function ParentDashboardLayout({
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           {/* Left: branding */}
           <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-primary">
-              <Lightbulb className="size-5 text-primary-foreground" />
-            </div>
+            <Image
+              src="/images/chip.png"
+              alt="Chip"
+              width={36}
+              height={36}
+              className="size-9 rounded-xl"
+            />
             <div className="hidden sm:block">
               <p className="text-sm font-semibold text-foreground leading-tight">
                 TinkerSchool

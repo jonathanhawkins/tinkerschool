@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = { title: "Gallery" };
 import { FolderOpen, Wrench } from "lucide-react";
 
 import { requireAuth } from "@/lib/auth/require-auth";

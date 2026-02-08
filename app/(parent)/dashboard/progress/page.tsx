@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { BookOpen, CheckCircle2, Circle, Clock } from "lucide-react";
+
+export const metadata: Metadata = { title: "Learning Progress" };
 
 import { requireAuth } from "@/lib/auth/require-auth";
 import { FadeIn } from "@/components/motion";

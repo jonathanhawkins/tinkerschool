@@ -10,6 +10,7 @@ import {
   Puzzle,
   Code2,
   ChevronRight,
+  MessageCircle,
   CheckCircle2,
   Circle,
   Clock,
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 
 import { requireAuth } from "@/lib/auth/require-auth";
+import { FadeIn } from "@/components/motion";
 import type {
   Subject,
   Skill,
@@ -83,7 +85,7 @@ const SUBJECT_DESCRIPTIONS: Record<string, string> = {
   science: "Explore the world around you with hands-on experiments and discoveries.",
   music: "Create melodies, learn rhythm, and make your M5Stick play songs.",
   art: "Express yourself with colors, shapes, and creative digital art projects.",
-  problem_solving: "Sharpen your thinking with puzzles, logic games, and brain teasers.",
+  "problem-solving": "Sharpen your thinking with puzzles, logic games, and brain teasers.",
   coding: "Learn to code by building programs that run on your M5Stick device.",
 };
 
@@ -428,68 +430,112 @@ export default async function SubjectDetailPage({
       </nav>
 
       {/* ----- Subject Header ----- */}
-      <header className="flex items-center gap-5">
-        <div
-          className="flex size-16 shrink-0 items-center justify-center rounded-2xl shadow-sm"
-          style={{ backgroundColor: `${safeSubject.color}20` }}
-        >
-          <span style={{ color: safeSubject.color }}>
-            <SubjectIcon icon={safeSubject.icon} className="size-8" />
-          </span>
-        </div>
+      <FadeIn>
+        <header className="flex items-center gap-5">
+          <div
+            className="flex size-16 shrink-0 items-center justify-center rounded-2xl shadow-sm"
+            style={{ backgroundColor: `${safeSubject.color}20` }}
+          >
+            <span style={{ color: safeSubject.color }}>
+              <SubjectIcon icon={safeSubject.icon} className="size-8" />
+            </span>
+          </div>
 
-        <div className="min-w-0 flex-1 space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            {safeSubject.display_name}
-          </h1>
-          <p className="text-sm text-muted-foreground">{description}</p>
-          <p className="text-xs text-muted-foreground">
-            {skillsStarted} of {safeSkills.length} skill
-            {safeSkills.length !== 1 ? "s" : ""} started
-          </p>
-        </div>
-      </header>
+          <div className="min-w-0 flex-1 space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              {safeSubject.display_name}
+            </h1>
+            <p className="text-sm text-muted-foreground">{description}</p>
+            <p className="text-xs text-muted-foreground">
+              {skillsStarted} of {safeSkills.length} skill
+              {safeSkills.length !== 1 ? "s" : ""} started
+            </p>
+          </div>
+        </header>
+      </FadeIn>
+
+      {/* ----- Chat with Chip CTA ----- */}
+      <FadeIn delay={0.05}>
+        <Card
+          className="rounded-2xl border-2"
+          style={{ borderColor: `${safeSubject.color}40` }}
+        >
+          <CardContent className="flex items-center gap-4 p-5">
+            <div
+              className="flex size-12 shrink-0 items-center justify-center rounded-xl"
+              style={{ backgroundColor: `${safeSubject.color}1F` }}
+            >
+              <MessageCircle
+                className="size-6"
+                style={{ color: safeSubject.color }}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-semibold text-foreground">
+                Chat with Chip
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Ask Chip anything about {safeSubject.display_name.toLowerCase()}!
+                Get help, explore ideas, or practice skills.
+              </p>
+            </div>
+            <Button asChild className="shrink-0 rounded-xl" style={{ backgroundColor: safeSubject.color }}>
+              <Link href={`/chat/${safeSubject.slug}`}>
+                <MessageCircle className="size-4" />
+                Start Chat
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </FadeIn>
 
       {/* ----- Skills Section ----- */}
       {safeSkills.length > 0 && (
         <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="size-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">
-              Your Skills
-            </h2>
-          </div>
+          <FadeIn>
+            <div className="flex items-center gap-2">
+              <GraduationCap className="size-5 text-primary" />
+              <h2 className="text-lg font-semibold text-foreground">
+                Your Skills
+              </h2>
+            </div>
+          </FadeIn>
 
-          <Card className="rounded-2xl">
-            <CardContent className="space-y-1 pt-4">
-              {safeSkills.map((skill) => (
-                <SkillRow
-                  key={skill.id}
-                  skill={skill}
-                  level={proficiencyMap.get(skill.id) ?? "not_started"}
-                />
-              ))}
-            </CardContent>
-          </Card>
+          <FadeIn delay={0.1}>
+            <Card className="rounded-2xl">
+              <CardContent className="space-y-1 pt-4">
+                {safeSkills.map((skill) => (
+                  <SkillRow
+                    key={skill.id}
+                    skill={skill}
+                    level={proficiencyMap.get(skill.id) ?? "not_started"}
+                  />
+                ))}
+              </CardContent>
+            </Card>
+          </FadeIn>
         </section>
       )}
 
       {/* ----- Lessons Section ----- */}
       <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <BookOpen className="size-5 text-primary" />
-          <h2 className="text-lg font-semibold text-foreground">Lessons</h2>
-        </div>
+        <FadeIn>
+          <div className="flex items-center gap-2">
+            <BookOpen className="size-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">Lessons</h2>
+          </div>
+        </FadeIn>
 
         {safeModules.length > 0 ? (
           <div className="space-y-4">
             {safeModules.map((mod) => (
-              <ModuleSection
-                key={mod.id}
-                module={mod}
-                lessons={lessonsByModule.get(mod.id) ?? []}
-                progressMap={progressMap}
-              />
+              <FadeIn key={mod.id}>
+                <ModuleSection
+                  module={mod}
+                  lessons={lessonsByModule.get(mod.id) ?? []}
+                  progressMap={progressMap}
+                />
+              </FadeIn>
             ))}
           </div>
         ) : (

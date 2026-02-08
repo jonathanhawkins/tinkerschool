@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import Image from "next/image";
 
 export const metadata = {
   title: "Welcome to TinkerSchool!",
@@ -21,11 +22,15 @@ export default async function OnboardingLayout({
     <div className="flex min-h-screen flex-col items-center bg-accent">
       {/* Top bar with branding */}
       <header className="flex w-full items-center justify-center px-6 py-4">
-        <div className="flex items-center gap-2">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-lg text-primary-foreground">
-            {"</>"}
-          </div>
-          <span className="text-lg font-semibold text-foreground">
+        <div className="flex items-center gap-2.5">
+          <Image
+            src="/images/chip.png"
+            alt="Chip"
+            width={36}
+            height={36}
+            className="rounded-xl"
+          />
+          <span className="text-xl font-bold text-primary">
             TinkerSchool
           </span>
         </div>

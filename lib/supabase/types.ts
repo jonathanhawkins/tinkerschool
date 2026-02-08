@@ -41,6 +41,8 @@ export type SubjectSlug =
   | "problem_solving"
   | "coding";
 
+export type DeviceMode = "usb" | "simulator" | "none";
+
 // ---------------------------------------------------------------------------
 // Row types (what you get back from a SELECT)
 // ---------------------------------------------------------------------------
@@ -61,6 +63,7 @@ export interface Profile {
   role: ProfileRole;
   grade_level: number | null;
   current_band: number;
+  device_mode: DeviceMode;
   created_at: string;
 }
 
@@ -264,6 +267,7 @@ export interface ProfileInsert {
   role: ProfileRole;
   grade_level?: number | null;
   current_band?: number;
+  device_mode?: DeviceMode;
   created_at?: string;
 }
 
@@ -447,6 +451,7 @@ export interface ProfileUpdate {
   role?: ProfileRole;
   grade_level?: number | null;
   current_band?: number;
+  device_mode?: DeviceMode;
 }
 
 export interface ModuleUpdate {

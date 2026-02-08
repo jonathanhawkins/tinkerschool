@@ -154,7 +154,6 @@ export class WebSerialManager {
    * Send a UTF-8 encoded string to the device.
    */
   async write(data: string): Promise<void> {
-    console.log("[serial-tx]", JSON.stringify(data));
     const encoder = new TextEncoder();
     await this.writeBytes(encoder.encode(data));
   }

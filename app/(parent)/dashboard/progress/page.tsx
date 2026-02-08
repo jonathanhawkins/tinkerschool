@@ -1,6 +1,7 @@
 import { BookOpen, CheckCircle2, Circle, Clock } from "lucide-react";
 
 import { requireAuth } from "@/lib/auth/require-auth";
+import { FadeIn } from "@/components/motion";
 import { formatDate } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
 import {
@@ -67,18 +68,20 @@ export default async function ProgressPage() {
   return (
     <div className="space-y-8">
       {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">
-          Progress Detail
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Lesson-by-lesson progress for{" "}
-          {kids.length > 0
-            ? kids.map((k) => k.display_name).join(", ")
-            : "your family"}
-          .
-        </p>
-      </div>
+      <FadeIn>
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">
+            Progress Detail
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Lesson-by-lesson progress for{" "}
+            {kids.length > 0
+              ? kids.map((k) => k.display_name).join(", ")
+              : "your family"}
+            .
+          </p>
+        </div>
+      </FadeIn>
 
       {/* Modules list */}
       {modules.length === 0 ? (
@@ -98,7 +101,8 @@ export default async function ProgressPage() {
             ).length;
 
             return (
-              <Card key={mod.id} className="rounded-2xl">
+              <FadeIn key={mod.id}>
+                <Card className="rounded-2xl">
                 <CardHeader>
                   <div className="flex items-center justify-between gap-4">
                     <CardTitle className="flex items-center gap-2 text-base">
@@ -139,6 +143,7 @@ export default async function ProgressPage() {
                   )}
                 </CardContent>
               </Card>
+            </FadeIn>
             );
           })}
         </div>

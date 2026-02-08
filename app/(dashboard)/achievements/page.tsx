@@ -2,6 +2,7 @@ import { requireAuth } from "@/lib/auth/require-auth";
 import { BadgeIcon } from "@/lib/badge-icons";
 import { formatDate } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
+import { FadeIn, Stagger, StaggerItem } from "@/components/motion";
 import {
   Card,
   CardContent,
@@ -37,36 +38,42 @@ export default async function AchievementsPage() {
   return (
     <div className="mx-auto max-w-5xl">
       {/* Page header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-foreground">
-          Achievements
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          You have earned{" "}
-          <span className="font-semibold text-primary">
-            {earnedCount} of {totalCount}
-          </span>{" "}
-          badges! Keep coding to unlock them all.
-        </p>
-      </div>
+      <FadeIn>
+        <div className="mb-8">
+          <h1 className="text-2xl font-semibold text-foreground">
+            Achievements
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You have earned{" "}
+            <span className="font-semibold text-primary">
+              {earnedCount} of {totalCount}
+            </span>{" "}
+            badges! Keep coding to unlock them all.
+          </p>
+        </div>
+      </FadeIn>
 
       {/* Summary progress */}
-      <div className="mb-8">
-        <Progress
-          value={totalCount > 0 ? (earnedCount / totalCount) * 100 : 0}
-          className="h-3"
-        />
-      </div>
+      <FadeIn delay={0.05}>
+        <div className="mb-8">
+          <Progress
+            value={totalCount > 0 ? (earnedCount / totalCount) * 100 : 0}
+            className="h-3"
+          />
+        </div>
+      </FadeIn>
 
       {/* Badge grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {allBadges.map((badge) => {
           const earned = earnedBadgeMap.get(badge.id);
           return (
-            <BadgeCard key={badge.id} badge={badge} earnedAt={earned?.earned_at} />
+            <StaggerItem key={badge.id}>
+              <BadgeCard badge={badge} earnedAt={earned?.earned_at} />
+            </StaggerItem>
           );
         })}
-      </div>
+      </Stagger>
     </div>
   );
 }

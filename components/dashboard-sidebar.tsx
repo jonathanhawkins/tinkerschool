@@ -1,6 +1,7 @@
 "use client";
 
-import { GraduationCap, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import Image from "next/image";
+import { LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { SignOutButton } from "@clerk/nextjs";
 
 import { cn } from "@/lib/utils";
@@ -43,9 +44,13 @@ export function DashboardSidebar({
           isCollapsed ? "justify-center px-2" : "px-5"
         )}
       >
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary">
-          <GraduationCap className="size-5 text-primary-foreground" />
-        </div>
+        <Image
+          src="/images/chip.png"
+          alt="Chip"
+          width={36}
+          height={36}
+          className="shrink-0 rounded-lg"
+        />
         {!isCollapsed && (
           <span className="text-xl font-bold text-primary">TinkerSchool</span>
         )}

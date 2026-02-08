@@ -3,6 +3,7 @@ import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { auth } from "@clerk/nextjs/server";
 
 import { getChipSystemPrompt } from "@/lib/ai/chip-system-prompt";
+import type { ChipContext } from "@/lib/ai/chip-system-prompt";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 // ---------------------------------------------------------------------------
@@ -44,6 +45,7 @@ interface AiBuddyRequestBody {
   kidName: string;
   age: number;
   band: number;
+  currentSubject?: string;
   currentLesson?: string;
   currentCode?: string;
   chatSessionId?: string;
@@ -67,6 +69,8 @@ function parseRequestBody(body: unknown): AiBuddyRequestBody | null {
     kidName: b.kidName,
     age: b.age,
     band: b.band,
+    currentSubject:
+      typeof b.currentSubject === "string" ? b.currentSubject : undefined,
     currentLesson:
       typeof b.currentLesson === "string" ? b.currentLesson : undefined,
     currentCode:
@@ -157,6 +161,143 @@ async function persistChat(
 }
 
 // ---------------------------------------------------------------------------
+// Personalization data fetchers
+// ---------------------------------------------------------------------------
+
+interface LearningProfileRow {
+  learning_style: Record<string, number>;
+  interests: string[];
+  preferred_encouragement: string;
+  chip_notes: string | null;
+}
+
+interface SkillProficiencyRow {
+  level: string;
+  skills: { slug: string } | null;
+}
+
+interface ProgressRow {
+  lessons: { title: string } | null;
+}
+
+/**
+ * Fetch the child's learning profile, skill proficiency, and recent lessons
+ * from Supabase. Returns data suitable for the ChipContext interface.
+ *
+ * Uses the admin client (bypasses RLS) since the API route already verifies
+ * the user is authenticated via Clerk.
+ */
+async function fetchPersonalizationData(clerkId: string): Promise<{
+  learningProfile?: ChipContext["learningProfile"];
+  skillProficiency?: Record<string, string>;
+  recentLessons?: string[];
+}> {
+  try {
+    const supabase = createAdminSupabaseClient();
+
+    // Look up profile_id
+    const { data: profile } = (await supabase
+      .from("profiles")
+      .select("id")
+      .eq("clerk_id", clerkId)
+      .single()) as { data: { id: string } | null };
+
+    if (!profile) return {};
+
+    // Fetch learning profile, skill proficiency, and recent lessons in parallel
+    const [learningProfileResult, skillResult, progressResult] =
+      await Promise.all([
+        // Learning profile
+        supabase
+          .from("learning_profiles")
+          .select(
+            "learning_style, interests, preferred_encouragement, chip_notes"
+          )
+          .eq("profile_id", profile.id)
+          .single() as unknown as Promise<{ data: LearningProfileRow | null; error: unknown }>,
+
+        // Skill proficiency with skill slugs
+        supabase
+          .from("skill_proficiency")
+          .select("level, skills(slug)")
+          .eq("profile_id", profile.id)
+          .neq("level", "not_started") as unknown as Promise<{
+          data: SkillProficiencyRow[] | null;
+          error: unknown;
+        }>,
+
+        // Recent completed lessons (last 5)
+        supabase
+          .from("progress")
+          .select("lessons(title)")
+          .eq("profile_id", profile.id)
+          .eq("status", "completed")
+          .order("updated_at", { ascending: false })
+          .limit(5) as unknown as Promise<{
+          data: ProgressRow[] | null;
+          error: unknown;
+        }>,
+      ]);
+
+    const result: {
+      learningProfile?: ChipContext["learningProfile"];
+      skillProficiency?: Record<string, string>;
+      recentLessons?: string[];
+    } = {};
+
+    // Parse learning profile
+    if (learningProfileResult.data) {
+      const lp = learningProfileResult.data;
+      result.learningProfile = {
+        learningStyle:
+          typeof lp.learning_style === "object" && lp.learning_style !== null
+            ? (lp.learning_style as Record<string, number>)
+            : {},
+        interests: Array.isArray(lp.interests) ? lp.interests : [],
+        preferredEncouragement: lp.preferred_encouragement ?? "enthusiastic",
+        chipNotes: lp.chip_notes ?? "",
+      };
+    }
+
+    // Parse skill proficiency into a slug -> level map
+    if (skillResult.data && skillResult.data.length > 0) {
+      const proficiency: Record<string, string> = {};
+      for (const row of skillResult.data) {
+        const slug =
+          row.skills && typeof row.skills === "object"
+            ? (row.skills as { slug: string }).slug
+            : null;
+        if (slug) {
+          proficiency[slug] = row.level;
+        }
+      }
+      if (Object.keys(proficiency).length > 0) {
+        result.skillProficiency = proficiency;
+      }
+    }
+
+    // Parse recent lessons into title array
+    if (progressResult.data && progressResult.data.length > 0) {
+      const titles = progressResult.data
+        .map((row) =>
+          row.lessons && typeof row.lessons === "object"
+            ? (row.lessons as { title: string }).title
+            : null
+        )
+        .filter((t): t is string => t !== null);
+      if (titles.length > 0) {
+        result.recentLessons = titles;
+      }
+    }
+
+    return result;
+  } catch (err) {
+    console.error("[ai-buddy] Failed to fetch personalization data:", err);
+    return {};
+  }
+}
+
+// ---------------------------------------------------------------------------
 // POST /api/ai-buddy
 // ---------------------------------------------------------------------------
 export async function POST(request: Request) {
@@ -212,26 +353,34 @@ export async function POST(request: Request) {
     kidName,
     age,
     band,
+    currentSubject,
     currentLesson,
     currentCode,
     chatSessionId,
   } = parsed;
 
-  // 4. Build system prompt
+  // 4. Fetch personalization data (learning profile, skills, recent lessons)
+  const personalization = await fetchPersonalizationData(userId);
+
+  // 5. Build system prompt with full personalization context
   const systemPrompt = getChipSystemPrompt({
     childName: kidName,
     age,
     gradeLevel: band, // Legacy: band maps roughly to grade level
+    currentSubject,
     currentLesson,
     currentCode,
+    learningProfile: personalization.learningProfile,
+    skillProficiency: personalization.skillProficiency,
+    recentLessons: personalization.recentLessons,
   });
 
-  // 5. Log conversation for debugging
+  // 6. Log conversation for debugging
   console.log(
-    `[ai-buddy] userId=${userId} kidName=${kidName} age=${age} band=${band} messageCount=${messages.length}`
+    `[ai-buddy] userId=${userId} kidName=${kidName} age=${age} band=${band} subject=${currentSubject ?? "none"} messageCount=${messages.length} personalized=${!!personalization.learningProfile}`
   );
 
-  // 6. Extract the latest user message text for persistence
+  // 7. Extract the latest user message text for persistence
   const latestUserMessage = messages
     .filter((m) => m.role === "user")
     .pop();
@@ -244,7 +393,7 @@ export async function POST(request: Request) {
       .map((p: { type: string; text?: string }) => p.text)
       .join("") ?? "";
 
-  // 7. Convert UI messages to model messages and stream
+  // 8. Convert UI messages to model messages and stream
   const modelMessages = await convertToModelMessages(messages);
 
   const result = streamText({
@@ -254,7 +403,7 @@ export async function POST(request: Request) {
     maxOutputTokens: 300,
     temperature: 0.7,
     async onFinish({ text }) {
-      // 8. Persist the conversation after streaming completes
+      // 9. Persist the conversation after streaming completes
       if (userText && text) {
         await persistChat(
           userId,

@@ -23,9 +23,24 @@ interface ChipChatProps {
   kidName: string;
   age: number;
   band: number;
+  currentSubject?: string;
   currentLesson?: string;
   currentCode?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Subject display names for greeting/placeholder
+// ---------------------------------------------------------------------------
+
+const SUBJECT_DISPLAY_NAMES: Record<string, string> = {
+  math: "Math",
+  reading: "Reading",
+  science: "Science",
+  music: "Music",
+  art: "Art",
+  problem_solving: "Problem Solving",
+  coding: "Coding",
+};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -35,6 +50,7 @@ export default function ChipChat({
   kidName,
   age,
   band,
+  currentSubject,
   currentLesson,
   currentCode,
 }: ChipChatProps) {
@@ -48,11 +64,12 @@ export default function ChipChat({
           kidName,
           age,
           band,
+          currentSubject,
           currentLesson,
           currentCode,
         },
       }),
-    [kidName, age, band, currentLesson, currentCode]
+    [kidName, age, band, currentSubject, currentLesson, currentCode]
   );
 
   const {
@@ -107,10 +124,20 @@ export default function ChipChat({
   }
 
   // -----------------------------------------------------------------------
-  // Greeting message (shown when there are no messages yet)
+  // Subject-aware greeting and placeholder
   // -----------------------------------------------------------------------
 
-  const greeting = `Hey ${kidName}! I'm Chip, your coding buddy! What should we build today?`;
+  const subjectName = currentSubject
+    ? SUBJECT_DISPLAY_NAMES[currentSubject] ?? currentSubject
+    : null;
+
+  const greeting = subjectName
+    ? `Hey ${kidName}! I'm Chip, your learning buddy! Ready to explore some ${subjectName} together? What would you like to work on?`
+    : `Hey ${kidName}! I'm Chip, your learning buddy! What would you like to explore today?`;
+
+  const placeholder = subjectName
+    ? `Ask Chip about ${subjectName}...`
+    : "Ask Chip anything about learning...";
 
   // -----------------------------------------------------------------------
   // Render
@@ -171,7 +198,7 @@ export default function ChipChat({
         >
           <Input
             name="message"
-            placeholder="Ask Chip anything about coding..."
+            placeholder={placeholder}
             autoComplete="off"
             disabled={isLoading}
             className="flex-1 rounded-full border-primary/30 bg-accent/50 text-base placeholder:text-muted-foreground/60"

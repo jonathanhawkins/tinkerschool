@@ -2,10 +2,9 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type { FamilyInsert, ProfileInsert } from "@/lib/supabase/types";
+import type { DeviceMode, FamilyInsert, ProfileInsert } from "@/lib/supabase/types";
 
 // ---------------------------------------------------------------------------
 // Onboarding result type
@@ -14,6 +13,7 @@ import type { FamilyInsert, ProfileInsert } from "@/lib/supabase/types";
 interface OnboardingResult {
   success: boolean;
   error?: string;
+  kidProfileId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -21,7 +21,7 @@ interface OnboardingResult {
 // ---------------------------------------------------------------------------
 
 function bandForGrade(grade: number): number {
-  if (grade <= 1) return 1;
+  // Band 1 (Explorer) content not yet seeded — default K-3 to Band 2 (Builder)
   if (grade <= 3) return 2;
   if (grade <= 4) return 3;
   if (grade <= 5) return 4;
@@ -29,7 +29,7 @@ function bandForGrade(grade: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// Complete the onboarding flow
+// Complete the onboarding flow (Steps 1-4)
 // ---------------------------------------------------------------------------
 
 export async function completeOnboarding(
@@ -118,26 +118,77 @@ export async function completeOnboarding(
   // 3. Create the kid profile.
   // In production this would create a Clerk managed user under the
   // parent's Organization. For now we use a generated clerk_id.
+  const kidClerkId = `kid_${userId}_${Date.now()}`;
   const kidPayload: ProfileInsert = {
-    clerk_id: `kid_${userId}_${Date.now()}`,
+    clerk_id: kidClerkId,
     family_id: family.id,
     display_name: childName,
     avatar_id: avatarId,
     role: "kid",
     grade_level: gradeLevel,
     current_band: bandForGrade(gradeLevel),
+    device_mode: "none",
     // TODO: hash PIN before storing in production
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: kidError } = await (supabase.from("profiles") as any).insert(
-    kidPayload,
-  );
+  const { data: kidProfile, error: kidError } = await (supabase.from("profiles") as any)
+    .insert(kidPayload)
+    .select("id")
+    .single();
 
-  if (kidError) {
+  if (kidError || !kidProfile) {
     return { success: false, error: "Failed to create kid profile." };
   }
 
-  revalidatePath("/home");
-  redirect("/home");
+  // NOTE: Do NOT call revalidatePath here. It causes the onboarding page's
+  // server component to re-render, which detects the new profile and redirects
+  // to /home before the client can show Steps 5-7. The /home page will fetch
+  // fresh data on its own when the user eventually navigates there.
+
+  return { success: true, kidProfileId: kidProfile.id };
+}
+
+// ---------------------------------------------------------------------------
+// Update device mode (called from Step 5)
+// ---------------------------------------------------------------------------
+
+export async function updateDeviceMode(
+  kidProfileId: string,
+  deviceMode: DeviceMode,
+): Promise<OnboardingResult> {
+  const { userId } = await auth();
+  if (!userId) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  // Validate device_mode value
+  if (!["usb", "simulator", "none"].includes(deviceMode)) {
+    return { success: false, error: "Invalid device mode." };
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  // Verify the kid profile belongs to this parent's family.
+  const { data: parentProfile } = (await supabase
+    .from("profiles")
+    .select("family_id")
+    .eq("clerk_id", userId)
+    .single()) as { data: { family_id: string } | null };
+
+  if (!parentProfile) {
+    return { success: false, error: "Parent profile not found." };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from("profiles") as any)
+    .update({ device_mode: deviceMode })
+    .eq("id", kidProfileId)
+    .eq("family_id", parentProfile.family_id);
+
+  if (error) {
+    return { success: false, error: "Failed to update device mode." };
+  }
+
+  return { success: true };
 }

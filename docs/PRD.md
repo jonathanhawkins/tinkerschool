@@ -1200,6 +1200,581 @@ interface QuizQuestion {
 
 ---
 
+## 21. Onboarding Flow Specification
+
+### 21.1 Overview
+
+Onboarding is the critical first 5 minutes. A parent signs up, creates a kid profile, optionally connects a device, and the child starts their first lesson -- all in one unbroken flow. Every step must work without technical knowledge and feel welcoming, not administrative.
+
+**Design Principles:**
+- Zero-to-learning in under 5 minutes
+- Every step has a clear "why" visible to the parent
+- Chip is present throughout, making it feel like meeting a friend
+- Device connection is encouraged but never required
+- The flow ends with the child *doing something*, not reading something
+
+### 21.2 Flow Diagram
+
+```
+Landing Page (tinkerschool.ai)
+    |
+    |-- "Get Started" CTA
+    |
+    v
+[1] Clerk Sign-Up (email/password or Google OAuth)
+    |
+    v
+[2] Welcome & Family Setup
+    |   - Family name
+    |   - Parent display name (pre-filled from Clerk)
+    |
+    v
+[3] Add Your Child
+    |   - Child's first name
+    |   - Grade level (K-6, with age hints)
+    |   - Avatar picker (8 options: Robot, Fairy, Astronaut, Wizard, Dragon, Unicorn, Ninja, Scientist)
+    |
+    v
+[4] Set Kid PIN
+    |   - 4-digit PIN (entered twice for confirmation)
+    |   - Explanation: "Your child uses this PIN to log in"
+    |
+    v
+[5] Connect Your Device (optional)
+    |   - "Do you have an M5StickC Plus 2?"
+    |   |
+    |   |-- YES: Plug in → Auto-detect USB → Firmware check → Flash if needed → Test connection
+    |   |-- NO: "No problem! Use our simulator." → Continue
+    |   |-- NOT SURE: "Order one here" link + Continue with simulator
+    |
+    v
+[6] Meet Chip! (Celebration)
+    |   - Chip introduces itself with personalized greeting
+    |   - "Hi {childName}! I'm Chip, your learning buddy!"
+    |   - Animated entrance, confetti/party moment
+    |   - "Ready to start your first adventure?"
+    |
+    v
+[7] First Lesson Auto-Launch
+    |   - Chip recommends a short starter lesson based on grade level
+    |   - Grade K-1: Math M1 "Counting Machine" (familiar, confidence-building)
+    |   - Grade 2-3: Coding C1 "Hello, Computer!" (instantly satisfying)
+    |   - Grade 4-6: Coding C2 "Color Your World" (creative, visual)
+    |   - Lesson launches directly -- no extra navigation needed
+```
+
+### 21.3 Step Details
+
+#### Step 1: Clerk Sign-Up
+- **Component:** Clerk `<SignUp />` component (pre-built)
+- **Methods:** Email + password, Google OAuth, Apple OAuth
+- **Post-signup redirect:** `/onboarding`
+- **Edge case:** If user already has a profile in Supabase, redirect to `/home` instead
+
+#### Step 2: Welcome & Family Setup
+- **Inputs:** Family name (required), parent display name (pre-filled, editable)
+- **Chip says:** "Welcome to TinkerSchool! Let's set up your family's learning space."
+- **Validation:** Family name 2-50 chars, alphanumeric + spaces
+- **DB:** Creates `families` row, creates `profiles` row (role: `parent`)
+
+#### Step 3: Add Your Child
+- **Inputs:** Child's first name (required), grade level (select: K through 6th)
+- **Grade selector** shows age hints: "Kindergarten (ages 5-6)", "1st Grade (ages 6-7)", etc.
+- **Avatar picker:** 8 large emoji buttons in a 4x2 grid, selected state with ring highlight
+- **Chip says:** "Who's going to be learning with me?"
+- **Validation:** Name 1-30 chars, grade required, avatar required
+- **Logic:** Grade maps to curriculum band via `bandForGrade()`:
+  - K-1st → Band 1 (Explorer)
+  - 2nd-3rd → Band 2 (Builder)
+  - 4th → Band 3 (Inventor)
+  - 5th → Band 4 (Hacker)
+  - 6th → Band 5 (Creator)
+
+#### Step 4: Set Kid PIN
+- **Inputs:** Two rows of 4 digit inputs (enter + confirm), auto-advance on digit entry
+- **Chip says:** "Pick a secret code -- 4 numbers your child will remember!"
+- **Validation:** PINs must match, all 4 digits required
+- **UX:** Backspace navigates to previous digit, paste supported
+- **Security:** PIN hashed with bcrypt before storage (server-side)
+- **DB:** Stored on `profiles` row for the child
+
+#### Step 5: Connect Your Device (NEW -- not yet implemented)
+- **Three paths presented as large cards:**
+
+  **Path A: "I have one!"**
+  1. Show "Plug in your M5StickC Plus 2 with a USB-C cable"
+  2. "Connect" button triggers Web Serial port picker (filtered to CH9102: 0x1A86)
+  3. Auto-detect firmware version via REPL query
+  4. If no MicroPython detected: "Your device needs a quick update (~30 seconds)" → auto-flash UIFlow2 v2.4.1
+  5. If MicroPython detected: "Your device is ready!" → test with display "Hello {childName}!" on device
+  6. Set `device_mode: 'usb'` in profile
+  7. Success: Device shows child's name, LED blinks, buzzer plays celebration tone
+
+  **Path B: "Not yet"**
+  1. Show simulator preview (mini device frame with animated demo)
+  2. "You'll use our built-in simulator -- it works just like the real thing!"
+  3. "Order one anytime" link to Amazon/M5Stack store
+  4. Set `device_mode: 'simulator'` in profile
+
+  **Path C: "What's that?"**
+  1. 15-second auto-playing video/animation showing the device
+  2. Brief explanation: "A tiny computer that fits in your hand"
+  3. "Order one" CTA + "Continue with simulator" CTA
+  4. Set `device_mode: 'simulator'` in profile
+
+- **Browser check:** If not Chrome/Edge 89+, hide Path A and show note: "Device connection requires Chrome. You can connect a device later from Settings."
+- **Skip button:** Always visible -- "I'll set this up later"
+
+#### Step 6: Meet Chip (Celebration)
+- **Animation:** Chip mascot bounces in, confetti particles, celebration sound (if device connected: buzzer plays too)
+- **Personalized greeting:** Uses child's name and avatar
+- **Duration:** 3-5 seconds of celebration, then CTA appears
+- **CTA:** "Start Your First Adventure!" button (large, animated pulse)
+
+#### Step 7: First Lesson Auto-Launch
+- **Logic:** Based on grade level, auto-navigate to the recommended starter lesson
+- **No lesson picker** -- remove friction, just start learning
+- **Chip provides context:** "Let's count together!" (for Math M1) or "Let's make the screen light up!" (for Coding C2)
+- **After lesson completion:** Navigate to `/home` (Mission Control) with "First Lesson" badge earned
+
+### 21.4 Edge Cases & Error Handling
+
+| Scenario | Handling |
+|---|---|
+| Parent already has profile | Redirect to `/home`, skip onboarding |
+| Parent refreshes mid-onboarding | Persist step progress in `localStorage`, resume where they left off |
+| USB device not detected | "Make sure it's plugged in with the USB cable. Try a different port." + Skip option |
+| Firmware flash fails | "Something went wrong. Try unplugging and plugging back in." + Retry + Skip |
+| Browser doesn't support Web Serial | Hide device connection option, default to simulator |
+| Parent wants to add multiple kids | Onboarding adds first child; additional kids added from Settings page |
+| Kid PIN forgotten | Parent can reset from Parent Dashboard → Settings |
+| Clerk signup fails (email exists) | Clerk handles this natively with "already registered" flow |
+| Network loss during onboarding | Steps 2-4 are local state; only Step 5 (device) and final save need network. Show offline message with retry. |
+
+### 21.5 Database Operations (Server Action)
+
+```typescript
+// app/onboarding/actions.ts -- completeOnboarding()
+// Executes as a single transaction:
+
+1. INSERT INTO families (name, clerk_org_id)
+2. INSERT INTO profiles (clerk_id, family_id, role: 'parent', display_name)
+3. INSERT INTO profiles (family_id, role: 'kid', display_name, avatar_id, grade_level, current_band, pin_hash, device_mode)
+4. INSERT INTO learning_profiles (profile_id, interests: [], learning_style: {})
+5. Redirect to /home or /lessons/{starterLessonId}
+```
+
+### 21.6 Post-Onboarding State
+
+After onboarding completes, the system should have:
+- 1 family record
+- 1 parent profile (linked to Clerk user)
+- 1 kid profile (with PIN, avatar, grade, band, device mode)
+- 1 empty learning profile (Chip fills this in over time)
+- 0 skill proficiency records (created as the child completes activities)
+- Device mode set (simulator or USB)
+
+---
+
+## 22. Simulator Architecture
+
+### 22.1 Overview
+
+The simulator is a browser-based emulation of the M5StickC Plus 2 that allows every lesson to work without physical hardware. It renders a visual device frame with a live canvas display, interactive buttons, and emulated sensors. The simulator is the "Try Free" gateway -- it must feel responsive and faithful to the real device.
+
+**Design Goal:** A child using the simulator should have 90% of the experience of using the real device. The missing 10% is physical sensation (holding it, feeling the buzz, tilting it).
+
+### 22.2 Architecture Diagram
+
+```
++-------------------------------------------------------------------+
+|                        Simulator System                            |
+|                                                                    |
+|  +-------------------+    +-------------------+                    |
+|  | SimulatorCodeRunner|    | M5StickSimulator  |                    |
+|  | (Code Execution)  |--->| (Canvas Renderer)  |                    |
+|  +-------------------+    +-------------------+                    |
+|          |                        |                                |
+|          v                        v                                |
+|  +-------------------+    +-------------------+                    |
+|  | MicroPython Parser|    | HTML5 Canvas 2D   |                    |
+|  | (Regex-based)     |    | 135x240 native    |                    |
+|  +-------------------+    | devicePixelRatio   |                    |
+|          |                | scaling            |                    |
+|          v                +-------------------+                    |
+|  +-------------------+                                             |
+|  | Emulated APIs     |    +-------------------+                    |
+|  | - Lcd.*           |    | React Component   |                    |
+|  | - Speaker.*       |--->| (Device Frame UI)  |                    |
+|  | - BtnA/BtnB       |    | - Canvas mount     |                    |
+|  | - Power.*         |    | - Button handlers  |                    |
+|  | - Imu.*           |    | - LED indicator    |                    |
+|  | - time.*          |    | - Status display   |                    |
+|  +-------------------+    +-------------------+                    |
++-------------------------------------------------------------------+
+```
+
+### 22.3 Canvas Renderer (`M5StickSimulator`)
+
+**File:** `lib/simulator/m5stick-simulator.ts`
+
+The renderer maps the M5StickC Plus 2 display (135x240 pixels, ST7789V2 driver) to an HTML5 Canvas:
+
+| Property | Value | Notes |
+|---|---|---|
+| Native resolution | 135 x 240 px | Matches real device |
+| Canvas scaling | `devicePixelRatio` | Crisp on Retina/HiDPI |
+| Image smoothing | Disabled | Pixel-perfect rendering |
+| Coordinate system | Top-left origin (0,0) | Matches M5 Lcd API |
+| Color format | CSS hex, RGB565 integer, or M5 named colors | `resolveColor()` handles all |
+
+**Drawing Primitives (mirrors `M5.Lcd` API):**
+
+| Method | Signature | M5 Equivalent |
+|---|---|---|
+| `clear(color?)` | Fill screen with color | `Lcd.fillScreen(color)` |
+| `drawString(text, x, y, color?, fontSize?)` | Render text | `Lcd.drawString(text, x, y)` |
+| `drawRect(x, y, w, h, color, fill?)` | Rectangle | `Lcd.drawRect()` / `Lcd.fillRect()` |
+| `drawCircle(x, y, r, color, fill?)` | Circle | `Lcd.drawCircle()` / `Lcd.fillCircle()` |
+| `drawLine(x1, y1, x2, y2, color)` | Line | `Lcd.drawLine()` |
+| `drawPixel(x, y, color)` | Single pixel | `Lcd.drawPixel()` |
+| `setTextSize(size)` | 1-7 multiplier (base 12px) | `Lcd.setTextSize()` |
+| `setTextColor(color)` | Default text color | `Lcd.setTextColor()` |
+| `setBackground(color)` | Background fill color | `Lcd.setRotation()` not yet supported |
+
+**Color Resolution:**
+- M5 named colors: `BLACK`, `WHITE`, `RED`, `GREEN`, `BLUE`, `YELLOW`, `ORANGE`, `PURPLE`, `CYAN`, `PINK`
+- RGB565 integers (e.g., `0xFFE0` for yellow) -- converted to CSS hex
+- CSS hex strings (e.g., `"#FF0000"`) -- passed through directly
+
+### 22.4 Code Execution Engine (`SimulatorCodeRunner`)
+
+**File:** `lib/simulator/code-runner.ts`
+
+The code runner parses MicroPython source code and executes drawing/sound commands against the simulator canvas. It is **not** a full Python interpreter -- it's a targeted regex parser that recognizes the subset of MicroPython used in TinkerSchool lessons.
+
+**Execution Model:**
+1. Source code is split into lines
+2. Each line is matched against known API patterns via regex
+3. Recognized commands dispatch to the `M5StickSimulator` or audio callbacks
+4. Unrecognized lines are silently skipped (no errors for comments, imports, variable assignments)
+5. Execution is asynchronous (`async/await`) to support `time.sleep()` delays
+6. `AbortController` enables stopping execution mid-run
+
+**Recognized API Patterns:**
+
+| Category | Pattern | Behavior |
+|---|---|---|
+| **Display** | `Lcd.fillScreen(color)` | `simulator.clear(color)` |
+| | `Lcd.drawString(text, x, y)` | `simulator.drawString(...)` |
+| | `Lcd.drawRect(x, y, w, h, color)` | `simulator.drawRect(..., false)` |
+| | `Lcd.fillRect(x, y, w, h, color)` | `simulator.drawRect(..., true)` |
+| | `Lcd.drawCircle(x, y, r, color)` | `simulator.drawCircle(..., false)` |
+| | `Lcd.fillCircle(x, y, r, color)` | `simulator.drawCircle(..., true)` |
+| | `Lcd.drawLine(x1, y1, x2, y2, color)` | `simulator.drawLine(...)` |
+| | `Lcd.drawPixel(x, y, color)` | `simulator.drawPixel(...)` |
+| | `Lcd.setTextColor(color)` | `simulator.setTextColor(color)` |
+| | `Lcd.setTextSize(n)` | `simulator.setTextSize(n)` |
+| **Audio** | `Speaker.tone(freq, duration)` | `onTone` callback (Web Audio or visual indicator) |
+| **Timing** | `time.sleep(seconds)` | `await delay(ms)` (capped at 3s) |
+| | `time.sleep_ms(ms)` | `await delay(ms)` (capped at 3s) |
+| **Control** | `while True:` | Loop body (max 200 iterations) |
+| | `for x in range(n):` | Loop body (respects range value) |
+
+**Prefix Handling:** Both `Lcd.` and `M5.Lcd.` prefixes are accepted (UIFlow2 compatibility).
+
+**Limitations vs. Real Device:**
+
+| Feature | Real Device | Simulator | Gap |
+|---|---|---|---|
+| Display rendering | Hardware ST7789V2 | Canvas 2D | Fonts differ slightly; no anti-aliasing on device |
+| Buzzer/Speaker | Physical piezo, frequency control | Web Audio API `OscillatorNode` or visual-only indicator | Sound is approximated; volume/timbre differs |
+| Buttons A/B | Physical tactile buttons | Clickable HTML buttons + keyboard shortcuts (A/B keys) | No tactile feedback |
+| IMU (accelerometer) | MPU6886 6-axis | Mouse drag for tilt, `DeviceMotionEvent` on mobile | Desktop has no physical tilt; mobile approximates |
+| LED | Single-color brightness control | CSS glow effect on device frame | Visual only, no real light |
+| Microphone | SPM1423 MEMS mic | `getUserMedia` audio input (with permission) | Requires browser permission prompt |
+| IR transmitter | 38kHz modulated | Not emulated | No equivalent; IR lessons note "device only" |
+| WiFi/BLE | ESP32 radio | Not emulated | Multiplayer features require real devices |
+| Battery | 200mAh Li-Po | N/A | N/A |
+| Performance | 240MHz ESP32 | Browser JS thread | Simulator is faster; sleep capping prevents drift |
+
+### 22.5 Sensor Emulation Strategy
+
+#### Buttons (A/B)
+- **Click:** Two styled HTML buttons on the device frame, with pressed animation (scale 0.9)
+- **Keyboard:** `A` key maps to Button A, `B` key maps to Button B (when simulator is focused)
+- **Code detection:** `BtnA.isPressed()` and `BtnB.isPressed()` read from shared state updated by click/key handlers
+- **Events:** `BtnA.wasPressed()` uses an event queue consumed on read
+
+#### IMU (Accelerometer + Gyroscope)
+- **Desktop:** Mouse drag on the device frame sets simulated tilt values. Horizontal drag = X-axis, vertical drag = Y-axis
+- **Mobile/Tablet:** `DeviceMotionEvent` API reads real device orientation (with user permission)
+- **API mapping:** `Imu.getAccel()` returns `(x, y, z)` tuple. Simulator provides values in the same -1.0 to +1.0 range
+- **Shake detection:** Rapid mouse movement or device shake event triggers shake flag
+
+#### Speaker/Buzzer
+- **Phase 1 (current):** Visual indicator only -- LED on device frame turns yellow when `Speaker.tone()` is called, with `onTone` callback
+- **Phase 2 (planned):** Web Audio API `OscillatorNode` generates actual tones:
+  ```typescript
+  const audioCtx = new AudioContext();
+  const osc = audioCtx.createOscillator();
+  osc.frequency.value = freq; // Hz
+  osc.connect(audioCtx.destination);
+  osc.start();
+  setTimeout(() => osc.stop(), durationMs);
+  ```
+- **User interaction requirement:** AudioContext requires a user gesture to start (browser policy). First button click or "Run" action initializes audio.
+
+#### LED
+- **Emulation:** CSS `box-shadow` glow effect on the device frame LED dot
+- **API mapping:** `Power.setLed(brightness)` where 0 = off, 255 = full brightness
+- **Visual:** Brightness maps to glow radius and opacity
+
+#### Microphone
+- **Emulation:** `navigator.mediaDevices.getUserMedia({ audio: true })` with `AnalyserNode` for volume detection
+- **Permission:** Browser shows permission prompt on first use. Simulator shows friendly message: "Chip needs to hear you! Click Allow."
+- **Fallback:** If permission denied, mic-dependent features show "Connect a device or allow microphone access"
+- **API mapping:** `mic.getVolume()` returns 0-100 normalized value from `AnalyserNode.getByteFrequencyData()`
+
+### 22.6 React Component (`<Simulator />`)
+
+**File:** `components/simulator.tsx`
+
+The React component wraps the canvas renderer in a visual device frame:
+
+```
++---------------------------+
+|     [Power LED: green]    |  <- CSS glow, color changes
+|  +---------------------+  |
+|  |                     |  |
+|  |   135 x 240 Canvas  |  |  <- Mounted via ref
+|  |                     |  |
+|  +---------------------+  |
+|                           |
+|  [  Btn A  ]  [  Btn B  ] |  <- Interactive, keyboard-mapped
+|                           |
+|     ___USB-C port___      |  <- Decorative
++---------------------------+
+```
+
+**Imperative API (via `useImperativeHandle`):**
+- `getSimulator(): M5StickSimulator` -- access canvas renderer directly
+- `clear(): void` -- reset display to black
+
+**Props:**
+- `onButtonA?: () => void` -- callback when Button A pressed
+- `onButtonB?: () => void` -- callback when Button B pressed
+- `scale?: number` -- CSS transform scale (default fits container)
+
+**Scaling:** The component uses CSS `transform: scale()` to fit its container while maintaining the 135:240 aspect ratio. The canvas always renders at native resolution for pixel accuracy.
+
+### 22.7 Simulator vs. Device Mode
+
+The lesson viewer and workshop check `profile.device_mode` to determine behavior:
+
+| Behavior | Device Mode (`usb`) | Simulator Mode (`simulator`) |
+|---|---|---|
+| Code execution | Flash via Web Serial REPL | Run in `SimulatorCodeRunner` |
+| Display output | Real M5Stick screen | Canvas in browser |
+| Sound output | Device buzzer | Web Audio (Phase 2) or visual |
+| Button input | Physical buttons | On-screen buttons + keyboard |
+| Sensor input | Real IMU data | Mouse drag / DeviceMotion |
+| "Flash" button label | "Flash to Device" | "Run on Simulator" |
+| Connection status | USB connected/disconnected | Always "ready" |
+| Latency | ~1s (REPL upload) | Instant |
+
+**Mode Switching:** Users can switch between device and simulator at any time from the Workshop toolbar. If a device is plugged in while in simulator mode, a banner suggests: "M5Stick detected! Want to switch to device mode?"
+
+### 22.8 Future Simulator Enhancements
+
+1. **Web Audio for buzzer** -- generate real tones matching device frequencies
+2. **Shake gesture** -- mouse shake detection or mobile `DeviceMotionEvent`
+3. **Multi-frame animation** -- support `requestAnimationFrame`-style loops for smooth animation lessons
+4. **Save/replay** -- record simulator output as GIF or video for sharing
+5. **Split-screen** -- show simulator + code side-by-side in lesson view
+6. **ENV HAT emulation** -- virtual temperature/humidity sensors with sliders
+7. **Multiplayer bridge** -- WebSocket-based communication between two simulators (emulating WiFi features)
+
+---
+
+## 23. COPPA Compliance Plan
+
+### 23.1 Overview
+
+TinkerSchool serves children ages 5-12. The Children's Online Privacy Protection Act (COPPA) applies to our platform. This section defines our compliance strategy covering data collection, parental consent, privacy disclosures, and operational procedures.
+
+**COPPA applies because:**
+- We knowingly collect information from children under 13
+- Children interact directly with the platform (lessons, AI chat, projects)
+- We store persistent data about each child (learning profile, progress, AI conversations)
+
+### 23.2 Data Collection Inventory
+
+**What we collect from children (via parent):**
+
+| Data | Source | Purpose | Storage |
+|---|---|---|---|
+| First name (display name) | Parent enters during onboarding | Personalization, Chip greets by name | `profiles.display_name` |
+| Age/grade level | Parent selects during onboarding | Curriculum band assignment, age-appropriate content | `profiles.grade_level` |
+| Avatar choice | Parent/child selects during onboarding | Visual identity in UI | `profiles.avatar_id` |
+| 4-digit PIN | Parent creates during onboarding | Child authentication (no email/password) | `profiles.pin_hash` (bcrypt) |
+
+**What we collect from children (during use):**
+
+| Data | Source | Purpose | Storage | Retention |
+|---|---|---|---|---|
+| Lesson progress | Automatic (lesson completion) | Track learning, show progress | `progress` table | Lifetime of account |
+| Skill proficiency | Automatic (quiz answers) | Adaptive difficulty | `skill_proficiency` table | Lifetime of account |
+| AI chat messages | Child types to Chip | Learning interaction, parent review | `chat_sessions` table | 90 days, then summarized |
+| Code/projects | Child creates in workshop | Portfolio, gallery sharing | `projects` table | Lifetime of account |
+| Learning profile | AI-inferred from interactions | Personalize content and teaching style | `learning_profiles` table | Lifetime of account |
+| Session metadata | Automatic | Time-on-task, usage analytics | `device_sessions` table | 90 days |
+
+**What we do NOT collect from children:**
+- Email addresses
+- Real photos or images of the child
+- Location data (no geolocation APIs)
+- Contact lists or social connections
+- Device identifiers beyond USB serial port (ephemeral, not stored)
+- Browsing history outside TinkerSchool
+- Voice recordings (microphone input is processed locally, not stored)
+
+### 23.3 Parental Consent Flow
+
+COPPA requires "verifiable parental consent" before collecting data from children under 13. Our consent model:
+
+**Consent Mechanism: Parent-Created Account**
+
+1. **Only parents create accounts.** Sign-up requires an email address and is intended for adults. The sign-up page states: "Parents: Create your account to set up TinkerSchool for your child."
+
+2. **Parent explicitly creates the child's profile.** During onboarding, the parent enters the child's name, grade, and creates their PIN. This action constitutes informed consent -- the parent is deliberately enrolling their child.
+
+3. **Consent notice shown during onboarding (Step 2).** Before the parent enters any child information, display:
+
+   > **Privacy Notice:** TinkerSchool collects your child's first name, grade level, learning progress, and AI chat messages to provide personalized education. You can review all data, download it, or delete your child's account at any time from the Parent Dashboard. [Read our full Privacy Policy](/privacy)
+
+4. **Checkbox consent (before final submission):**
+
+   > [ ] I am this child's parent or legal guardian and I consent to TinkerSchool collecting and using my child's information as described in the [Privacy Policy](/privacy) for educational purposes.
+
+5. **Consent is stored** with timestamp in the `families` table:
+   ```sql
+   coppa_consent_given BOOLEAN DEFAULT false,
+   coppa_consent_at TIMESTAMPTZ,
+   coppa_consent_ip TEXT  -- for audit trail
+   ```
+
+**Consent for AI Chat:**
+- First time a child opens Chip chat, show parent-facing notice: "Your child is about to chat with Chip, our AI tutor. All conversations are logged and visible in your Parent Dashboard."
+- Parent can disable AI chat from Parent Dashboard → Settings
+
+### 23.4 Parental Rights & Controls
+
+COPPA grants parents specific rights. Here's how TinkerSchool implements each:
+
+| Right | Implementation | Location |
+|---|---|---|
+| **Review child's data** | Full data visible in Parent Dashboard: progress, AI chats, projects, learning profile | Parent Dashboard → each section |
+| **Download child's data** | "Export Data" button generates JSON/CSV bundle of all child data | Parent Dashboard → Settings → Export |
+| **Delete child's data** | "Delete Child Profile" with confirmation. Cascade-deletes all associated records | Parent Dashboard → Settings → Delete |
+| **Revoke consent** | Deleting the child profile revokes consent. Parent can also disable specific features (AI chat, gallery sharing) | Parent Dashboard → Settings |
+| **Refuse further collection** | Parent can pause the child's account (retains data but prevents new collection) | Parent Dashboard → Settings → Pause |
+
+### 23.5 Privacy Policy Requirements
+
+The Privacy Policy at `/privacy` must include (per FTC COPPA Rule):
+
+1. **Name and contact info** of the operator (TinkerSchool / operating entity)
+2. **Description of data collected** from children (see 23.2 inventory)
+3. **How data is used** (personalized education, adaptive difficulty, parent reporting)
+4. **Whether data is disclosed to third parties:**
+   - Anthropic (Claude API): AI chat messages are sent to Anthropic's API for response generation. Messages are not used for model training per Anthropic's data policy.
+   - Clerk: Authentication provider stores parent email. No child PII is sent to Clerk beyond the parent's Organization structure.
+   - Supabase: Database hosting. All child data stored in Supabase Postgres.
+   - Vercel: Hosting provider. No child PII stored at the edge.
+5. **Parental rights** (review, delete, revoke -- see 23.4)
+6. **Data retention policy** (see 23.6)
+7. **Security measures** (encryption, RLS, access controls)
+
+**Privacy Policy must be linked from:**
+- Landing page footer
+- Sign-up page
+- Onboarding flow (before child data is entered)
+- Parent Dashboard → Settings
+
+### 23.6 Data Retention Policy
+
+| Data Type | Retention | Deletion Trigger |
+|---|---|---|
+| Parent account | Until deleted by user | Parent deletes account |
+| Child profile | Until deleted by parent | Parent deletes child profile |
+| Learning progress | Lifetime of child profile | Cascades on profile deletion |
+| AI chat messages (full) | 90 days | Auto-archived; summaries retained |
+| AI chat summaries | Lifetime of child profile | Cascades on profile deletion |
+| Session metadata | 90 days | Auto-purged via cron/scheduled function |
+| Code projects | Lifetime of child profile | Cascades on profile deletion |
+| Learning profile | Lifetime of child profile | Cascades on profile deletion |
+
+**Inactive Account Policy:**
+- After 12 months of inactivity (no login), send parent an email: "Your TinkerSchool account has been inactive. Data will be deleted in 30 days unless you log in."
+- After 13 months: delete all child data. Retain parent account with a "reactivate" option.
+
+### 23.7 Child Aging Out
+
+When a child turns 13:
+- TinkerSchool does not collect date of birth, so aging-out is based on grade level progression
+- When a parent updates a child to 7th grade (or beyond 6th grade), the platform:
+  1. Notifies the parent: "Your child has graduated from TinkerSchool! Their data will be preserved for 90 days."
+  2. Offers data export (full learning history, projects, achievements)
+  3. After 90 days, deletes child data unless parent opts to retain
+
+### 23.8 Technical Safeguards
+
+| Safeguard | Implementation |
+|---|---|
+| **No child accounts without parent** | Children cannot sign up independently. No child-facing sign-up flow exists. |
+| **No email for children** | Kids use PIN authentication under parent's Clerk Organization. |
+| **No public profiles for children** | Gallery sharing is family-scoped by default. Public sharing requires parent toggle. |
+| **No direct messaging between children** | No child-to-child communication feature exists. |
+| **AI content filtering** | Chip's system prompt enforces age-appropriate responses. All responses filtered for safety. |
+| **AI conversation logging** | Every message stored and visible to parents. |
+| **No third-party tracking** | No Google Analytics, Facebook Pixel, or advertising SDKs on child-facing pages. |
+| **No behavioral advertising** | Child data is never used for advertising. No ad network integrations. |
+| **Encryption at rest** | Supabase encrypts data at rest (AES-256). |
+| **Encryption in transit** | All connections over HTTPS/TLS 1.3. |
+| **Row Level Security** | Supabase RLS ensures children only see their own family's data. |
+| **Rate limiting** | AI API and chat endpoints rate-limited to prevent abuse. |
+
+### 23.9 Compliance Checklist (Pre-Launch)
+
+- [ ] Privacy Policy written and published at `/privacy`
+- [ ] Terms of Service written and published at `/terms`
+- [ ] Parental consent checkbox added to onboarding flow
+- [ ] Consent timestamp stored in database
+- [ ] Data export feature built in Parent Dashboard
+- [ ] Child profile deletion feature built (with cascade)
+- [ ] AI chat messages auto-archive after 90 days
+- [ ] Session metadata auto-purge after 90 days
+- [ ] No third-party analytics on child-facing pages
+- [ ] Gallery sharing defaults to family-only
+- [ ] PIN hashing implemented (bcrypt)
+- [ ] Inactive account notification emails configured
+- [ ] Review by attorney specializing in COPPA compliance
+- [ ] FTC Safe Harbor program consideration (kidSAFE, PRIVO, iKeepSafe)
+
+### 23.10 Safe Harbor Consideration
+
+Consider joining an FTC-approved COPPA Safe Harbor program:
+- **kidSAFE Seal Program** -- most common for edtech
+- **PRIVO** -- focuses on identity and parental consent
+- **iKeepSafe** -- COPPA + FERPA + SOPIPA compliance
+
+Safe Harbor provides: independent compliance review, ongoing monitoring, and a shield against direct FTC enforcement. Cost is typically $2,000-$10,000/year depending on user count.
+
+**Recommendation:** Apply for kidSAFE certification before public launch. Budget $5,000 for initial certification.
+
+---
+
 *This PRD is a living document. As TinkerSchool evolves from MVP to platform, this document will be updated to reflect new decisions, user feedback, and community contributions.*
 
 *Built with care for Cassidy and every kid who deserves a personalized, hands-on, joyful education.*

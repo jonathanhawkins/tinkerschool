@@ -29,6 +29,8 @@ import {
   Compass,
   ArrowRight,
   Sparkles,
+  MapPin,
+  MessageCircle,
 } from "lucide-react";
 
 import { requireAuth } from "@/lib/auth/require-auth";
@@ -55,6 +57,7 @@ import {
 } from "@/components/ui/card";
 import { Badge as BadgeUI } from "@/components/ui/badge";
 import { Progress as ProgressBar } from "@/components/ui/progress";
+import { FadeIn, Stagger, StaggerItem, HoverLift } from "@/components/motion";
 
 // ---------------------------------------------------------------------------
 // Icon helpers -- render the correct icon from a DB string key.
@@ -63,64 +66,70 @@ import { Progress as ProgressBar } from "@/components/ui/progress";
 function SubjectIcon({
   icon,
   className,
+  style,
 }: {
   icon: string;
   className?: string;
+  style?: React.CSSProperties;
 }) {
+  const props = { className, style };
   switch (icon) {
     case "calculator":
-      return <Calculator className={className} />;
+      return <Calculator {...props} />;
     case "book-open":
-      return <BookOpen className={className} />;
+      return <BookOpen {...props} />;
     case "flask-conical":
-      return <FlaskConical className={className} />;
+      return <FlaskConical {...props} />;
     case "music":
-      return <Music className={className} />;
+      return <Music {...props} />;
     case "palette":
-      return <Palette className={className} />;
+      return <Palette {...props} />;
     case "puzzle":
-      return <Puzzle className={className} />;
+      return <Puzzle {...props} />;
     case "code-2":
-      return <Code2 className={className} />;
+      return <Code2 {...props} />;
     default:
-      return <BookOpen className={className} />;
+      return <BookOpen {...props} />;
   }
 }
 
 function ModuleIcon({
   icon,
   className,
+  style,
 }: {
   icon: string;
   className?: string;
+  style?: React.CSSProperties;
 }) {
+  const props = { className, style };
   switch (icon) {
     case "monitor":
-      return <Monitor className={className} />;
+      return <Monitor {...props} />;
     case "rocket":
-      return <Rocket className={className} />;
+      return <Rocket {...props} />;
     case "paintbrush":
-      return <Paintbrush className={className} />;
+      return <Paintbrush {...props} />;
     case "palette":
-      return <Palette className={className} />;
+      return <Palette {...props} />;
     case "vibrate":
-      return <Vibrate className={className} />;
+      return <Vibrate {...props} />;
     case "music":
-      return <Music className={className} />;
+      return <Music {...props} />;
     case "move":
-      return <Move className={className} />;
+      return <Move {...props} />;
     case "calculator":
-      return <Calculator className={className} />;
+      return <Calculator {...props} />;
     case "book-open":
-      return <BookOpen className={className} />;
+      return <BookOpen {...props} />;
     case "flask-conical":
-      return <FlaskConical className={className} />;
+      return <FlaskConical {...props} />;
     case "code-2":
-      return <Code2 className={className} />;
+      return <Code2 {...props} />;
     case "puzzle":
-      return <Puzzle className={className} />;
+      return <Puzzle {...props} />;
     default:
-      return <Rocket className={className} />;
+      return <Rocket {...props} />;
   }
 }
 
@@ -297,26 +306,33 @@ function SubjectCard({
   return (
     <Link href={`/subjects/${subject.slug}`} className="group block">
       <Card
-        className="relative overflow-hidden rounded-2xl border-l-4 transition-all duration-200 hover:shadow-md"
-        style={{ borderLeftColor: subject.color }}
+        className="relative overflow-hidden rounded-2xl border shadow-sm transition-all duration-200 hover:shadow-md"
+        style={{
+          backgroundColor: `${subject.color}14`,
+          borderLeftWidth: "4px",
+          borderLeftColor: subject.color,
+        }}
       >
         <CardContent className="flex items-start gap-4 p-5">
-          {/* Icon circle */}
+          {/* Icon circle -- tinted with subject color */}
           <div
             className="flex size-12 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-110"
-            style={{ backgroundColor: tintedBg(subject.color, 0.12) }}
+            style={{ backgroundColor: `${subject.color}1F` }}
           >
             <SubjectIcon
               icon={subject.icon}
               className="size-6"
-              /* Use inline style for dynamic DB color */
+              style={{ color: subject.color }}
             />
           </div>
 
           {/* Content */}
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-foreground group-hover:text-foreground/80">
+              <h3
+                className="text-sm font-semibold"
+                style={{ color: subject.color }}
+              >
                 {subject.display_name}
               </h3>
               <ArrowRight className="size-4 text-muted-foreground/50 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
@@ -333,7 +349,7 @@ function SubjectCard({
                     {Math.round(progressPercent)}%
                   </span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-background/60">
                   <div
                     className="h-full rounded-full transition-all duration-300"
                     style={{
@@ -376,60 +392,62 @@ function ContinueLearningCard({
       : 0;
 
   return (
-    <Card className="rounded-2xl border-primary/30 bg-primary/5">
-      <CardHeader>
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <p className="text-xs font-medium uppercase tracking-wider text-primary">
-                Continue Where You Left Off
-              </p>
-              {subjectName && subjectColor && (
-                <BadgeUI
-                  variant="outline"
-                  className="gap-1 text-xs"
-                  style={{
-                    borderColor: subjectColor,
-                    color: subjectColor,
-                  }}
-                >
-                  {subjectIcon && (
-                    <SubjectIcon icon={subjectIcon} className="size-3" />
-                  )}
-                  {subjectName}
-                </BadgeUI>
-              )}
+    <FadeIn>
+      <Card className="rounded-2xl border-primary/30 bg-primary/5">
+        <CardHeader>
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-medium uppercase tracking-wider text-primary">
+                  Continue Where You Left Off
+                </p>
+                {subjectName && subjectColor && (
+                  <BadgeUI
+                    variant="outline"
+                    className="gap-1 text-xs"
+                    style={{
+                      borderColor: subjectColor,
+                      color: subjectColor,
+                    }}
+                  >
+                    {subjectIcon && (
+                      <SubjectIcon icon={subjectIcon} className="size-3" />
+                    )}
+                    {subjectName}
+                  </BadgeUI>
+                )}
+              </div>
+              <CardTitle className="text-lg">{lesson.title}</CardTitle>
+              <CardDescription>{moduleName}</CardDescription>
             </div>
-            <CardTitle className="text-lg">{lesson.title}</CardTitle>
-            <CardDescription>{moduleName}</CardDescription>
+            <BadgeUI
+              variant="outline"
+              className="shrink-0 gap-1 border-amber-400 text-amber-600"
+            >
+              <Clock className="size-3" />
+              In Progress
+            </BadgeUI>
           </div>
-          <BadgeUI
-            variant="outline"
-            className="shrink-0 gap-1 border-amber-400 text-amber-600"
-          >
-            <Clock className="size-3" />
-            In Progress
-          </BadgeUI>
-        </div>
-      </CardHeader>
+        </CardHeader>
 
-      <CardContent className="space-y-3">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Module progress</span>
-          <span className="font-medium">{Math.round(progressPercent)}%</span>
-        </div>
-        <ProgressBar value={progressPercent} className="h-2.5" />
-      </CardContent>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Module progress</span>
+            <span className="font-medium">{Math.round(progressPercent)}%</span>
+          </div>
+          <ProgressBar value={progressPercent} className="h-2.5" />
+        </CardContent>
 
-      <CardFooter>
-        <Button asChild className="rounded-xl">
-          <Link href={`/lessons/${lesson.id}`}>
-            <Play className="size-4" />
-            Continue
-          </Link>
-        </Button>
-      </CardFooter>
-    </Card>
+        <CardFooter>
+          <Button asChild className="rounded-xl">
+            <Link href={`/lessons/${lesson.id}`}>
+              <Play className="size-4" />
+              Continue
+            </Link>
+          </Button>
+        </CardFooter>
+      </Card>
+    </FadeIn>
   );
 }
 
@@ -483,8 +501,9 @@ function ModuleCard({
 
   return (
     <Card
-      className="rounded-2xl border-l-4"
+      className="rounded-2xl border shadow-sm transition-shadow duration-200 hover:shadow-md"
       style={{
+        borderLeftWidth: "4px",
         borderLeftColor: subjectColor ?? "var(--border)",
       }}
     >
@@ -501,7 +520,7 @@ function ModuleCard({
             <ModuleIcon
               icon={module.icon}
               className="size-5"
-              /* Icon inherits color from parent or uses text-primary */
+              style={subjectColor ? { color: subjectColor } : undefined}
             />
           </div>
           <div className="min-w-0 flex-1">
@@ -546,7 +565,7 @@ function ModuleCard({
 
 function EarnedBadge({ badge }: { badge: Badge }) {
   return (
-    <div className="flex flex-col items-center gap-1.5 rounded-xl p-3 text-center">
+    <div className="flex flex-col items-center gap-1.5 rounded-xl bg-card p-3 text-center shadow-sm">
       <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
         <BadgeIcon icon={badge.icon} className="size-6 text-primary" />
       </div>
@@ -639,13 +658,11 @@ export default async function MissionControlPage() {
   }
 
   // Skills mastered per subject: subjectId -> { mastered, total }
-  // First, get total skills per subject from the skill_proficiency join data
   const skillCountBySubject = new Map<
     string,
     { mastered: number; total: number }
   >();
 
-  // Collect all unique skills from proficiency data
   for (const sp of safeSkillProficiencies) {
     const subjectId = sp.skills?.subject_id;
     if (!subjectId) continue;
@@ -667,6 +684,35 @@ export default async function MissionControlPage() {
     const existing = lessonsByModule.get(lesson.module_id) ?? [];
     existing.push(lesson);
     lessonsByModule.set(lesson.module_id, existing);
+  }
+
+  // Group modules by subject for per-subject locking
+  const modulesBySubject = new Map<string, Module[]>();
+  for (const mod of safeModules) {
+    const subjectId = mod.subject_id ?? "__none__";
+    const existing = modulesBySubject.get(subjectId) ?? [];
+    existing.push(mod);
+    modulesBySubject.set(subjectId, existing);
+  }
+
+  // Precompute locked module IDs (per-subject sequential unlock)
+  const lockedModuleIds = new Set<string>();
+  for (const subjectModules of modulesBySubject.values()) {
+    for (let i = 1; i < subjectModules.length; i++) {
+      const prevMod = subjectModules[i - 1];
+      const prevLessons = lessonsByModule.get(prevMod.id) ?? [];
+      const prevCompleted = prevLessons.filter(
+        (l) => getLessonStatus(l.id, progressMap) === "completed",
+      ).length;
+      const threshold = Math.ceil(prevLessons.length * 0.6);
+      if (prevCompleted < threshold) {
+        // Lock this and all subsequent modules in the subject
+        for (let j = i; j < subjectModules.length; j++) {
+          lockedModuleIds.add(subjectModules[j].id);
+        }
+        break;
+      }
+    }
   }
 
   // ---- Derive "continue learning" ----
@@ -699,70 +745,75 @@ export default async function MissionControlPage() {
       ? subjectMap.get(continueModule.subject_id) ?? null
       : null;
 
+  // Count overall stats for the welcome header
+  const totalCompleted = safeProgress.filter(
+    (p) => p.status === "completed",
+  ).length;
+
+  // Find "getting started" lesson for brand-new users (0 lessons completed)
+  const codingSubject = safeSubjects.find((s) => s.slug === "coding");
+  const firstCodingModule = codingSubject
+    ? (modulesBySubject.get(codingSubject.id) ?? [])[0] ?? null
+    : null;
+  const firstCodingLesson = firstCodingModule
+    ? (lessonsByModule.get(firstCodingModule.id) ?? [])[0] ?? null
+    : null;
+
   return (
     <div className="space-y-8">
       {/* ----- Welcome Header ----- */}
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Welcome back, {profile.display_name}!{" "}
-          <span className="inline-block animate-[wave_1.5s_ease-in-out_infinite]">
-            {"\uD83D\uDC4B"}
-          </span>
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          What do you want to learn today?
-        </p>
-      </header>
+      <FadeIn>
+        <header className="space-y-2">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Welcome back, {profile.display_name}!
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {totalCompleted > 0
+              ? `You've completed ${totalCompleted} lesson${totalCompleted !== 1 ? "s" : ""}. Keep exploring!`
+              : "What do you want to learn today?"}
+          </p>
+        </header>
+      </FadeIn>
 
-      {/* ----- Subject Cards Grid ----- */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">
-            Explore Subjects
-          </h2>
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="gap-1 text-xs text-muted-foreground"
-          >
-            <Link href="/subjects">
-              View all
-              <ArrowRight className="size-3.5" />
-            </Link>
-          </Button>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {safeSubjects.map((subject) => {
-            const counts = skillCountBySubject.get(subject.id) ?? {
-              mastered: 0,
-              total: 0,
-            };
-            return (
-              <SubjectCard
-                key={subject.id}
-                subject={subject}
-                skillsMastered={counts.mastered}
-                skillsTotal={counts.total}
-              />
-            );
-          })}
-        </div>
-
-        {safeSubjects.length === 0 && (
-          <Card className="rounded-2xl py-12 text-center">
-            <CardContent className="flex flex-col items-center gap-3">
-              <Compass className="size-10 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">
-                Subjects are being prepared. Check back soon!
-              </p>
-            </CardContent>
-          </Card>
+      {/* ----- Getting Started hero for brand-new users ----- */}
+      {totalCompleted === 0 &&
+        !continueLesson &&
+        firstCodingLesson &&
+        firstCodingModule && (
+          <FadeIn>
+            <Card className="rounded-2xl border-2 border-primary/30 bg-gradient-to-r from-primary/5 to-[#EA580C]/5">
+              <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:gap-6">
+                <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
+                  <Rocket className="size-8 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                    New here? Start your adventure!
+                  </p>
+                  <h2 className="text-xl font-bold text-foreground">
+                    {firstCodingModule.title}
+                  </h2>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    Meet your M5StickC Plus 2 and write your very first program.
+                    Learn to light up the display, draw shapes, and make sounds!
+                  </p>
+                </div>
+                <Button
+                  asChild
+                  size="lg"
+                  className="shrink-0 rounded-xl bg-gradient-to-r from-primary to-[#EA580C] text-white"
+                >
+                  <Link href={`/lessons/${firstCodingLesson.id}`}>
+                    <Play className="size-4" />
+                    Start First Lesson
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </FadeIn>
         )}
-      </section>
 
-      {/* ----- Continue Learning ----- */}
+      {/* ----- Continue Learning (promoted above subjects for returning users) ----- */}
       {continueLesson && continueProgress && continueModule && (
         <section>
           <ContinueLearningCard
@@ -777,54 +828,139 @@ export default async function MissionControlPage() {
         </section>
       )}
 
-      {/* ----- Modules Grid ----- */}
+      {/* ----- Subject Cards Grid ----- */}
+      <section className="space-y-4">
+        <FadeIn>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="size-5 text-primary" />
+              <h2 className="text-lg font-semibold text-foreground">
+                Explore Subjects
+              </h2>
+            </div>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="gap-1 rounded-xl text-xs text-muted-foreground"
+            >
+              <Link href="/subjects">
+                View all
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </Button>
+          </div>
+        </FadeIn>
+
+        <Stagger className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {safeSubjects.map((subject) => {
+            const counts = skillCountBySubject.get(subject.id) ?? {
+              mastered: 0,
+              total: 0,
+            };
+            return (
+              <StaggerItem key={subject.id}>
+                <HoverLift>
+                  <SubjectCard
+                    subject={subject}
+                    skillsMastered={counts.mastered}
+                    skillsTotal={counts.total}
+                  />
+                </HoverLift>
+              </StaggerItem>
+            );
+          })}
+        </Stagger>
+
+        {safeSubjects.length === 0 && (
+          <Card className="rounded-2xl py-12 text-center">
+            <CardContent className="flex flex-col items-center gap-3">
+              <Compass className="size-10 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">
+                Subjects are being prepared. Check back soon!
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
+      {/* ----- Missions grouped by subject ----- */}
       {safeModules.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">
-            Your Missions
-          </h2>
-          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {safeModules.map((mod, index) => {
-              // Module is unlocked if it's the first one, or if the
-              // previous module has >= 60% lessons completed.
-              let locked = false;
-              if (index > 0) {
-                const prevModule = safeModules[index - 1];
-                const prevLessons =
-                  lessonsByModule.get(prevModule.id) ?? [];
-                const prevCompleted = prevLessons.filter(
-                  (l) =>
-                    getLessonStatus(l.id, progressMap) === "completed",
-                ).length;
-                const threshold = Math.ceil(prevLessons.length * 0.6);
-                locked = prevCompleted < threshold;
-              }
+        <section className="space-y-6">
+          <FadeIn>
+            <div className="flex items-center gap-2">
+              <MapPin className="size-5 text-primary" />
+              <h2 className="text-lg font-semibold text-foreground">
+                Your Missions
+              </h2>
+            </div>
+          </FadeIn>
 
-              // Resolve subject color for this module
-              const moduleSubject = mod.subject_id
-                ? subjectMap.get(mod.subject_id) ?? null
-                : null;
-
+          {safeSubjects
+            .filter(
+              (subject) =>
+                (modulesBySubject.get(subject.id) ?? []).length > 0,
+            )
+            .map((subject) => {
+              const subjectModules =
+                modulesBySubject.get(subject.id) ?? [];
               return (
-                <ModuleCard
-                  key={mod.id}
-                  module={mod}
-                  lessons={lessonsByModule.get(mod.id) ?? []}
-                  progressMap={progressMap}
-                  locked={locked}
-                  subjectColor={moduleSubject?.color ?? null}
-                />
+                <FadeIn key={subject.id}>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="flex size-7 items-center justify-center rounded-lg"
+                        style={{
+                          backgroundColor: `${subject.color}1F`,
+                        }}
+                      >
+                        <SubjectIcon
+                          icon={subject.icon}
+                          className="size-4"
+                          style={{ color: subject.color }}
+                        />
+                      </div>
+                      <h3
+                        className="text-sm font-semibold"
+                        style={{ color: subject.color }}
+                      >
+                        {subject.display_name}
+                      </h3>
+                      <span className="text-xs text-muted-foreground">
+                        {subjectModules.length} module
+                        {subjectModules.length !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                      {subjectModules.map((mod) => (
+                        <HoverLift key={mod.id}>
+                          <ModuleCard
+                            module={mod}
+                            lessons={
+                              lessonsByModule.get(mod.id) ?? []
+                            }
+                            progressMap={progressMap}
+                            locked={lockedModuleIds.has(mod.id)}
+                            subjectColor={subject.color}
+                          />
+                        </HoverLift>
+                      ))}
+                    </div>
+                  </div>
+                </FadeIn>
               );
             })}
-          </div>
         </section>
       )}
 
       {safeModules.length === 0 && (
         <section className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">
-            Your Missions
-          </h2>
+          <div className="flex items-center gap-2">
+            <MapPin className="size-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">
+              Your Missions
+            </h2>
+          </div>
           <Card className="rounded-2xl py-12 text-center">
             <CardContent className="flex flex-col items-center gap-3">
               <Rocket className="size-10 text-muted-foreground/40" />
@@ -838,13 +974,22 @@ export default async function MissionControlPage() {
 
       {/* ----- Recent Badges ----- */}
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">Your Badges</h2>
-        {safeUserBadges.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {safeUserBadges.map((ub) => (
-              <EarnedBadge key={ub.id} badge={ub.badges} />
-            ))}
+        <FadeIn>
+          <div className="flex items-center gap-2">
+            <Trophy className="size-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">
+              Your Badges
+            </h2>
           </div>
+        </FadeIn>
+        {safeUserBadges.length > 0 ? (
+          <Stagger className="flex flex-wrap gap-3">
+            {safeUserBadges.map((ub) => (
+              <StaggerItem key={ub.id}>
+                <EarnedBadge badge={ub.badges} />
+              </StaggerItem>
+            ))}
+          </Stagger>
         ) : (
           <Card className="rounded-2xl py-8 text-center">
             <CardContent className="flex flex-col items-center gap-3">
@@ -858,26 +1003,34 @@ export default async function MissionControlPage() {
       </section>
 
       {/* ----- Quick Actions ----- */}
-      <section className="flex flex-wrap gap-3">
-        <Button asChild size="lg" className="rounded-xl">
-          <Link href="/workshop">
-            <Wrench className="size-4" />
-            Open Workshop
-          </Link>
-        </Button>
-        <Button asChild size="lg" variant="outline" className="rounded-xl">
-          <Link href="/subjects">
-            <Sparkles className="size-4" />
-            Browse Subjects
-          </Link>
-        </Button>
-        <Button asChild size="lg" variant="outline" className="rounded-xl">
-          <Link href="/gallery">
-            <ImageIcon className="size-4" />
-            My Gallery
-          </Link>
-        </Button>
-      </section>
+      <FadeIn>
+        <section className="flex flex-wrap gap-3 pb-4">
+          <Button asChild size="lg" className="rounded-xl bg-primary">
+            <Link href="/chat">
+              <MessageCircle className="size-4" />
+              Chat with Chip
+            </Link>
+          </Button>
+          <Button asChild size="lg" className="rounded-xl">
+            <Link href="/workshop">
+              <Wrench className="size-4" />
+              Open Workshop
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="outline" className="rounded-xl">
+            <Link href="/subjects">
+              <Sparkles className="size-4" />
+              Browse Subjects
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="outline" className="rounded-xl">
+            <Link href="/gallery">
+              <ImageIcon className="size-4" />
+              My Gallery
+            </Link>
+          </Button>
+        </section>
+      </FadeIn>
     </div>
   );
 }

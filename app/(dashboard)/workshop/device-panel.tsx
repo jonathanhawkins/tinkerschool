@@ -127,8 +127,6 @@ export default function DevicePanel({ code = "" }: DevicePanelProps) {
       };
 
       serialRef.current.onData = (data) => {
-        // Log raw serial data for debugging
-        console.log("[serial-rx]", JSON.stringify(data));
         setOutput((prev) => {
           // Keep buffer from growing unbounded (last 4 000 chars)
           const next = prev + data;

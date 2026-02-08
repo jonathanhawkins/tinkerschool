@@ -108,6 +108,116 @@ describe("getChipSystemPrompt", () => {
 
       expect(result).toContain("5th-6th grader");
     });
+
+    it("includes question requirement in language guidance for all ages", () => {
+      // Younger kids: questions should be simple
+      const young = getChipSystemPrompt({
+        childName: "Leo",
+        age: 5,
+        gradeLevel: 1,
+      });
+      expect(young).toContain("question");
+
+      // Older kids: questions should push deeper thinking
+      const older = getChipSystemPrompt({
+        childName: "Jordan",
+        age: 12,
+        gradeLevel: 5,
+      });
+      expect(older).toContain("question");
+    });
+  });
+
+  describe("Socratic Teaching Method", () => {
+    it("includes the Socratic Teaching Method section", () => {
+      const result = getChipSystemPrompt(baseParams);
+      expect(result).toContain("Socratic Teaching Method");
+      expect(result).toContain("YOUR MOST IMPORTANT RULE");
+    });
+
+    it("includes the Golden Rule about always asking questions", () => {
+      const result = getChipSystemPrompt(baseParams);
+      expect(result).toContain("Golden Rule");
+      expect(result).toContain(
+        "MUST contain at least one question"
+      );
+    });
+
+    it("includes the Discovery Loop pattern", () => {
+      const result = getChipSystemPrompt(baseParams);
+      expect(result).toContain("Discovery Loop");
+      expect(result).toContain("ACKNOWLEDGE");
+      expect(result).toContain("QUESTION");
+      expect(result).toContain("WAIT");
+    });
+
+    it("includes question escalation strategy", () => {
+      const result = getChipSystemPrompt(baseParams);
+      expect(result).toContain("Question Escalation");
+      expect(result).toContain("Yes/No questions");
+      expect(result).toContain("Choice questions");
+      expect(result).toContain("Observation questions");
+      expect(result).toContain("Reasoning questions");
+      expect(result).toContain("Tiny hint + question");
+    });
+
+    it("includes guidance for when kids ask for the answer", () => {
+      const result = getChipSystemPrompt(baseParams);
+      expect(result).toContain("Just Tell Me the Answer");
+      expect(result).toContain("NEVER give in");
+      expect(result).toContain("Make it smaller");
+    });
+
+    it("includes thinking scaffolds", () => {
+      const result = getChipSystemPrompt(baseParams);
+      expect(result).toContain("Thinking Scaffolds");
+      expect(result).toContain("Break it down");
+      expect(result).toContain("Make it concrete");
+      expect(result).toContain("Connect to known");
+      expect(result).toContain("Eliminate options");
+    });
+
+    it("includes frustration detection guidance", () => {
+      const result = getChipSystemPrompt(baseParams);
+      expect(result).toContain("Frustration Detection");
+      expect(result).toContain("idk");
+      expect(result).toContain("I can't do it");
+    });
+  });
+
+  describe("Prohibited Response Patterns", () => {
+    it("includes the prohibited patterns section", () => {
+      const result = getChipSystemPrompt(baseParams);
+      expect(result).toContain("Prohibited Response Patterns");
+      expect(result).toContain("NEVER DO THESE");
+    });
+
+    it("includes direct answer prohibition with examples", () => {
+      const result = getChipSystemPrompt(baseParams);
+      expect(result).toContain("Direct Answers");
+      expect(result).toContain("BAD:");
+      expect(result).toContain("GOOD:");
+    });
+
+    it("includes complete explanation prohibition", () => {
+      const result = getChipSystemPrompt(baseParams);
+      expect(result).toContain("Complete Explanations");
+    });
+
+    it("includes code writing prohibition", () => {
+      const result = getChipSystemPrompt(baseParams);
+      expect(result).toContain("Writing Code or Solving Problems");
+    });
+
+    it("includes correcting without questioning prohibition", () => {
+      const result = getChipSystemPrompt(baseParams);
+      expect(result).toContain("Correcting Without Questioning");
+    });
+
+    it("includes long lecture prohibition", () => {
+      const result = getChipSystemPrompt(baseParams);
+      expect(result).toContain("Long Lectures");
+    });
   });
 
   describe("subject-specific guidance", () => {
@@ -119,7 +229,8 @@ describe("getChipSystemPrompt", () => {
 
       expect(result).toContain("Subject: Math");
       expect(result).toContain("concrete objects");
-      expect(result).toContain("NEVER just give the answer");
+      expect(result).toContain("Socratic Questions for Math");
+      expect(result).toContain("NEVER Do This in Math");
     });
 
     it("includes reading guidance when subject is reading", () => {
@@ -131,6 +242,8 @@ describe("getChipSystemPrompt", () => {
       expect(result).toContain("Subject: Reading");
       expect(result).toContain("Sound out words");
       expect(result).toContain("phonics");
+      expect(result).toContain("Socratic Questions for Reading");
+      expect(result).toContain("NEVER Do This in Reading");
     });
 
     it("includes science guidance when subject is science", () => {
@@ -142,6 +255,8 @@ describe("getChipSystemPrompt", () => {
       expect(result).toContain("Subject: Science");
       expect(result).toContain("What do you notice");
       expect(result).toContain("What do you think will happen");
+      expect(result).toContain("Socratic Questions for Science");
+      expect(result).toContain("NEVER Do This in Science");
     });
 
     it("includes music guidance when subject is music", () => {
@@ -153,6 +268,8 @@ describe("getChipSystemPrompt", () => {
       expect(result).toContain("Subject: Music");
       expect(result).toContain("rhythm");
       expect(result).toContain("buzzer");
+      expect(result).toContain("Socratic Questions for Music");
+      expect(result).toContain("NEVER Do This in Music");
     });
 
     it("includes art guidance when subject is art", () => {
@@ -164,6 +281,8 @@ describe("getChipSystemPrompt", () => {
       expect(result).toContain("Subject: Art");
       expect(result).toContain("no wrong answer");
       expect(result).toContain("color");
+      expect(result).toContain("Socratic Questions for Art");
+      expect(result).toContain("NEVER Do This in Art");
     });
 
     it("includes problem solving guidance when subject is problem_solving", () => {
@@ -175,6 +294,8 @@ describe("getChipSystemPrompt", () => {
       expect(result).toContain("Subject: Problem Solving");
       expect(result).toContain("What's the first step");
       expect(result).toContain("Do you see a pattern");
+      expect(result).toContain("Socratic Questions for Problem Solving");
+      expect(result).toContain("NEVER Do This in Problem Solving");
     });
 
     it("includes coding guidance when subject is coding", () => {
@@ -186,6 +307,8 @@ describe("getChipSystemPrompt", () => {
       expect(result).toContain("Subject: Coding");
       expect(result).toContain("hints, not solutions");
       expect(result).toContain("Celebrate debugging");
+      expect(result).toContain("Socratic Questions for Coding");
+      expect(result).toContain("NEVER Do This in Coding");
     });
 
     it("omits subject section when no subject is provided", () => {
@@ -210,6 +333,31 @@ describe("getChipSystemPrompt", () => {
       });
 
       expect(result).toContain("Subject: Problem Solving");
+    });
+
+    it("every subject includes Socratic questions and NEVER-do sections", () => {
+      const subjects = [
+        "math",
+        "reading",
+        "science",
+        "music",
+        "art",
+        "problem_solving",
+        "coding",
+      ];
+
+      for (const subject of subjects) {
+        const result = getChipSystemPrompt({
+          ...baseParams,
+          currentSubject: subject,
+        });
+
+        const displayName =
+          subject === "problem_solving" ? "Problem Solving" : subject.charAt(0).toUpperCase() + subject.slice(1);
+
+        expect(result).toContain(`Socratic Questions for ${displayName}`);
+        expect(result).toContain(`NEVER Do This in ${displayName}`);
+      }
     });
   });
 
@@ -300,6 +448,29 @@ describe("getChipSystemPrompt", () => {
 
       expect(result).not.toContain("Learning Style Adaptation");
     });
+
+    it("includes Socratic question framing for each learning style", () => {
+      const styles: { style: Record<string, number>; expected: string }[] = [
+        { style: { visual: 1 }, expected: "Can you picture" },
+        { style: { auditory: 1 }, expected: "Can you say that out loud" },
+        { style: { kinesthetic: 1 }, expected: "Can you show me" },
+        { style: { reading_writing: 1 }, expected: "wrote that as a list" },
+      ];
+
+      for (const { style, expected } of styles) {
+        const result = getChipSystemPrompt({
+          ...baseParams,
+          learningProfile: {
+            learningStyle: style,
+            interests: [],
+            preferredEncouragement: "enthusiastic",
+            chipNotes: "",
+          },
+        });
+
+        expect(result).toContain(expected);
+      }
+    });
   });
 
   describe("encouragement style", () => {
@@ -345,6 +516,23 @@ describe("getChipSystemPrompt", () => {
 
       expect(result).toContain("silly jokes");
     });
+
+    it("all encouragement styles celebrate thinking over correctness", () => {
+      for (const pref of ["enthusiastic", "quiet", "humor"]) {
+        const result = getChipSystemPrompt({
+          ...baseParams,
+          learningProfile: {
+            learningStyle: { visual: 1 },
+            interests: [],
+            preferredEncouragement: pref,
+            chipNotes: "",
+          },
+        });
+
+        // Each style should celebrate the thinking process
+        expect(result).toContain("thinking");
+      }
+    });
   });
 
   describe("interest weaving", () => {
@@ -382,6 +570,21 @@ describe("getChipSystemPrompt", () => {
     it("omits interest section when no profile", () => {
       const result = getChipSystemPrompt(baseParams);
       expect(result).not.toContain("Weave In Their Interests");
+    });
+
+    it("frames interest examples as questions, not statements", () => {
+      const result = getChipSystemPrompt({
+        ...baseParams,
+        learningProfile: {
+          learningStyle: { visual: 1 },
+          interests: ["dinosaurs"],
+          preferredEncouragement: "enthusiastic",
+          chipNotes: "",
+        },
+      });
+
+      // Interest examples should contain question marks
+      expect(result).toContain("Socratic questions");
     });
   });
 
@@ -435,6 +638,24 @@ describe("getChipSystemPrompt", () => {
 
       expect(result).not.toContain("Skill Awareness");
     });
+
+    it("includes teaching strategy guidance for each proficiency level", () => {
+      const result = getChipSystemPrompt({
+        ...baseParams,
+        skillProficiency: {
+          addition: "mastered",
+          subtraction: "developing",
+          division: "beginning",
+        },
+      });
+
+      // Strong skills: used as building blocks
+      expect(result).toContain("building blocks");
+      // Developing: ask them to teach back
+      expect(result).toContain("teach YOU");
+      // Beginning: extra scaffolding
+      expect(result).toContain("extra scaffolding");
+    });
   });
 
   describe("recent lessons", () => {
@@ -461,6 +682,15 @@ describe("getChipSystemPrompt", () => {
         recentLessons: [],
       });
       expect(result).not.toContain("Recent Lessons Completed");
+    });
+
+    it("suggests using past successes as confidence builders", () => {
+      const result = getChipSystemPrompt({
+        ...baseParams,
+        recentLessons: ["Counting to 20"],
+      });
+
+      expect(result).toContain("confidence builders");
     });
   });
 
@@ -507,6 +737,16 @@ describe("getChipSystemPrompt", () => {
       expect(result).toContain("Current Context");
     });
 
+    it("enforces no spoilers for lessons", () => {
+      const result = getChipSystemPrompt({
+        ...baseParams,
+        currentLesson: "Addition Fun",
+      });
+
+      expect(result).toContain("WITHOUT giving away the solution");
+      expect(result).toContain("NEVER summarize");
+    });
+
     it("omits lesson context when not provided", () => {
       const result = getChipSystemPrompt(baseParams);
 
@@ -525,6 +765,18 @@ describe("getChipSystemPrompt", () => {
       expect(result).toContain(code);
       expect(result).toContain("```python");
       expect(result).toContain("Current Context");
+    });
+
+    it("enforces asking about code before helping", () => {
+      const result = getChipSystemPrompt({
+        ...baseParams,
+        currentCode: "print('hello')",
+      });
+
+      expect(result).toContain(
+        "ask them what they think each line does FIRST"
+      );
+      expect(result).toContain("NEVER rewrite their code");
     });
 
     it("omits code context when not provided", () => {
@@ -589,9 +841,10 @@ describe("getChipSystemPrompt", () => {
   });
 
   describe("safety guardrails", () => {
-    it("includes the rule about not giving complete answers", () => {
+    it("includes the rule about not giving complete answers as the most important rule", () => {
       const result = getChipSystemPrompt(baseParams);
       expect(result).toContain("NEVER give complete answers");
+      expect(result).toContain("most important rule");
     });
 
     it("includes expanded topic allowances for all subjects", () => {
@@ -640,6 +893,34 @@ describe("getChipSystemPrompt", () => {
       const result = getChipSystemPrompt(baseParams);
       expect(result).toContain("TinkerSchool");
     });
+
+    it("describes Chip as curious and question-asking", () => {
+      const result = getChipSystemPrompt(baseParams);
+      expect(result).toContain("CURIOUS");
+      expect(result).toContain("want to know what THEY think");
+    });
+  });
+
+  describe("never-give-answers reinforcement", () => {
+    it("reinforces the no-answers rule in the closing statement", () => {
+      const result = getChipSystemPrompt(baseParams);
+      // The closing line should emphasize questioning
+      expect(result).toContain("NEVER give answers");
+      expect(result).toContain("RIGHT QUESTIONS");
+      expect(result).toContain("discover answers on their own");
+    });
+
+    it("the no-answers principle appears multiple times throughout the prompt", () => {
+      const result = getChipSystemPrompt(baseParams);
+
+      // Count occurrences of key phrases that reinforce the principle
+      const neverGivePattern = /NEVER give|NEVER DO|never give/g;
+      const matches = result.match(neverGivePattern);
+
+      // Should appear at least 3 times across different sections
+      expect(matches).not.toBeNull();
+      expect(matches!.length).toBeGreaterThanOrEqual(3);
+    });
   });
 
   describe("full integration", () => {
@@ -679,6 +960,11 @@ describe("getChipSystemPrompt", () => {
       // Subject
       expect(result).toContain("Subject: Math");
       expect(result).toContain("learn Math");
+
+      // Socratic framework
+      expect(result).toContain("Socratic Teaching Method");
+      expect(result).toContain("Prohibited Response Patterns");
+      expect(result).toContain("Socratic Questions for Math");
 
       // Learning style
       expect(result).toContain("VISUALLY");
@@ -725,6 +1011,12 @@ describe("getChipSystemPrompt", () => {
       expect(result).toContain("age 8");
       expect(result).toContain("grade 3");
       expect(result).toContain("learn learning");
+
+      // Socratic framework should ALWAYS be present
+      expect(result).toContain("Socratic Teaching Method");
+      expect(result).toContain("Prohibited Response Patterns");
+
+      // Optional sections should be absent
       expect(result).not.toContain("Subject:");
       expect(result).not.toContain("Learning Style Adaptation");
       expect(result).not.toContain("Encouragement Style");
@@ -733,6 +1025,20 @@ describe("getChipSystemPrompt", () => {
       expect(result).not.toContain("Recent Lessons Completed");
       expect(result).not.toContain("Your Notes About This Child");
       expect(result).not.toContain("Current Context");
+    });
+
+    it("even the minimal prompt enforces questioning behavior", () => {
+      const result = getChipSystemPrompt({
+        childName: "Test",
+        age: 8,
+        gradeLevel: 3,
+      });
+
+      // Even without any optional data, the prompt should enforce:
+      expect(result).toContain("MUST contain at least one question");
+      expect(result).toContain("NEVER give answers");
+      expect(result).toContain("Discovery Loop");
+      expect(result).toContain("Thinking Scaffolds");
     });
   });
 });

@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, GraduationCap } from "lucide-react";
+import { Menu } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { navItems } from "@/lib/nav-items";
@@ -35,9 +36,13 @@ export function MobileNav() {
           <Menu className="size-6" />
         </Button>
         <div className="flex items-center gap-2">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-primary">
-            <GraduationCap className="size-5 text-primary-foreground" />
-          </div>
+          <Image
+            src="/images/chip.png"
+            alt="Chip"
+            width={32}
+            height={32}
+            className="rounded-lg"
+          />
           <span className="text-xl font-bold text-primary">TinkerSchool</span>
         </div>
       </header>
@@ -48,9 +53,13 @@ export function MobileNav() {
           <SheetHeader className="px-4 pt-6 pb-2">
             <SheetTitle asChild>
               <div className="flex items-center gap-2">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-primary">
-                  <GraduationCap className="size-5 text-primary-foreground" />
-                </div>
+                <Image
+                  src="/images/chip.png"
+                  alt="Chip"
+                  width={36}
+                  height={36}
+                  className="rounded-lg"
+                />
                 <span className="text-xl font-bold text-primary">
                   TinkerSchool
                 </span>

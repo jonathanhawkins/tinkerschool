@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { requireAuth } from "@/lib/auth/require-auth";
+import { FadeIn, Stagger, StaggerItem } from "@/components/motion";
 import { formatDate } from "@/lib/format-date";
 import {
   Card,
@@ -92,55 +93,66 @@ export default async function ParentDashboardPage() {
   return (
     <div className="space-y-8">
       {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">
-          Overview
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {kids.length > 0
-            ? `Tracking progress for ${kids.map((k) => k.display_name).join(", ")}`
-            : "No kid profiles found in your family yet."}
-        </p>
-      </div>
+      <FadeIn>
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">
+            Overview
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {kids.length > 0
+              ? `Tracking progress for ${kids.map((k) => k.display_name).join(", ")}`
+              : "No kid profiles found in your family yet."}
+          </p>
+        </div>
+      </FadeIn>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <SummaryCard
-          icon={BookOpen}
-          label="Lessons Completed"
-          value={lessonsCompleted}
-          accent="text-chart-1"
-          bgAccent="bg-chart-1/10"
-        />
-        <SummaryCard
-          icon={Trophy}
-          label="Badges Earned"
-          value={badgesEarned}
-          accent="text-chart-2"
-          bgAccent="bg-chart-2/10"
-        />
-        <SummaryCard
-          icon={Clock}
-          label="Time on Platform"
-          value="--"
-          accent="text-chart-3"
-          bgAccent="bg-chart-3/10"
-          subtitle="Coming soon"
-        />
-        <SummaryCard
-          icon={Flame}
-          label="Active Streak"
-          value="--"
-          accent="text-chart-4"
-          bgAccent="bg-chart-4/10"
-          subtitle="Coming soon"
-        />
-      </div>
+      <Stagger className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StaggerItem>
+          <SummaryCard
+            icon={BookOpen}
+            label="Lessons Completed"
+            value={lessonsCompleted}
+            accent="text-chart-1"
+            bgAccent="bg-chart-1/10"
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <SummaryCard
+            icon={Trophy}
+            label="Badges Earned"
+            value={badgesEarned}
+            accent="text-chart-2"
+            bgAccent="bg-chart-2/10"
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <SummaryCard
+            icon={Clock}
+            label="Time on Platform"
+            value="--"
+            accent="text-chart-3"
+            bgAccent="bg-chart-3/10"
+            subtitle="Coming soon"
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <SummaryCard
+            icon={Flame}
+            label="Active Streak"
+            value="--"
+            accent="text-chart-4"
+            bgAccent="bg-chart-4/10"
+            subtitle="Coming soon"
+          />
+        </StaggerItem>
+      </Stagger>
 
       {/* Recent activity + quick links */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Recent activity */}
-        <Card className="rounded-2xl lg:col-span-2">
+      <FadeIn delay={0.1}>
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Recent activity */}
+          <Card className="rounded-2xl lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Star className="size-4 text-primary" />
@@ -223,7 +235,8 @@ export default async function ParentDashboardPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
+        </div>
+      </FadeIn>
     </div>
   );
 }

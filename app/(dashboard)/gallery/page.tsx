@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FolderOpen, Wrench } from "lucide-react";
 
 import { requireAuth } from "@/lib/auth/require-auth";
+import { FadeIn, Stagger, StaggerItem } from "@/components/motion";
 import type { Project } from "@/lib/supabase/types";
 import {
   Card,
@@ -26,22 +27,26 @@ export default async function GalleryPage() {
   return (
     <div className="mx-auto max-w-5xl">
       {/* Page header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-foreground">My Gallery</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          All the awesome projects you have built so far!
-        </p>
-      </div>
+      <FadeIn>
+        <div className="mb-8">
+          <h1 className="text-2xl font-semibold text-foreground">My Gallery</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            All the awesome projects you have built so far!
+          </p>
+        </div>
+      </FadeIn>
 
       {/* Projects grid or empty state */}
       {safeProjects.length === 0 ? (
         <EmptyGallery />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {safeProjects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
+            <StaggerItem key={project.id}>
+              <ProjectCard project={project} />
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       )}
     </div>
   );

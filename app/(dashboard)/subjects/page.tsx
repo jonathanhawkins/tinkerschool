@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { requireAuth } from "@/lib/auth/require-auth";
+import { FadeIn, Stagger, StaggerItem, HoverLift } from "@/components/motion";
 import type { Subject, Skill, SkillProficiency } from "@/lib/supabase/types";
 import {
   Card,
@@ -166,29 +167,34 @@ export default async function SubjectsPage() {
   return (
     <div className="space-y-8">
       {/* ----- Header ----- */}
-      <header className="space-y-1">
-        <div className="flex items-center gap-2">
-          <Sparkles className="size-6 text-primary" />
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Explore Subjects
-          </h1>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Choose a subject to start learning!
-        </p>
-      </header>
+      <FadeIn>
+        <header className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-6 text-primary" />
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Explore Subjects
+            </h1>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Choose a subject to start learning!
+          </p>
+        </header>
+      </FadeIn>
 
       {/* ----- Subject Grid ----- */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <Stagger className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {safeSubjects.map((subject) => (
-          <SubjectCard
-            key={subject.id}
-            subject={subject}
-            skillsStarted={startedBySubject.get(subject.id) ?? 0}
-            skillsTotal={totalBySubject.get(subject.id) ?? 0}
-          />
+          <StaggerItem key={subject.id}>
+            <HoverLift>
+              <SubjectCard
+                subject={subject}
+                skillsStarted={startedBySubject.get(subject.id) ?? 0}
+                skillsTotal={totalBySubject.get(subject.id) ?? 0}
+              />
+            </HoverLift>
+          </StaggerItem>
         ))}
-      </div>
+      </Stagger>
 
       {/* ----- Empty state ----- */}
       {safeSubjects.length === 0 && (

@@ -1,6 +1,7 @@
 import { MessageSquare, ShieldCheck, Bot, User } from "lucide-react";
 
 import { requireAuth } from "@/lib/auth/require-auth";
+import { FadeIn } from "@/components/motion";
 import { formatDate } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
 import {
@@ -42,26 +43,30 @@ export default async function AIHistoryPage() {
   return (
     <div className="space-y-8">
       {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">
-          AI Chat History
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Review your child&apos;s conversations with Chip.
-        </p>
-      </div>
+      <FadeIn>
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">
+            AI Chat History
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Review your child&apos;s conversations with Chip.
+          </p>
+        </div>
+      </FadeIn>
 
       {/* Safety note */}
-      <Card className="rounded-2xl border-primary/20 bg-primary/5">
-        <CardContent className="flex items-start gap-3 py-4">
-          <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" />
-          <p className="text-sm text-foreground">
-            All of Chip&apos;s conversations with your child are logged
-            here for your review. Chip only discusses coding, math,
-            science, and creative projects.
-          </p>
-        </CardContent>
-      </Card>
+      <FadeIn delay={0.05}>
+        <Card className="rounded-2xl border-primary/20 bg-primary/5">
+          <CardContent className="flex items-start gap-3 py-4">
+            <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" />
+            <p className="text-sm text-foreground">
+              All of Chip&apos;s conversations with your child are logged
+              here for your review. Chip only discusses coding, math,
+              science, and creative projects.
+            </p>
+          </CardContent>
+        </Card>
+      </FadeIn>
 
       {/* Sessions list */}
       {sessions.length === 0 ? (
@@ -79,11 +84,12 @@ export default async function AIHistoryPage() {
       ) : (
         <div className="space-y-4">
           {sessions.map((session) => (
-            <ChatSessionCard
-              key={session.id}
-              session={session}
-              kidName={kidNameMap.get(session.profile_id) ?? "Unknown"}
-            />
+            <FadeIn key={session.id}>
+              <ChatSessionCard
+                session={session}
+                kidName={kidNameMap.get(session.profile_id) ?? "Unknown"}
+              />
+            </FadeIn>
           ))}
         </div>
       )}

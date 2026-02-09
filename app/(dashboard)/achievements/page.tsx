@@ -16,17 +16,152 @@ import {
 import { Progress } from "@/components/ui/progress";
 import type { Badge as BadgeRow, UserBadge } from "@/lib/supabase/types";
 
+// ---------------------------------------------------------------------------
+// Stats for progress display
+// ---------------------------------------------------------------------------
+
+interface BadgeStats {
+  lessonsCompleted: number;
+  simulatorRuns: number;
+  uniqueDaysWithCompletions: number;
+  uniqueSubjectsAttempted: number;
+  chatSessions: number;
+  deviceFlashes: number;
+  projectsSaved: number;
+}
+
+/**
+ * Return the current progress value for a badge criteria type, so the
+ * achievements page can show how far along the user is.
+ */
+function getProgressForBadge(
+  criteria: BadgeRow["criteria"],
+  stats: BadgeStats,
+): number {
+  switch (criteria.type) {
+    case "lessons_completed":
+    case "lesson_complete":
+      return stats.lessonsCompleted;
+    case "simulator_runs":
+      return stats.simulatorRuns;
+    case "unique_days_with_completions":
+      return stats.uniqueDaysWithCompletions;
+    case "unique_subjects_attempted":
+    case "cross_subject":
+      return stats.uniqueSubjectsAttempted;
+    case "chat_sessions":
+      return stats.chatSessions;
+    case "device_flash":
+      return stats.deviceFlashes;
+    case "projects_saved":
+      return stats.projectsSaved;
+    case "weekly_lessons":
+      return stats.lessonsCompleted;
+    default:
+      return 0;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
 export default async function AchievementsPage() {
   const { profile, supabase } = await requireAuth();
 
-  // Fetch all badges and the user's earned badges in parallel
-  const [badgesResult, userBadgesResult] = await Promise.all([
+  // Fetch all badges, user's earned badges, and stats in parallel
+  const [
+    badgesResult,
+    userBadgesResult,
+    lessonsCompletedResult,
+    simulatorRunsResult,
+    chatSessionsResult,
+    deviceFlashesResult,
+    projectsSavedResult,
+    completionDatesResult,
+    subjectProgressResult,
+  ] = await Promise.all([
     supabase.from("badges").select("*"),
     supabase
       .from("user_badges")
       .select("*, badges(*)")
       .eq("profile_id", profile.id),
+    // Count completed lessons
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from("progress") as any)
+      .select("id", { count: "exact", head: true })
+      .eq("profile_id", profile.id)
+      .eq("status", "completed"),
+    // Count simulator runs
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from("device_sessions") as any)
+      .select("id", { count: "exact", head: true })
+      .eq("profile_id", profile.id)
+      .eq("device_type", "simulator"),
+    // Count chat sessions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from("chat_sessions") as any)
+      .select("id", { count: "exact", head: true })
+      .eq("profile_id", profile.id),
+    // Count device flashes
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from("device_sessions") as any)
+      .select("id", { count: "exact", head: true })
+      .eq("profile_id", profile.id),
+    // Count projects
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from("projects") as any)
+      .select("id", { count: "exact", head: true })
+      .eq("profile_id", profile.id),
+    // Fetch completion dates for unique days
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from("progress") as any)
+      .select("completed_at")
+      .eq("profile_id", profile.id)
+      .eq("status", "completed")
+      .not("completed_at", "is", null),
+    // Fetch completed lessons with subjects for unique subject count
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from("progress") as any)
+      .select("lesson_id, lessons(subject_id)")
+      .eq("profile_id", profile.id)
+      .eq("status", "completed"),
   ]);
+
+  // Calculate unique days
+  const completionDates =
+    (completionDatesResult.data as Array<{ completed_at: string }> | null) ??
+    [];
+  const uniqueDays = new Set<string>();
+  for (const row of completionDates) {
+    if (row.completed_at) {
+      uniqueDays.add(row.completed_at.slice(0, 10));
+    }
+  }
+
+  // Calculate unique subjects
+  interface SubjectRow {
+    lesson_id: string;
+    lessons: { subject_id: string | null } | null;
+  }
+  const subjectRows =
+    (subjectProgressResult.data as SubjectRow[] | null) ?? [];
+  const uniqueSubjects = new Set<string>();
+  for (const row of subjectRows) {
+    if (row.lessons?.subject_id) {
+      uniqueSubjects.add(row.lessons.subject_id);
+    }
+  }
+
+  const stats: BadgeStats = {
+    lessonsCompleted: lessonsCompletedResult.count ?? 0,
+    simulatorRuns: simulatorRunsResult.count ?? 0,
+    chatSessions: chatSessionsResult.count ?? 0,
+    deviceFlashes: deviceFlashesResult.count ?? 0,
+    projectsSaved: projectsSavedResult.count ?? 0,
+    uniqueDaysWithCompletions: uniqueDays.size,
+    uniqueSubjectsAttempted: uniqueSubjects.size,
+  };
 
   const allBadges = (badgesResult.data ?? []) as BadgeRow[];
   const userBadges = (userBadgesResult.data ?? []) as UserBadge[];
@@ -44,7 +179,7 @@ export default async function AchievementsPage() {
       {/* Page header */}
       <FadeIn>
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Achievements
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -52,7 +187,7 @@ export default async function AchievementsPage() {
             <span className="font-semibold text-primary">
               {earnedCount} of {totalCount}
             </span>{" "}
-            badges! Keep coding to unlock them all.
+            badges! Keep learning to unlock them all.
           </p>
         </div>
       </FadeIn>
@@ -71,9 +206,14 @@ export default async function AchievementsPage() {
       <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {allBadges.map((badge) => {
           const earned = earnedBadgeMap.get(badge.id);
+          const currentProgress = getProgressForBadge(badge.criteria, stats);
           return (
             <StaggerItem key={badge.id}>
-              <BadgeCard badge={badge} earnedAt={earned?.earned_at} />
+              <BadgeCard
+                badge={badge}
+                earnedAt={earned?.earned_at}
+                currentProgress={currentProgress}
+              />
             </StaggerItem>
           );
         })}
@@ -89,11 +229,15 @@ export default async function AchievementsPage() {
 interface BadgeCardProps {
   badge: BadgeRow;
   earnedAt?: string;
+  currentProgress: number;
 }
 
-function BadgeCard({ badge, earnedAt }: BadgeCardProps) {
+function BadgeCard({ badge, earnedAt, currentProgress }: BadgeCardProps) {
   const isEarned = Boolean(earnedAt);
   const threshold = badge.criteria.threshold;
+  const clampedProgress = Math.min(currentProgress, threshold);
+  const progressPercent =
+    threshold > 0 ? (clampedProgress / threshold) * 100 : 0;
 
   return (
     <Card
@@ -124,7 +268,7 @@ function BadgeCard({ badge, earnedAt }: BadgeCardProps) {
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Keep coding to earn this!
+                Keep learning to earn this!
               </p>
             )}
           </div>
@@ -139,9 +283,11 @@ function BadgeCard({ badge, earnedAt }: BadgeCardProps) {
           <div className="space-y-1">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Progress</span>
-              <span>0 / {threshold}</span>
+              <span>
+                {clampedProgress} / {threshold}
+              </span>
             </div>
-            <Progress value={0} className="h-2" />
+            <Progress value={progressPercent} className="h-2" />
           </div>
         )}
       </CardContent>

@@ -2,52 +2,30 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
-  Calculator,
-  BookOpen,
-  FlaskConical,
-  Music,
-  Palette,
-  Puzzle,
-  Code2,
   ChevronRight,
 } from "lucide-react";
 
+import { SubjectIcon } from "@/components/subject-icon";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { FadeIn } from "@/components/motion";
 import type { Subject } from "@/lib/supabase/types";
+import { safeColor } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import ChipChat from "@/components/chip-chat";
 
 // ---------------------------------------------------------------------------
-// Icon mapping
+// Valid subject slugs
 // ---------------------------------------------------------------------------
 
-function SubjectIcon({
-  icon,
-  className,
-}: {
-  icon: string;
-  className?: string;
-}) {
-  switch (icon) {
-    case "calculator":
-      return <Calculator className={className} />;
-    case "book-open":
-      return <BookOpen className={className} />;
-    case "flask-conical":
-      return <FlaskConical className={className} />;
-    case "music":
-      return <Music className={className} />;
-    case "palette":
-      return <Palette className={className} />;
-    case "puzzle":
-      return <Puzzle className={className} />;
-    case "code-2":
-      return <Code2 className={className} />;
-    default:
-      return <BookOpen className={className} />;
-  }
-}
+const VALID_SUBJECTS = [
+  "math",
+  "reading",
+  "science",
+  "music",
+  "art",
+  "problem-solving",
+  "coding",
+] as const;
 
 // ---------------------------------------------------------------------------
 // Page
@@ -59,6 +37,11 @@ export default async function FreeplayChatPage({
   params: Promise<{ subject: string }>;
 }) {
   const { subject: subjectSlug } = await params;
+
+  if (!VALID_SUBJECTS.includes(subjectSlug as (typeof VALID_SUBJECTS)[number])) {
+    notFound();
+  }
+
   const { profile, supabase } = await requireAuth();
 
   // Fetch the subject by slug
@@ -72,7 +55,7 @@ export default async function FreeplayChatPage({
     notFound();
   }
 
-  const safeSubject = subject as Subject;
+  const safeSubject = { ...(subject as Subject), color: safeColor((subject as Subject).color) };
 
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col gap-4">

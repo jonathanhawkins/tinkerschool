@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       "svix-signature": svixSignature,
     }) as ClerkWebhookEvent;
   } catch (err) {
-    console.error("[clerk-webhook] Signature verification failed:", err);
+    console.error("[clerk-webhook] Signature verification failed:", err instanceof Error ? err.message : "unknown error");
     return NextResponse.json(
       { error: "Invalid signature" },
       { status: 401 }
@@ -167,7 +167,7 @@ export async function POST(request: Request) {
         console.log(`[clerk-webhook] Unhandled event type: ${event.type}`);
     }
   } catch (err) {
-    console.error(`[clerk-webhook] Error handling ${event.type}:`, err);
+    console.error(`[clerk-webhook] Error handling ${event.type}:`, err instanceof Error ? err.message : "unknown error");
     return NextResponse.json(
       { error: "Internal error processing webhook" },
       { status: 500 }

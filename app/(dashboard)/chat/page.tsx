@@ -3,57 +3,18 @@ import Link from "next/link";
 
 export const metadata: Metadata = { title: "Chat with Chip" };
 import {
-  Calculator,
-  BookOpen,
-  FlaskConical,
-  Music,
-  Palette,
-  Puzzle,
-  Code2,
   MessageCircle,
 } from "lucide-react";
 
+import { SubjectIcon } from "@/components/subject-icon";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { FadeIn, Stagger, StaggerItem, HoverLift } from "@/components/motion";
 import type { Subject } from "@/lib/supabase/types";
+import { safeColor } from "@/lib/utils";
 import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-
-// ---------------------------------------------------------------------------
-// Icon mapping
-// ---------------------------------------------------------------------------
-
-function SubjectIcon({
-  icon,
-  className,
-  style,
-}: {
-  icon: string;
-  className?: string;
-  style?: React.CSSProperties;
-}) {
-  const props = { className, style };
-  switch (icon) {
-    case "calculator":
-      return <Calculator {...props} />;
-    case "book-open":
-      return <BookOpen {...props} />;
-    case "flask-conical":
-      return <FlaskConical {...props} />;
-    case "music":
-      return <Music {...props} />;
-    case "palette":
-      return <Palette {...props} />;
-    case "puzzle":
-      return <Puzzle {...props} />;
-    case "code-2":
-      return <Code2 {...props} />;
-    default:
-      return <BookOpen {...props} />;
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Page
@@ -67,7 +28,10 @@ export default async function ChatPickerPage() {
     .select("*")
     .order("sort_order");
 
-  const safeSubjects: Subject[] = (subjects as Subject[] | null) ?? [];
+  const safeSubjects: Subject[] = ((subjects as Subject[] | null) ?? []).map((s) => ({
+    ...s,
+    color: safeColor(s.color),
+  }));
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">

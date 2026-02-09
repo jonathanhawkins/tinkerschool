@@ -45,6 +45,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { WorkshopDemo } from "@/components/workshop-demo";
+import { TryChipDemo } from "@/components/try-chip-demo";
 
 // ---------------------------------------------------------------------------
 // Data
@@ -347,10 +348,10 @@ export function LandingContent() {
           {/* Desktop nav links */}
           <div className="hidden items-center gap-6 md:flex">
             <a
-              href="#demo"
+              href="#try-chip"
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
-              Demo
+              Try Chip
             </a>
             <a
               href="#subjects"
@@ -414,11 +415,11 @@ export function LandingContent() {
           <div className="border-t border-border bg-background px-6 pb-4 pt-2 md:hidden">
             <div className="flex flex-col gap-3">
               <a
-                href="#demo"
+                href="#try-chip"
                 onClick={() => setMobileMenuOpen(false)}
                 className="rounded-xl px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
               >
-                Demo
+                Try Chip
               </a>
               <a
                 href="#subjects"
@@ -530,10 +531,10 @@ export function LandingContent() {
                 size="lg"
                 className="rounded-full px-8 text-base shadow-md shadow-primary/25 sm:text-lg"
               >
-                <Link href="/sign-up">
-                  Get Started
+                <a href="#try-chip">
+                  Try Chip Now
                   <ArrowRight className="ml-2 size-5" />
-                </Link>
+                </a>
               </Button>
             </motion.div>
             <motion.div
@@ -546,7 +547,7 @@ export function LandingContent() {
                 size="lg"
                 className="rounded-full px-8 text-base sm:text-lg"
               >
-                <a href="#features">See How It Works</a>
+                <Link href="/sign-up">Get Started Free</Link>
               </Button>
             </motion.div>
           </div>
@@ -583,7 +584,41 @@ export function LandingContent() {
       </section>
 
       {/* ================================================================= */}
-      {/* Section 1b: Interactive Demo */}
+      {/* Section 1b: Try Chip Now -- Interactive AI Demo */}
+      {/* ================================================================= */}
+      <section
+        id="try-chip"
+        className="flex flex-col items-center gap-8 px-6 py-20"
+      >
+        <motion.div
+          className="flex flex-col items-center gap-3 text-center"
+          {...motionProps(fadeInUp)}
+        >
+          <div className="flex items-center gap-2">
+            <Bot className="size-6 text-primary" />
+            <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
+              Try It Right Now
+            </h2>
+          </div>
+          <p className="max-w-lg text-sm text-muted-foreground sm:text-base">
+            Chat with Chip, build something cool, and watch it run on a
+            tiny computer — no sign-up required.
+          </p>
+        </motion.div>
+
+        <motion.div
+          className="w-full"
+          {...motionProps({
+            ...fadeInUp,
+            transition: { ...fadeInUp.transition, delay: 0.1 },
+          })}
+        >
+          <TryChipDemo />
+        </motion.div>
+      </section>
+
+      {/* ================================================================= */}
+      {/* Section 1c: Workshop Preview (static demo) */}
       {/* ================================================================= */}
       <section
         id="demo"
@@ -596,7 +631,7 @@ export function LandingContent() {
           <div className="flex items-center gap-2">
             <Blocks className="size-6 text-primary" />
             <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
-              See It in Action
+              See the Workshop
             </h2>
           </div>
           <p className="max-w-lg text-sm text-muted-foreground sm:text-base">
@@ -1297,8 +1332,9 @@ export function LandingContent() {
             <ul className="space-y-2">
               {[
                 { label: "Dashboard", href: "/dashboard" },
-                { label: "Safety", href: "/safety" },
+                { label: "Child Safety", href: "/privacy#child-safety" },
                 { label: "Privacy Policy", href: "/privacy" },
+                { label: "Terms of Service", href: "/terms" },
               ].map((item) => (
                 <li key={item.label}>
                   <Link
@@ -1317,6 +1353,7 @@ export function LandingContent() {
             <h4 className="text-sm font-semibold text-foreground">Company</h4>
             <ul className="space-y-2">
               {[
+                { label: "Support Us", href: "/support" },
                 { label: "About", href: "https://github.com/jonathanhawkins/tinkerschool" },
                 { label: "Contact", href: "mailto:hello@tinkerschool.ai" },
               ].map((item) => (

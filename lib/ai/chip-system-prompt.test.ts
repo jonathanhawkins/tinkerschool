@@ -835,7 +835,7 @@ describe("getChipSystemPrompt", () => {
 
     it("describes LED for multi-subject use", () => {
       const result = getChipSystemPrompt(baseParams);
-      expect(result).toContain("even/odd indicator");
+      expect(result).toContain("single red LED");
       expect(result).toContain("beat pulse");
     });
   });

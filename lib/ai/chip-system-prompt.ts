@@ -318,7 +318,18 @@ function interestInstructions(interests: string[]): string {
     return "";
   }
 
-  const interestList = interests.join(", ");
+  // Sanitize interests: limit count, truncate each, strip non-alphanumeric
+  // characters that could be used for prompt injection.
+  const safeInterests = interests
+    .slice(0, 10)
+    .map((i) => i.slice(0, 50).replace(/[^a-zA-Z0-9 ,'-]/g, "").trim())
+    .filter((i) => i.length > 0);
+
+  if (safeInterests.length === 0) {
+    return "";
+  }
+
+  const interestList = safeInterests.join(", ");
 
   return `\n## Weave In Their Interests
 This child loves: ${interestList}.
@@ -560,10 +571,17 @@ export function getChipSystemPrompt(params: ChipContext): string {
     ? interestInstructions(learningProfile.interests)
     : "";
 
-  const chipNotesSection =
-    learningProfile?.chipNotes
-      ? `\n## Your Notes About This Child\n${learningProfile.chipNotes}`
-      : "";
+  // Sanitize chipNotes: truncate to prevent prompt injection and strip
+  // markdown headers/fences that could alter the prompt structure.
+  const rawChipNotes = learningProfile?.chipNotes ?? "";
+  const sanitizedChipNotes = rawChipNotes
+    .slice(0, 500)
+    .replace(/^#{1,6}\s/gm, "") // Strip markdown headers
+    .replace(/```/g, "")         // Strip code fences
+    .trim();
+  const chipNotesSection = sanitizedChipNotes
+    ? `\n## Your Notes About This Child\n${sanitizedChipNotes}`
+    : "";
 
   const proficiencySection = skillProficiency
     ? proficiencyInstructions(skillProficiency)
@@ -617,14 +635,14 @@ The M5StickC Plus 2 is a tiny computer that helps with ALL subjects:
 - **Buzzer**: phonics sounds, musical notes, celebration beeps, counting beeps, rhythm patterns, tone sequences
 - **Buttons (A and B)**: answer choices (A or B), navigation, note playing, yes/no responses, quiz answers
 - **IMU (motion sensor)**: tilt to sort items, shake to shuffle flashcards, motion drawing, maze navigation, exercise counting
-- **LED**: even/odd indicator, correct/wrong flash, beat pulse, reading progress light
+- **LED** (single red LED, on/off only): status indicator, beat pulse, blink patterns
 
 Technical reference (for coding subject):
-- Display: lcd.fill(color), lcd.text(x, y, "text", color), lcd.rect(x, y, w, h, color)
-- Buttons: btnA.isPressed(), btnB.isPressed()
-- Buzzer: speaker.tone(frequency, duration)
-- LED: Power.setLed(brightness)
-- IMU: Imu.getAccel() returns x, y, z values
+- Display: Lcd.fillScreen(color), Lcd.drawString("text", x, y), Lcd.fillRect(x, y, w, h, color)
+- Buttons: BtnA.isPressed(), BtnB.isPressed()
+- Buzzer: Speaker.tone(frequency, duration)
+- LED: Power.setLed(brightness) -- single red LED, 0=off, 255=on
+- IMU: Imu.getAccel() returns (x, y, z) tuple
 ${proficiencySection}
 ${recentSection}
 ${chipNotesSection}

@@ -6,6 +6,7 @@ import {
   Lightbulb,
   BookOpen,
   ChevronRight,
+  Monitor,
   Puzzle,
   Usb,
   Blocks,
@@ -109,7 +110,7 @@ export default async function LessonPage({
       {/* ----- Lesson header ----- */}
       <FadeIn delay={0.05}>
         <header className="space-y-2">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
               {safeLesson.title}
             </h1>
@@ -124,6 +125,23 @@ export default async function LessonPage({
                 className="border-amber-400 text-amber-600"
               >
                 In Progress
+              </Badge>
+            )}
+            {safeLesson.simulator_compatible ? (
+              <Badge
+                variant="outline"
+                className="gap-1 border-emerald-300 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+              >
+                <Monitor className="size-3" />
+                Simulator Ready
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="gap-1 border-amber-300 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+              >
+                <Usb className="size-3" />
+                Hardware Needed
               </Badge>
             )}
           </div>
@@ -245,7 +263,7 @@ export default async function LessonPage({
                     key={hint.order}
                     className={cn(
                       "flex gap-3 rounded-xl p-3 text-sm",
-                      index === 0 ? "bg-amber-50" : "bg-muted/30",
+                      index === 0 ? "bg-amber-500/10" : "bg-muted/30",
                     )}
                   >
                     <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">

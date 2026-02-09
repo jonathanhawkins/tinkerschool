@@ -277,7 +277,7 @@ function BlockWorkspace({
   showDots: boolean;
 }) {
   return (
-    <div className="relative flex-1 overflow-hidden bg-[#F8F8F8] p-4">
+    <div className="relative flex-1 overflow-hidden bg-muted p-4">
       {/* Grid dots background */}
       {showDots && (
         <div
@@ -678,13 +678,19 @@ export function WorkshopDemo() {
               key={i}
               onClick={() => setPhaseIndex(i)}
               className={cn(
-                "size-1.5 rounded-full transition-all duration-300",
-                i === phaseIndex
-                  ? "scale-125 bg-primary"
-                  : "bg-muted-foreground/20 hover:bg-muted-foreground/40"
+                "flex size-6 items-center justify-center rounded-full transition-all duration-300",
               )}
               aria-label={`Go to step ${i + 1}`}
-            />
+            >
+              <span
+                className={cn(
+                  "size-1.5 rounded-full transition-all duration-300",
+                  i === phaseIndex
+                    ? "scale-125 bg-primary"
+                    : "bg-muted-foreground/20 hover:bg-muted-foreground/40"
+                )}
+              />
+            </button>
           ))}
         </div>
       </BrowserChrome>

@@ -6,7 +6,7 @@ import type { SimulatorCommand } from "./types";
  * the corresponding drawing commands on the M5StickSimulator canvas.
  *
  * This is NOT a full Python interpreter. It uses regex to recognize
- * M5-specific API calls (M5.Lcd.*, time.sleep*, M5.Speaker.*) and maps
+ * M5-specific API calls (Lcd.*, time.sleep*, Speaker.*) and maps
  * them to simulator methods. Unrecognized lines are silently skipped.
  *
  * Supports (with or without M5. prefix for UIFlow2 compatibility):
@@ -22,10 +22,26 @@ import type { SimulatorCommand } from "./types";
  *  - Lcd.setTextSize(size)
  *  - time.sleep(seconds)
  *  - time.sleep_ms(ms)
- *  - Speaker.tone(freq, duration) -- visual indicator only
+ *  - Speaker.tone(freq, duration) -- audio + visual indicator
  *
- * Simple while True loops and for-range loops are handled with
- * configurable iteration limits to prevent infinite execution.
+ * Variable & expression support:
+ *  - Variable assignment: score = 0, x = x + 1
+ *  - Arithmetic: +, -, *, //, %
+ *  - Comparisons: >, <, >=, <=, ==, !=
+ *  - Boolean: and, or, not
+ *  - Functions: str(), int(), abs(), random.randint()
+ *  - Variables in API args: Lcd.drawString(str(score), x, y)
+ *
+ * Control flow:
+ *  - while True: loops (capped)
+ *  - for x in range(n): loops (with loop variable)
+ *  - if/elif/else conditionals
+ *  - def blocks (skipped, not executed)
+ *
+ * Button & sensor simulation:
+ *  - BtnA.isPressed() / BtnA.wasPressed()
+ *  - BtnB.isPressed() / BtnB.wasPressed()
+ *  - Imu.getAccel()[n]
  */
 export class SimulatorCodeRunner {
   private simulator: M5StickSimulator;
@@ -35,12 +51,29 @@ export class SimulatorCodeRunner {
   /** Max iterations for while-True loops before auto-stopping */
   private static readonly MAX_LOOP_ITERATIONS = 200;
 
+  /** Python variable store -- reset on each run() */
+  private variables: Map<string, number | string | boolean> = new Map();
+
+  /** Button state -- settable from UI via setButtonState() */
+  private buttonA = false;
+  private buttonB = false;
+
+  /** IMU accelerometer values -- settable from UI via setImuValues() */
+  private imuValues: [number, number, number] = [0, 0, 0];
+
   /** Callback fired when a tone command is encountered (for visual feedback) */
   onTone: ((frequency: number, durationMs: number) => void) | null = null;
+
+  /** Callback fired when LED brightness changes (for visual feedback) */
+  onLed: ((brightness: number) => void) | null = null;
 
   constructor(simulator: M5StickSimulator) {
     this.simulator = simulator;
   }
+
+  // ---------------------------------------------------------------------------
+  // Public API
+  // ---------------------------------------------------------------------------
 
   /**
    * Parse and execute MicroPython code line by line.
@@ -55,6 +88,7 @@ export class SimulatorCodeRunner {
 
     this._running = true;
     this.abortController = new AbortController();
+    this.variables.clear();
 
     try {
       const lines = code.split("\n");
@@ -90,13 +124,29 @@ export class SimulatorCodeRunner {
     return this._running;
   }
 
+  /**
+   * Set button pressed state (called from simulator UI).
+   */
+  setButtonState(button: "a" | "b", pressed: boolean): void {
+    if (button === "a") this.buttonA = pressed;
+    else this.buttonB = pressed;
+  }
+
+  /**
+   * Set IMU accelerometer values (called from simulator UI).
+   * Values should be in range -1.0 to 1.0 for each axis.
+   */
+  setImuValues(x: number, y: number, z: number): void {
+    this.imuValues = [x, y, z];
+  }
+
   // ---------------------------------------------------------------------------
   // Internal execution engine
   // ---------------------------------------------------------------------------
 
   /**
    * Execute a range of lines from the code.
-   * Handles basic control flow: while True loops, for-range loops.
+   * Handles control flow: while True, for-range, if/elif/else, assignments.
    */
   private async executeLines(
     lines: string[],
@@ -117,6 +167,34 @@ export class SimulatorCodeRunner {
         continue;
       }
 
+      // Skip import statements
+      if (trimmed.startsWith("import ") || trimmed.startsWith("from ")) {
+        i++;
+        continue;
+      }
+
+      // Skip function/class definitions (jump past their body)
+      if (
+        (trimmed.startsWith("def ") || trimmed.startsWith("class ")) &&
+        trimmed.endsWith(":")
+      ) {
+        const bodyRange = this.getIndentedBlock(lines, i + 1, end);
+        i = bodyRange.end;
+        continue;
+      }
+
+      // Skip standalone keywords that aren't actionable
+      if (
+        trimmed.startsWith("global ") ||
+        trimmed.startsWith("return ") ||
+        trimmed === "pass" ||
+        trimmed === "break" ||
+        trimmed === "continue"
+      ) {
+        i++;
+        continue;
+      }
+
       // Detect while True: loop
       if (this.isWhileTrueLoop(trimmed)) {
         const bodyRange = this.getIndentedBlock(lines, i + 1, end);
@@ -133,9 +211,29 @@ export class SimulatorCodeRunner {
           lines,
           bodyRange.start,
           bodyRange.end,
-          rangeMatch.count
+          rangeMatch.count,
+          rangeMatch.varName
         );
         i = bodyRange.end;
+        continue;
+      }
+
+      // Detect if/elif/else conditional chain
+      const ifMatch = trimmed.match(/^if\s+(.+?)\s*:$/);
+      if (ifMatch) {
+        const chain = this.parseConditionalChain(lines, i, end);
+        await this.executeConditional(lines, chain.branches);
+        i = chain.chainEnd;
+        continue;
+      }
+
+      // Detect variable assignment: varname = expression (but not == or +=)
+      const assignMatch = trimmed.match(/^([a-zA-Z_]\w*)\s*=(?!=)\s*(.+)$/);
+      if (assignMatch) {
+        const varName = assignMatch[1];
+        const value = this.evaluate(assignMatch[2].trim());
+        this.variables.set(varName, value);
+        i++;
         continue;
       }
 
@@ -164,17 +262,20 @@ export class SimulatorCodeRunner {
   }
 
   /**
-   * Execute a for-range loop body the specified number of times.
+   * Execute a for-range loop body the specified number of times,
+   * setting the loop variable on each iteration.
    */
   private async executeForRange(
     lines: string[],
     bodyStart: number,
     bodyEnd: number,
-    count: number
+    count: number,
+    varName: string
   ): Promise<void> {
     const iterations = Math.min(count, SimulatorCodeRunner.MAX_LOOP_ITERATIONS);
     for (let iter = 0; iter < iterations; iter++) {
       this.checkAbort();
+      this.variables.set(varName, iter);
       await this.executeLines(lines, bodyStart, bodyEnd);
     }
   }
@@ -188,14 +289,14 @@ export class SimulatorCodeRunner {
 
   /**
    * Check if the line is a `for x in range(n):` statement.
-   * Returns the range count or null if not a match.
+   * Returns the range count and variable name, or null if not a match.
    */
   private isForRangeLoop(
     line: string
-  ): { count: number } | null {
-    const match = line.match(/^for\s+\w+\s+in\s+range\((\d+)\)\s*:/);
+  ): { count: number; varName: string } | null {
+    const match = line.match(/^for\s+(\w+)\s+in\s+range\((\d+)\)\s*:/);
     if (match) {
-      return { count: parseInt(match[1], 10) };
+      return { varName: match[1], count: parseInt(match[2], 10) };
     }
     return null;
   }
@@ -243,7 +344,429 @@ export class SimulatorCodeRunner {
   }
 
   // ---------------------------------------------------------------------------
-  // Line parsing -- regex-based recognition of M5 API calls
+  // Conditional (if/elif/else) support
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Parse an if/elif/else chain starting at the given line.
+   * Returns the branches and the line index after the entire chain.
+   */
+  private parseConditionalChain(
+    lines: string[],
+    ifLine: number,
+    limit: number
+  ): {
+    branches: Array<{
+      condition: string | null;
+      bodyStart: number;
+      bodyEnd: number;
+    }>;
+    chainEnd: number;
+  } {
+    const branches: Array<{
+      condition: string | null;
+      bodyStart: number;
+      bodyEnd: number;
+    }> = [];
+
+    // Parse the 'if' branch
+    const ifCondition = lines[ifLine].trim().match(/^if\s+(.+?)\s*:$/);
+    if (!ifCondition) {
+      return { branches: [], chainEnd: ifLine + 1 };
+    }
+
+    const ifBody = this.getIndentedBlock(lines, ifLine + 1, limit);
+    branches.push({
+      condition: ifCondition[1],
+      bodyStart: ifBody.start,
+      bodyEnd: ifBody.end,
+    });
+    let current = ifBody.end;
+
+    // Look for elif/else branches at the same indentation level
+    while (current < limit) {
+      const trimmed = lines[current]?.trim();
+      if (!trimmed) {
+        current++;
+        continue;
+      }
+
+      const elifMatch = trimmed.match(/^elif\s+(.+?)\s*:$/);
+      if (elifMatch) {
+        const body = this.getIndentedBlock(lines, current + 1, limit);
+        branches.push({
+          condition: elifMatch[1],
+          bodyStart: body.start,
+          bodyEnd: body.end,
+        });
+        current = body.end;
+        continue;
+      }
+
+      if (trimmed === "else:") {
+        const body = this.getIndentedBlock(lines, current + 1, limit);
+        branches.push({
+          condition: null, // null = else (always matches)
+          bodyStart: body.start,
+          bodyEnd: body.end,
+        });
+        current = body.end;
+        break;
+      }
+
+      // Neither elif nor else -- chain is done
+      break;
+    }
+
+    return { branches, chainEnd: current };
+  }
+
+  /**
+   * Execute the first matching branch in a conditional chain.
+   */
+  private async executeConditional(
+    lines: string[],
+    branches: Array<{
+      condition: string | null;
+      bodyStart: number;
+      bodyEnd: number;
+    }>
+  ): Promise<void> {
+    for (const branch of branches) {
+      // null condition = else branch (always executes)
+      if (branch.condition === null || this.isTruthy(branch.condition)) {
+        await this.executeLines(lines, branch.bodyStart, branch.bodyEnd);
+        return; // Only execute the first matching branch
+      }
+    }
+  }
+
+  /**
+   * Evaluate a condition expression and return whether it's truthy.
+   */
+  private isTruthy(condition: string): boolean {
+    const result = this.evaluate(condition);
+    if (typeof result === "boolean") return result;
+    if (typeof result === "number") return result !== 0;
+    if (typeof result === "string") return result !== "";
+    return Boolean(result);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Expression evaluator
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Evaluate a Python expression and return the result.
+   * Handles literals, variables, arithmetic, comparisons, function calls.
+   */
+  evaluate(expr: string): number | string | boolean {
+    const s = expr.trim();
+    if (s === "") return 0;
+
+    // Strip outer parentheses if they match
+    if (s.startsWith("(") && s.length > 2) {
+      const matchIdx = this.findMatchingParen(s, 0);
+      if (matchIdx === s.length - 1) {
+        return this.evaluate(s.slice(1, -1));
+      }
+    }
+
+    // Boolean literals
+    if (s === "True") return true;
+    if (s === "False") return false;
+    if (s === "None") return 0;
+
+    // Number literal (integer or float)
+    if (/^-?\d+(\.\d+)?$/.test(s)) {
+      return parseFloat(s);
+    }
+
+    // String literal (double or single quoted)
+    const strLit = s.match(/^"([^"]*)"$/) || s.match(/^'([^']*)'$/);
+    if (strLit) {
+      return strLit[1];
+    }
+
+    // Unary: not expr
+    if (s.startsWith("not ")) {
+      return !this.isTruthy(s.slice(4));
+    }
+
+    // Unary: -varname (negative variable)
+    const negVarMatch = s.match(/^-([a-zA-Z_]\w*)$/);
+    if (negVarMatch && this.variables.has(negVarMatch[1])) {
+      return -Number(this.variables.get(negVarMatch[1]));
+    }
+
+    // Function calls: str(), int(), abs(), len()
+    const strCall = s.match(/^str\((.+)\)$/);
+    if (strCall && this.findMatchingParen(s, 3) === s.length - 1) {
+      return String(this.evaluate(strCall[1]));
+    }
+
+    const intCall = s.match(/^int\((.+)\)$/);
+    if (intCall && this.findMatchingParen(s, 3) === s.length - 1) {
+      return Math.floor(Number(this.evaluate(intCall[1])));
+    }
+
+    const absCall = s.match(/^abs\((.+)\)$/);
+    if (absCall && this.findMatchingParen(s, 3) === s.length - 1) {
+      return Math.abs(Number(this.evaluate(absCall[1])));
+    }
+
+    const lenCall = s.match(/^len\((.+)\)$/);
+    if (lenCall && this.findMatchingParen(s, 3) === s.length - 1) {
+      const val = this.evaluate(lenCall[1]);
+      return typeof val === "string" ? val.length : 0;
+    }
+
+    // random.randint(a, b)
+    const randMatch = s.match(/^random\.randint\((.+)\)$/);
+    if (randMatch) {
+      const args = this.splitArgs(randMatch[1]);
+      if (args.length >= 2) {
+        const a = Math.floor(Number(this.evaluate(args[0])));
+        const b = Math.floor(Number(this.evaluate(args[1])));
+        return Math.floor(Math.random() * (b - a + 1)) + a;
+      }
+    }
+
+    // Button state: BtnA.isPressed(), BtnA.wasPressed(), etc.
+    if (/^BtnA\.(isPressed|wasPressed)\(\)$/.test(s)) return this.buttonA;
+    if (/^BtnB\.(isPressed|wasPressed)\(\)$/.test(s)) return this.buttonB;
+
+    // IMU: Imu.getAccel()[n]
+    const imuMatch = s.match(/^Imu\.getAccel\(\)\[(\d)\]$/);
+    if (imuMatch) {
+      const idx = parseInt(imuMatch[1], 10);
+      return this.imuValues[idx] ?? 0;
+    }
+
+    // shake_detected() helper
+    if (s === "shake_detected()") {
+      const [x, y, z] = this.imuValues;
+      return Math.abs(x) + Math.abs(y) + Math.abs(z) > 1.5;
+    }
+
+    // Binary operators -- find the lowest-precedence top-level operator
+    const binOp = this.findTopLevelBinaryOp(s);
+    if (binOp) {
+      const left = this.evaluate(s.slice(0, binOp.index));
+      const right = this.evaluate(s.slice(binOp.index + binOp.op.length));
+      return this.applyBinaryOp(left, binOp.op, right);
+    }
+
+    // Hex color constant (pass through as string for color args)
+    if (/^0x[0-9a-fA-F]+$/i.test(s)) return s;
+
+    // Variable lookup
+    if (/^[a-zA-Z_]\w*$/.test(s)) {
+      if (this.variables.has(s)) {
+        return this.variables.get(s)!;
+      }
+      // Unknown variable -- return 0 (common default)
+      return 0;
+    }
+
+    // String concatenation via + with mixed types is handled by binary op above
+    // Fallback: return 0 for unrecognized expressions
+    return 0;
+  }
+
+  /**
+   * Evaluate an expression and return a numeric result.
+   */
+  private evaluateNumeric(expr: string): number {
+    const result = this.evaluate(expr.trim());
+    if (typeof result === "number") return result;
+    const num = Number(result);
+    return isNaN(num) ? 0 : num;
+  }
+
+  /**
+   * Find the matching closing parenthesis for an opening paren.
+   * Returns the index of the closing paren, or -1 if not found.
+   */
+  private findMatchingParen(s: string, openIndex: number): number {
+    let depth = 1;
+    for (let i = openIndex + 1; i < s.length; i++) {
+      if (s[i] === "(") depth++;
+      if (s[i] === ")") {
+        depth--;
+        if (depth === 0) return i;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * Find the rightmost top-level binary operator (not inside parentheses)
+   * at the lowest precedence level.
+   *
+   * Precedence (lowest to highest):
+   *   1. or
+   *   2. and
+   *   3. ==, !=, >=, <=, >, <
+   *   4. +, -
+   *   5. *, //, %
+   */
+  private findTopLevelBinaryOp(
+    expr: string
+  ): { op: string; index: number } | null {
+    // Operator groups ordered by precedence (lowest first)
+    // We search for multi-char operators first within each group
+    const groups: string[][] = [
+      [" or "],
+      [" and "],
+      [">=", "<=", "!=", "==", ">", "<"],
+      ["+", "-"],
+      ["//", "*", "%"],
+    ];
+
+    for (const ops of groups) {
+      // Scan right-to-left for left-to-right associativity
+      let depth = 0;
+      for (let i = expr.length - 1; i >= 0; i--) {
+        if (expr[i] === ")") depth++;
+        if (expr[i] === "(") depth--;
+        if (depth > 0) continue;
+
+        for (const op of ops) {
+          // Check if operator matches at this position
+          const start = i - op.length + 1;
+          if (start < 0) continue;
+          if (expr.substring(start, start + op.length) !== op) continue;
+
+          // Skip if this would result in an empty left side
+          if (start === 0) {
+            // Allow negative sign only if followed by expression parsing
+            continue;
+          }
+
+          // For single-char operators that are substrings of multi-char ones:
+          // Don't match '>' if it's part of '>='
+          if (op === ">" && start + 1 < expr.length && expr[start + 1] === "=")
+            continue;
+          if (op === "<" && start + 1 < expr.length && expr[start + 1] === "=")
+            continue;
+          // Don't match '-' or '+' right after another operator (unary)
+          if (op === "-" || op === "+") {
+            const before = expr[start - 1];
+            if (
+              before === "(" ||
+              before === "," ||
+              before === "=" ||
+              before === ">" ||
+              before === "<" ||
+              before === "!" ||
+              before === "+" ||
+              before === "-" ||
+              before === "*" ||
+              before === "/" ||
+              before === "%"
+            ) {
+              continue;
+            }
+          }
+
+          return { op, index: start };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Apply a binary operator to two evaluated values.
+   */
+  private applyBinaryOp(
+    left: number | string | boolean,
+    op: string,
+    right: number | string | boolean
+  ): number | string | boolean {
+    switch (op) {
+      case "+":
+        // String concatenation if either side is a string
+        if (typeof left === "string" || typeof right === "string") {
+          return String(left) + String(right);
+        }
+        return Number(left) + Number(right);
+      case "-":
+        return Number(left) - Number(right);
+      case "*":
+        // Python string repetition: "abc" * 3
+        if (typeof left === "string" && typeof right === "number") {
+          return left.repeat(Math.max(0, Math.floor(right)));
+        }
+        return Number(left) * Number(right);
+      case "//":
+        return Math.floor(Number(left) / Number(right));
+      case "%":
+        return Number(left) % Number(right);
+      case ">":
+        return Number(left) > Number(right);
+      case "<":
+        return Number(left) < Number(right);
+      case ">=":
+        return Number(left) >= Number(right);
+      case "<=":
+        return Number(left) <= Number(right);
+      case "==":
+        return left === right;
+      case "!=":
+        return left !== right;
+      case " and ":
+        return this.isTruthyValue(left) ? right : left;
+      case " or ":
+        return this.isTruthyValue(left) ? left : right;
+      default:
+        return 0;
+    }
+  }
+
+  /**
+   * Check if a value is truthy in Python terms.
+   */
+  private isTruthyValue(val: number | string | boolean): boolean {
+    if (typeof val === "boolean") return val;
+    if (typeof val === "number") return val !== 0;
+    if (typeof val === "string") return val !== "";
+    return Boolean(val);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Argument splitting
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Split a comma-separated argument string, respecting parentheses.
+   * e.g. "str((score + 1)), 10, 20" → ["str((score + 1))", " 10", " 20"]
+   */
+  private splitArgs(argsStr: string): string[] {
+    const args: string[] = [];
+    let depth = 0;
+    let current = "";
+
+    for (const ch of argsStr) {
+      if (ch === "(") depth++;
+      if (ch === ")") depth--;
+      if (ch === "," && depth === 0) {
+        args.push(current);
+        current = "";
+        continue;
+      }
+      current += ch;
+    }
+    if (current.trim() !== "") {
+      args.push(current);
+    }
+    return args;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Line parsing -- unified API call recognition
   // ---------------------------------------------------------------------------
 
   /**
@@ -251,188 +774,217 @@ export class SimulatorCodeRunner {
    * Returns null for unrecognized lines (which are silently skipped).
    */
   private parseLine(line: string): SimulatorCommand | null {
-    // M5.Lcd.fillScreen(color)
-    let match = line.match(
-      /(?:M5\.)?Lcd\.fillScreen\(\s*(.+?)\s*\)/
+    // Match API calls: [M5.]Object.method(args) or [M5.]Object.method()
+    const apiMatch = line.match(
+      /^(?:M5\.)?(\w+)\.(\w+)\((.*)\)\s*$/
     );
-    if (match) {
-      return {
-        type: "fillScreen",
-        args: { color: this.parseColorArg(match[1]) },
-      };
+    if (apiMatch) {
+      const obj = apiMatch[1];
+      const method = apiMatch[2];
+      const argsStr = apiMatch[3];
+      const args = argsStr.trim() === "" ? [] : this.splitArgs(argsStr);
+      return this.parseApiCall(obj, method, args);
     }
 
-    // M5.Lcd.drawString("text", x, y [, color])
-    match = line.match(
-      /(?:M5\.)?Lcd\.drawString\(\s*(?:"([^"]*?)"|'([^']*?)')\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*(.+?))?\s*\)/
-    );
-    if (match) {
-      const text = match[1] ?? match[2] ?? "";
-      return {
-        type: "drawString",
-        args: {
-          text,
-          x: parseInt(match[3], 10),
-          y: parseInt(match[4], 10),
-          ...(match[5] ? { color: this.parseColorArg(match[5]) } : {}),
-        },
-      };
+    return null;
+  }
+
+  /**
+   * Parse a recognized API call into a SimulatorCommand.
+   */
+  private parseApiCall(
+    obj: string,
+    method: string,
+    args: string[]
+  ): SimulatorCommand | null {
+    // ---- Lcd API ----
+    if (obj === "Lcd") {
+      switch (method) {
+        case "fillScreen":
+          return {
+            type: "fillScreen",
+            args: { color: this.parseColorArg(args[0] ?? "") },
+          };
+
+        case "drawString":
+          if (args.length >= 3) {
+            return {
+              type: "drawString",
+              args: {
+                text: String(this.evaluate(args[0].trim())),
+                x: this.evaluateNumeric(args[1]),
+                y: this.evaluateNumeric(args[2]),
+                ...(args[3]
+                  ? { color: this.parseColorArg(args[3].trim()) }
+                  : {}),
+              },
+            };
+          }
+          return null;
+
+        case "fillRect":
+          if (args.length >= 4) {
+            return {
+              type: "fillRect",
+              args: {
+                x: this.evaluateNumeric(args[0]),
+                y: this.evaluateNumeric(args[1]),
+                width: this.evaluateNumeric(args[2]),
+                height: this.evaluateNumeric(args[3]),
+                ...(args[4]
+                  ? { color: this.parseColorArg(args[4].trim()) }
+                  : {}),
+              },
+            };
+          }
+          return null;
+
+        case "drawRect":
+          if (args.length >= 4) {
+            return {
+              type: "drawRect",
+              args: {
+                x: this.evaluateNumeric(args[0]),
+                y: this.evaluateNumeric(args[1]),
+                width: this.evaluateNumeric(args[2]),
+                height: this.evaluateNumeric(args[3]),
+                ...(args[4]
+                  ? { color: this.parseColorArg(args[4].trim()) }
+                  : {}),
+              },
+            };
+          }
+          return null;
+
+        case "fillCircle":
+          if (args.length >= 3) {
+            return {
+              type: "fillCircle",
+              args: {
+                x: this.evaluateNumeric(args[0]),
+                y: this.evaluateNumeric(args[1]),
+                radius: this.evaluateNumeric(args[2]),
+                ...(args[3]
+                  ? { color: this.parseColorArg(args[3].trim()) }
+                  : {}),
+              },
+            };
+          }
+          return null;
+
+        case "drawCircle":
+          if (args.length >= 3) {
+            return {
+              type: "drawCircle",
+              args: {
+                x: this.evaluateNumeric(args[0]),
+                y: this.evaluateNumeric(args[1]),
+                radius: this.evaluateNumeric(args[2]),
+                ...(args[3]
+                  ? { color: this.parseColorArg(args[3].trim()) }
+                  : {}),
+              },
+            };
+          }
+          return null;
+
+        case "drawLine":
+          if (args.length >= 4) {
+            return {
+              type: "drawLine",
+              args: {
+                x1: this.evaluateNumeric(args[0]),
+                y1: this.evaluateNumeric(args[1]),
+                x2: this.evaluateNumeric(args[2]),
+                y2: this.evaluateNumeric(args[3]),
+                ...(args[4]
+                  ? { color: this.parseColorArg(args[4].trim()) }
+                  : {}),
+              },
+            };
+          }
+          return null;
+
+        case "drawPixel":
+          if (args.length >= 2) {
+            return {
+              type: "drawPixel",
+              args: {
+                x: this.evaluateNumeric(args[0]),
+                y: this.evaluateNumeric(args[1]),
+                ...(args[2]
+                  ? { color: this.parseColorArg(args[2].trim()) }
+                  : {}),
+              },
+            };
+          }
+          return null;
+
+        case "setTextColor":
+          if (args.length >= 1) {
+            return {
+              type: "setTextColor",
+              args: {
+                color: this.parseColorArg(args[0].trim()),
+                ...(args[1]
+                  ? { bgColor: this.parseColorArg(args[1].trim()) }
+                  : {}),
+              },
+            };
+          }
+          return null;
+
+        case "setTextSize":
+          if (args.length >= 1) {
+            return {
+              type: "setTextSize",
+              args: { size: this.evaluateNumeric(args[0]) },
+            };
+          }
+          return null;
+      }
     }
 
-    // M5.Lcd.fillRect(x, y, w, h [, color])
-    match = line.match(
-      /(?:M5\.)?Lcd\.fillRect\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*(.+?))?\s*\)/
-    );
-    if (match) {
-      return {
-        type: "fillRect",
-        args: {
-          x: parseInt(match[1], 10),
-          y: parseInt(match[2], 10),
-          width: parseInt(match[3], 10),
-          height: parseInt(match[4], 10),
-          ...(match[5] ? { color: this.parseColorArg(match[5]) } : {}),
-        },
-      };
+    // ---- Speaker API ----
+    if (obj === "Speaker") {
+      if (method === "tone" && args.length >= 2) {
+        return {
+          type: "tone",
+          args: {
+            frequency: this.evaluateNumeric(args[0]),
+            durationMs: this.evaluateNumeric(args[1]),
+          },
+        };
+      }
     }
 
-    // M5.Lcd.drawRect(x, y, w, h [, color])
-    match = line.match(
-      /(?:M5\.)?Lcd\.drawRect\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*(.+?))?\s*\)/
-    );
-    if (match) {
-      return {
-        type: "drawRect",
-        args: {
-          x: parseInt(match[1], 10),
-          y: parseInt(match[2], 10),
-          width: parseInt(match[3], 10),
-          height: parseInt(match[4], 10),
-          ...(match[5] ? { color: this.parseColorArg(match[5]) } : {}),
-        },
-      };
+    // ---- Power API ----
+    if (obj === "Power") {
+      if (method === "setLed" && args.length >= 1) {
+        return {
+          type: "setLed",
+          args: { brightness: this.evaluateNumeric(args[0]) },
+        };
+      }
     }
 
-    // M5.Lcd.fillCircle(x, y, r [, color])
-    match = line.match(
-      /(?:M5\.)?Lcd\.fillCircle\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*(.+?))?\s*\)/
-    );
-    if (match) {
-      return {
-        type: "fillCircle",
-        args: {
-          x: parseInt(match[1], 10),
-          y: parseInt(match[2], 10),
-          radius: parseInt(match[3], 10),
-          ...(match[4] ? { color: this.parseColorArg(match[4]) } : {}),
-        },
-      };
+    // ---- time API ----
+    if (obj === "time") {
+      if (method === "sleep" && args.length >= 1) {
+        return {
+          type: "sleep",
+          args: { ms: Math.round(this.evaluateNumeric(args[0]) * 1000) },
+        };
+      }
+      if (method === "sleep_ms" && args.length >= 1) {
+        return {
+          type: "sleep",
+          args: { ms: this.evaluateNumeric(args[0]) },
+        };
+      }
     }
 
-    // M5.Lcd.drawCircle(x, y, r [, color])
-    match = line.match(
-      /(?:M5\.)?Lcd\.drawCircle\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*(.+?))?\s*\)/
-    );
-    if (match) {
-      return {
-        type: "drawCircle",
-        args: {
-          x: parseInt(match[1], 10),
-          y: parseInt(match[2], 10),
-          radius: parseInt(match[3], 10),
-          ...(match[4] ? { color: this.parseColorArg(match[4]) } : {}),
-        },
-      };
-    }
-
-    // M5.Lcd.drawLine(x1, y1, x2, y2 [, color])
-    match = line.match(
-      /(?:M5\.)?Lcd\.drawLine\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*(.+?))?\s*\)/
-    );
-    if (match) {
-      return {
-        type: "drawLine",
-        args: {
-          x1: parseInt(match[1], 10),
-          y1: parseInt(match[2], 10),
-          x2: parseInt(match[3], 10),
-          y2: parseInt(match[4], 10),
-          ...(match[5] ? { color: this.parseColorArg(match[5]) } : {}),
-        },
-      };
-    }
-
-    // M5.Lcd.drawPixel(x, y [, color])
-    match = line.match(
-      /(?:M5\.)?Lcd\.drawPixel\(\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*(.+?))?\s*\)/
-    );
-    if (match) {
-      return {
-        type: "drawPixel",
-        args: {
-          x: parseInt(match[1], 10),
-          y: parseInt(match[2], 10),
-          ...(match[3] ? { color: this.parseColorArg(match[3]) } : {}),
-        },
-      };
-    }
-
-    // M5.Lcd.setTextColor(color [, bgColor])
-    match = line.match(
-      /(?:M5\.)?Lcd\.setTextColor\(\s*(.+?)(?:\s*,\s*(.+?))?\s*\)/
-    );
-    if (match) {
-      return {
-        type: "setTextColor",
-        args: {
-          color: this.parseColorArg(match[1]),
-          ...(match[2] ? { bgColor: this.parseColorArg(match[2]) } : {}),
-        },
-      };
-    }
-
-    // M5.Lcd.setTextSize(size)
-    match = line.match(/(?:M5\.)?Lcd\.setTextSize\(\s*(\d+)\s*\)/);
-    if (match) {
-      return {
-        type: "setTextSize",
-        args: { size: parseInt(match[1], 10) },
-      };
-    }
-
-    // time.sleep(seconds)
-    match = line.match(/time\.sleep\(\s*([\d.]+)\s*\)/);
-    if (match) {
-      return {
-        type: "sleep",
-        args: { ms: Math.round(parseFloat(match[1]) * 1000) },
-      };
-    }
-
-    // time.sleep_ms(ms)
-    match = line.match(/time\.sleep_ms\(\s*(\d+)\s*\)/);
-    if (match) {
-      return {
-        type: "sleep",
-        args: { ms: parseInt(match[1], 10) },
-      };
-    }
-
-    // M5.Speaker.tone(freq, duration)
-    match = line.match(
-      /(?:M5\.)?Speaker\.tone\(\s*(\d+)\s*,\s*(\d+)\s*\)/
-    );
-    if (match) {
-      return {
-        type: "tone",
-        args: {
-          frequency: parseInt(match[1], 10),
-          durationMs: parseInt(match[2], 10),
-        },
-      };
-    }
-
-    // Unrecognized line -- skip
+    // Unrecognized API call -- skip
     return null;
   }
 
@@ -455,7 +1007,7 @@ export class SimulatorCodeRunner {
       }
     }
 
-    // Hex number like 0xF800
+    // Hex number like 0xF800 or 0xFFFFFF
     if (trimmed.match(/^0x[0-9a-fA-F]+$/)) {
       return M5StickSimulator.resolveColor(trimmed);
     }
@@ -463,6 +1015,13 @@ export class SimulatorCodeRunner {
     // Plain number
     if (trimmed.match(/^\d+$/)) {
       return M5StickSimulator.resolveColor(parseInt(trimmed, 10));
+    }
+
+    // Variable that holds a color value
+    if (/^[a-zA-Z_]\w*$/.test(trimmed) && this.variables.has(trimmed)) {
+      const val = this.variables.get(trimmed)!;
+      if (typeof val === "string") return M5StickSimulator.resolveColor(val);
+      if (typeof val === "number") return M5StickSimulator.resolveColor(val);
     }
 
     // Fallback: treat as CSS color or return white
@@ -565,6 +1124,12 @@ export class SimulatorCodeRunner {
 
       case "sleep":
         await this.delay(args.ms as number);
+        break;
+
+      case "setLed":
+        if (this.onLed) {
+          this.onLed(args.brightness as number);
+        }
         break;
 
       case "tone":

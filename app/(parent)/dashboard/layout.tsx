@@ -6,12 +6,14 @@ import {
   LayoutDashboard,
   BarChart3,
   MessageSquare,
+  Heart,
   ArrowLeft,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ParentNav } from "@/components/parent-nav";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 interface ParentNavItem {
   href: string;
@@ -35,6 +37,11 @@ const parentNavItems: ParentNavItem[] = [
     label: "AI History",
     icon: <MessageSquare className="size-4" />,
   },
+  {
+    href: "/dashboard/billing",
+    label: "Support",
+    icon: <Heart className="size-4" />,
+  },
 ];
 
 export default async function ParentDashboardLayout({
@@ -46,6 +53,18 @@ export default async function ParentDashboardLayout({
 
   if (!userId) {
     redirect("/sign-in");
+  }
+
+  // Verify the user is a parent — kids should not access parent dashboard
+  const supabase = await createServerSupabaseClient();
+  const { data: profile } = (await supabase
+    .from("profiles")
+    .select("role")
+    .eq("clerk_id", userId)
+    .single()) as { data: { role: string } | null };
+
+  if (!profile || profile.role !== "parent") {
+    redirect("/home");
   }
 
   return (

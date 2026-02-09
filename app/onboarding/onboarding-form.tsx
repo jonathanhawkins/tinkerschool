@@ -37,18 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { completeOnboarding, updateDeviceMode } from "./actions";
-
-// ---------------------------------------------------------------------------
-// Starter lesson ID (pure utility -- grade -> lesson UUID)
-// ---------------------------------------------------------------------------
-
-function starterLessonId(gradeLevel: number): string {
-  if (gradeLevel <= 3) {
-    return "00000002-0001-4000-8001-000000000001"; // Light It Up
-  }
-  return "00000002-0001-4000-8002-000000000001"; // Color My World
-}
+import { completeOnboarding, getStarterLessonId, updateDeviceMode } from "./actions";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -210,6 +199,7 @@ export function OnboardingForm({ parentNameDefault, hasProfile }: OnboardingForm
   const [avatarId, setAvatarId] = useState(saved?.avatarId ?? "");
   const [pin, setPin] = useState(["", "", "", ""]);
   const [pinConfirm, setPinConfirm] = useState(["", "", "", ""]);
+  const [coppaConsent, setCoppaConsent] = useState(false);
 
   // Post-submission state
   const [deviceMode, setDeviceMode] = useState<DeviceMode>(saved?.deviceMode ?? "none");
@@ -297,7 +287,8 @@ export function OnboardingForm({ parentNameDefault, hasProfile }: OnboardingForm
         return (
           pin.every((d) => /^\d$/.test(d)) &&
           pinConfirm.every((d) => /^\d$/.test(d)) &&
-          pin.join("") === pinConfirm.join("")
+          pin.join("") === pinConfirm.join("") &&
+          coppaConsent
         );
       case 5:
         return true; // Device step is optional -- can always skip
@@ -401,6 +392,7 @@ export function OnboardingForm({ parentNameDefault, hasProfile }: OnboardingForm
     formData.set("grade_level", gradeLevel);
     formData.set("avatar_id", avatarId);
     formData.set("pin", pinStr);
+    formData.set("coppa_consent", coppaConsent ? "true" : "false");
 
     startTransition(async () => {
       const result = await completeOnboarding(formData);
@@ -440,10 +432,16 @@ export function OnboardingForm({ parentNameDefault, hasProfile }: OnboardingForm
   // Navigate to first lesson (Step 7)
   // ---------------------------------------------------------------------------
 
-  const navigateToFirstLesson = useCallback(() => {
+  const navigateToFirstLesson = useCallback(async () => {
     clearSavedState();
-    const lessonId = starterLessonId(parseInt(gradeLevel, 10) || 0);
-    window.location.href = `/lessons/${lessonId}`;
+    const grade = parseInt(gradeLevel, 10) || 0;
+    const lessonId = await getStarterLessonId(grade);
+    if (lessonId) {
+      window.location.href = `/lessons/${lessonId}`;
+    } else {
+      // No lessons found for this band -- fall back to the home page
+      window.location.href = "/home";
+    }
   }, [gradeLevel]);
 
   // ---------------------------------------------------------------------------
@@ -486,6 +484,8 @@ export function OnboardingForm({ parentNameDefault, hasProfile }: OnboardingForm
             onPinChange={handlePinChange}
             onPinKeyDown={handlePinKeyDown}
             mismatchError={pinMismatchError()}
+            coppaConsent={coppaConsent}
+            onCoppaConsentChange={setCoppaConsent}
           />
         );
       case 5:
@@ -510,7 +510,6 @@ export function OnboardingForm({ parentNameDefault, hasProfile }: OnboardingForm
         return (
           <StepFirstLesson
             childName={childName}
-            gradeLevel={gradeLevel}
             onLaunch={navigateToFirstLesson}
           />
         );
@@ -871,6 +870,8 @@ interface StepPinProps {
     isConfirm: boolean,
   ) => void;
   mismatchError: string;
+  coppaConsent: boolean;
+  onCoppaConsentChange: (checked: boolean) => void;
 }
 
 function StepPin({
@@ -882,6 +883,8 @@ function StepPin({
   onPinChange,
   onPinKeyDown,
   mismatchError,
+  coppaConsent,
+  onCoppaConsentChange,
 }: StepPinProps) {
   return (
     <div className="flex flex-col gap-5 py-4">
@@ -957,6 +960,48 @@ function StepPin({
               {mismatchError}
             </motion.p>
           )}
+        </div>
+
+        {/* COPPA Parental Consent */}
+        <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+          <div className="flex items-start gap-3">
+            <Shield className="mt-0.5 size-5 shrink-0 text-primary" />
+            <div className="flex flex-col gap-2.5">
+              <p className="text-sm font-medium text-foreground">
+                Parental Consent
+              </p>
+              <label
+                htmlFor="coppa-consent"
+                className="flex cursor-pointer items-start gap-2.5"
+              >
+                <input
+                  id="coppa-consent"
+                  type="checkbox"
+                  checked={coppaConsent}
+                  onChange={(e) => onCoppaConsentChange(e.target.checked)}
+                  className="mt-0.5 size-4 shrink-0 cursor-pointer rounded accent-primary"
+                  aria-describedby="coppa-consent-description"
+                />
+                <span
+                  id="coppa-consent-description"
+                  className="text-sm leading-relaxed text-muted-foreground"
+                >
+                  I am this child&apos;s parent or legal guardian and I consent
+                  to TinkerSchool collecting and using my child&apos;s
+                  information as described in the{" "}
+                  <a
+                    href="/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+                  >
+                    Privacy Policy
+                  </a>{" "}
+                  for educational purposes.
+                </span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1474,11 +1519,10 @@ function StepMeetChip({ childName, avatarId, onContinue }: StepMeetChipProps) {
 
 interface StepFirstLessonProps {
   childName: string;
-  gradeLevel: string;
   onLaunch: () => void;
 }
 
-function StepFirstLesson({ childName, gradeLevel, onLaunch }: StepFirstLessonProps) {
+function StepFirstLesson({ childName, onLaunch }: StepFirstLessonProps) {
   const hasLaunched = useRef(false);
 
   // Auto-launch after a brief display
@@ -1492,9 +1536,6 @@ function StepFirstLesson({ childName, gradeLevel, onLaunch }: StepFirstLessonPro
 
     return () => clearTimeout(timer);
   }, [onLaunch]);
-
-  const grade = parseInt(gradeLevel, 10) || 0;
-  const lessonName = grade <= 3 ? "Light It Up" : "Color My World";
 
   return (
     <div className="flex flex-col items-center gap-5 py-8 text-center">
@@ -1516,8 +1557,7 @@ function StepFirstLesson({ childName, gradeLevel, onLaunch }: StepFirstLessonPro
           Launching your first lesson...
         </h2>
         <p className="text-sm text-muted-foreground">
-          Get ready, {childName || "explorer"}! We&apos;re heading to{" "}
-          <span className="font-semibold text-primary">{lessonName}</span>
+          Get ready, {childName || "explorer"}! Your adventure awaits!
         </p>
       </div>
 

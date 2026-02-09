@@ -98,7 +98,7 @@ export default async function ParentDashboardPage() {
       {/* Page header */}
       <FadeIn>
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Overview
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -170,8 +170,8 @@ export default async function ParentDashboardPage() {
               </p>
             ) : (
               <ul className="space-y-3">
-                {topActivity.map((item, i) => (
-                  <li key={i} className="flex items-center gap-3">
+                {topActivity.map((item) => (
+                  <li key={`${item.type}-${item.kidName}-${item.date}`} className="flex items-center gap-3">
                     <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
                       {item.type === "lesson" ? (
                         <BookOpen className="size-4 text-muted-foreground" />
@@ -209,7 +209,7 @@ export default async function ParentDashboardPage() {
                   Lesson-by-lesson breakdown
                 </p>
               </div>
-              <Button asChild variant="ghost" size="icon">
+              <Button asChild variant="ghost" size="icon" aria-label="View detailed progress">
                 <Link href="/dashboard/progress">
                   <ArrowRight className="size-4" />
                 </Link>
@@ -230,7 +230,7 @@ export default async function ParentDashboardPage() {
                   Review Chip conversations
                 </p>
               </div>
-              <Button asChild variant="ghost" size="icon">
+              <Button asChild variant="ghost" size="icon" aria-label="View AI chat history">
                 <Link href="/dashboard/ai-history">
                   <ArrowRight className="size-4" />
                 </Link>

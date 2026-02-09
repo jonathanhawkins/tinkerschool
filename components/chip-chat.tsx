@@ -172,17 +172,17 @@ export default function ChipChat({
             {/* Typing indicator */}
             {status === "submitted" && (
               <div className="flex items-center gap-2 pl-10">
-                <span className="flex gap-1">
-                  <span className="size-2 animate-bounce rounded-full bg-primary/60 [animation-delay:0ms]" />
-                  <span className="size-2 animate-bounce rounded-full bg-primary/60 [animation-delay:150ms]" />
-                  <span className="size-2 animate-bounce rounded-full bg-primary/60 [animation-delay:300ms]" />
+                <span className="flex gap-1 motion-reduce:animate-none">
+                  <span className="size-2 animate-bounce rounded-full bg-primary/60 motion-reduce:animate-pulse [animation-delay:0ms]" />
+                  <span className="size-2 animate-bounce rounded-full bg-primary/60 motion-reduce:animate-pulse [animation-delay:150ms]" />
+                  <span className="size-2 animate-bounce rounded-full bg-primary/60 motion-reduce:animate-pulse [animation-delay:300ms]" />
                 </span>
               </div>
             )}
 
             {/* Error message */}
             {error && (
-              <div className="mx-auto max-w-xs rounded-xl bg-destructive/10 px-4 py-2 text-center text-sm text-destructive">
+              <div className="mx-auto max-w-xs rounded-xl bg-destructive/10 px-4 py-2 text-center text-base text-destructive">
                 Oops! Chip got a little confused. Try again!
               </div>
             )}
@@ -263,19 +263,19 @@ function ChatBubble({ role, text, kidName }: ChatBubbleProps) {
       {/* Bubble */}
       <div
         className={cn(
-          "max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
+          "max-w-[80%] rounded-2xl px-3.5 py-2.5 text-base leading-relaxed",
           isChip
             ? "rounded-tl-sm bg-primary/10 text-foreground"
             : "rounded-tr-sm bg-secondary/20 text-foreground"
         )}
       >
         {isChip && (
-          <span className="mb-0.5 block text-xs font-semibold text-primary">
+          <span className="mb-0.5 block text-sm font-semibold text-primary">
             Chip
           </span>
         )}
         {!isChip && (
-          <span className="mb-0.5 block text-xs font-semibold text-secondary">
+          <span className="mb-0.5 block text-sm font-semibold text-secondary">
             {kidName}
           </span>
         )}

@@ -3,57 +3,22 @@ import Link from "next/link";
 
 export const metadata: Metadata = { title: "Subjects" };
 import {
-  Calculator,
   BookOpen,
-  FlaskConical,
-  Music,
-  Palette,
-  Puzzle,
-  Code2,
   Sparkles,
   ArrowRight,
 } from "lucide-react";
 
+import { SubjectIcon } from "@/components/subject-icon";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { FadeIn, Stagger, StaggerItem, HoverLift } from "@/components/motion";
 import type { Subject, Skill, SkillProficiency } from "@/lib/supabase/types";
+import { safeColor } from "@/lib/utils";
 import {
   Card,
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
 import { Progress as ProgressBar } from "@/components/ui/progress";
-
-// ---------------------------------------------------------------------------
-// Icon mapping -- resolves a DB icon string to a lucide-react component
-// ---------------------------------------------------------------------------
-
-function SubjectIcon({
-  icon,
-  className,
-}: {
-  icon: string;
-  className?: string;
-}) {
-  switch (icon) {
-    case "calculator":
-      return <Calculator className={className} />;
-    case "book-open":
-      return <BookOpen className={className} />;
-    case "flask-conical":
-      return <FlaskConical className={className} />;
-    case "music":
-      return <Music className={className} />;
-    case "palette":
-      return <Palette className={className} />;
-    case "puzzle":
-      return <Puzzle className={className} />;
-    case "code-2":
-      return <Code2 className={className} />;
-    default:
-      return <BookOpen className={className} />;
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Subject Card
@@ -104,7 +69,7 @@ function SubjectCard({ subject, skillsStarted, skillsTotal }: SubjectCardProps) 
             value={progressPercent}
             className="h-2"
           />
-          <p className="text-right text-[11px] font-medium text-muted-foreground">
+          <p className="text-right text-xs font-medium text-muted-foreground">
             {progressPercent}%
           </p>
         </CardFooter>
@@ -126,7 +91,10 @@ export default async function SubjectsPage() {
     .select("*")
     .order("sort_order");
 
-  const safeSubjects: Subject[] = (subjects as Subject[] | null) ?? [];
+  const safeSubjects: Subject[] = ((subjects as Subject[] | null) ?? []).map((s) => ({
+    ...s,
+    color: safeColor(s.color),
+  }));
 
   // Fetch kid's skill proficiency with skill details
   const { data: proficiencyRows } = await supabase

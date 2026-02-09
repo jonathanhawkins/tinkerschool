@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
 export const metadata: Metadata = { title: "Mission Control" };
@@ -36,6 +37,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 
+import { SubjectIcon } from "@/components/subject-icon";
 import { requireAuth } from "@/lib/auth/require-auth";
 import type {
   Module,
@@ -48,7 +50,7 @@ import type {
   Skill,
   SkillProficiency,
 } from "@/lib/supabase/types";
-import { cn } from "@/lib/utils";
+import { cn, safeColor } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -61,40 +63,6 @@ import {
 import { Badge as BadgeUI } from "@/components/ui/badge";
 import { Progress as ProgressBar } from "@/components/ui/progress";
 import { FadeIn, Stagger, StaggerItem, HoverLift } from "@/components/motion";
-
-// ---------------------------------------------------------------------------
-// Icon helpers -- render the correct icon from a DB string key.
-// ---------------------------------------------------------------------------
-
-function SubjectIcon({
-  icon,
-  className,
-  style,
-}: {
-  icon: string;
-  className?: string;
-  style?: React.CSSProperties;
-}) {
-  const props = { className, style };
-  switch (icon) {
-    case "calculator":
-      return <Calculator {...props} />;
-    case "book-open":
-      return <BookOpen {...props} />;
-    case "flask-conical":
-      return <FlaskConical {...props} />;
-    case "music":
-      return <Music {...props} />;
-    case "palette":
-      return <Palette {...props} />;
-    case "puzzle":
-      return <Puzzle {...props} />;
-    case "code-2":
-      return <Code2 {...props} />;
-    default:
-      return <BookOpen {...props} />;
-  }
-}
 
 function ModuleIcon({
   icon,
@@ -272,9 +240,9 @@ function LessonRow({
         className={cn(
           "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
           status === "completed"
-            ? "bg-emerald-100 text-emerald-700"
+            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
             : status === "in_progress"
-              ? "bg-amber-100 text-amber-700"
+              ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
               : "bg-muted text-muted-foreground",
         )}
       >
@@ -352,7 +320,14 @@ function SubjectCard({
                     {Math.round(progressPercent)}%
                   </span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-background/60">
+                <div
+                  className="h-1.5 w-full overflow-hidden rounded-full bg-background/60"
+                  role="progressbar"
+                  aria-valuenow={Math.round(progressPercent)}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`${subject.display_name} skill progress`}
+                >
                   <div
                     className="h-full rounded-full transition-all duration-300"
                     style={{
@@ -552,7 +527,14 @@ function ModuleCard({
           </span>
           <span className="font-medium">{Math.round(progressPercent)}%</span>
         </div>
-        <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-2.5 w-full overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+          aria-valuenow={Math.round(progressPercent)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`${module.title} lesson progress`}
+        >
           <div
             className="h-full rounded-full transition-all duration-300"
             style={{
@@ -588,7 +570,8 @@ export default async function MissionControlPage() {
   const modulesPromise = supabase
     .from("modules")
     .select("*")
-    .eq("band", profile.current_band)
+    .lte("band", profile.current_band)
+    .order("band")
     .order("order_num");
 
   const subjectsPromise = supabase
@@ -627,7 +610,10 @@ export default async function MissionControlPage() {
   ]);
 
   const safeModules: Module[] = modules ?? [];
-  const safeSubjects: Subject[] = subjects ?? [];
+  const safeSubjects: Subject[] = ((subjects as Subject[] | null) ?? []).map((s) => ({
+    ...s,
+    color: safeColor(s.color),
+  }));
   const safeProgress: Progress[] = progressRows ?? [];
   const safeUserBadges: UserBadgeWithBadge[] =
     (userBadges as UserBadgeWithBadge[] | null) ?? [];
@@ -766,15 +752,24 @@ export default async function MissionControlPage() {
     <div className="space-y-8">
       {/* ----- Welcome Header ----- */}
       <FadeIn>
-        <header className="space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Welcome back, {profile.display_name}!
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {totalCompleted > 0
-              ? `You've completed ${totalCompleted} lesson${totalCompleted !== 1 ? "s" : ""}. Keep exploring!`
-              : "What do you want to learn today?"}
-          </p>
+        <header className="flex items-center gap-4">
+          <Image
+            src="/images/chip.png"
+            alt="Chip"
+            width={64}
+            height={64}
+            className="size-16 shrink-0 drop-shadow-md"
+          />
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Welcome back to TinkerSchool, {profile.display_name}!
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {totalCompleted > 0
+                ? `You've completed ${totalCompleted} lesson${totalCompleted !== 1 ? "s" : ""}. Keep exploring!`
+                : "What do you want to learn today?"}
+            </p>
+          </div>
         </header>
       </FadeIn>
 

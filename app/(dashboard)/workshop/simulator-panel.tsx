@@ -1,8 +1,10 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
+import { Play, Square, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import { Simulator, type SimulatorHandle } from "@/components/simulator";
 import { SimulatorCodeRunner } from "@/lib/simulator/code-runner";
+import { BuzzerAudio } from "@/lib/simulator/buzzer-audio";
 import {
   BadgeCelebration,
   type EarnedBadge,
@@ -62,10 +64,26 @@ export default function SimulatorPanel({
 }: SimulatorPanelProps) {
   const simulatorRef = useRef<SimulatorHandle>(null);
   const runnerRef = useRef<SimulatorCodeRunner | null>(null);
+  const buzzerRef = useRef<BuzzerAudio | null>(null);
 
   const [status, setStatus] = useState<SimStatus>("ready");
   const [toneActive, setToneActive] = useState(false);
+  const [ledBrightness, setLedBrightness] = useState(0);
+  const [audioMuted, setAudioMuted] = useState(false);
   const [earnedBadges, setEarnedBadges] = useState<EarnedBadge[]>([]);
+
+  // -------------------------------------------------------------------------
+  // Initialize buzzer audio (once, lazily)
+  // -------------------------------------------------------------------------
+  const ensureBuzzer = useCallback((): BuzzerAudio => {
+    if (!buzzerRef.current) {
+      const buzzer = new BuzzerAudio();
+      buzzerRef.current = buzzer;
+      // Sync initial mute state from localStorage
+      setAudioMuted(buzzer.muted);
+    }
+    return buzzerRef.current;
+  }, []);
 
   // -------------------------------------------------------------------------
   // Create code runner once simulator is ready
@@ -76,15 +94,22 @@ export default function SimulatorPanel({
 
     if (!runnerRef.current) {
       const runner = new SimulatorCodeRunner(sim);
-      runner.onTone = (_freq, durationMs) => {
+      runner.onTone = (freq, durationMs) => {
+        // Visual LED indicator
         setToneActive(true);
         setTimeout(() => setToneActive(false), Math.min(durationMs, 1000));
+        // Audio output
+        const buzzer = ensureBuzzer();
+        buzzer.playTone(freq, durationMs);
+      };
+      runner.onLed = (brightness) => {
+        setLedBrightness(brightness);
       };
       runnerRef.current = runner;
     }
 
     return runnerRef.current;
-  }, []);
+  }, [ensureBuzzer]);
 
   // -------------------------------------------------------------------------
   // Run code
@@ -92,6 +117,9 @@ export default function SimulatorPanel({
   const handleRun = useCallback(async () => {
     const runner = ensureRunner();
     if (!runner) return;
+
+    // Resume AudioContext on user gesture (browser autoplay policy)
+    buzzerRef.current?.resume();
 
     // Stop any previous run
     if (runner.isRunning) {
@@ -139,8 +167,49 @@ export default function SimulatorPanel({
       runner.stop();
     }
     simulatorRef.current?.clear();
+    setLedBrightness(0);
     setStatus("ready");
   }, []);
+
+  // -------------------------------------------------------------------------
+  // Mute toggle handler
+  // -------------------------------------------------------------------------
+  const handleToggleMute = useCallback(() => {
+    const buzzer = ensureBuzzer();
+    const newMuted = !buzzer.muted;
+    buzzer.muted = newMuted;
+    setAudioMuted(newMuted);
+  }, [ensureBuzzer]);
+
+  // -------------------------------------------------------------------------
+  // Button state -- forward press/release to the code runner
+  // -------------------------------------------------------------------------
+  const handleButtonA = useCallback(
+    (pressed: boolean) => {
+      const runner = ensureRunner();
+      runner?.setButtonState("a", pressed);
+    },
+    [ensureRunner]
+  );
+
+  const handleButtonB = useCallback(
+    (pressed: boolean) => {
+      const runner = ensureRunner();
+      runner?.setButtonState("b", pressed);
+    },
+    [ensureRunner]
+  );
+
+  // -------------------------------------------------------------------------
+  // IMU tilt -- forward accelerometer values to the code runner
+  // -------------------------------------------------------------------------
+  const handleImuChange = useCallback(
+    (x: number, y: number, z: number) => {
+      const runner = ensureRunner();
+      runner?.setImuValues(x, y, z);
+    },
+    [ensureRunner]
+  );
 
   // -------------------------------------------------------------------------
   // Cleanup on unmount
@@ -148,6 +217,7 @@ export default function SimulatorPanel({
   useEffect(() => {
     return () => {
       runnerRef.current?.stop();
+      buzzerRef.current?.dispose();
     };
   }, []);
 
@@ -162,7 +232,7 @@ export default function SimulatorPanel({
   return (
     <Card className={cn("rounded-2xl", className)}>
       <CardHeader className="flex-row items-center justify-between px-4 py-3">
-        <CardTitle className="text-sm font-bold">Simulator</CardTitle>
+        <CardTitle className="text-base font-bold">Simulator</CardTitle>
         <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
       </CardHeader>
 
@@ -172,39 +242,52 @@ export default function SimulatorPanel({
           ref={simulatorRef}
           scale={1}
           toneActive={toneActive}
+          ledBrightness={ledBrightness}
+          onButtonA={handleButtonA}
+          onButtonB={handleButtonB}
+          onImuChange={handleImuChange}
+          showTiltPad
         />
 
         {/* Controls */}
         <div className="flex w-full items-center justify-center gap-2">
           <Button
-            size="sm"
             onClick={handleRun}
             disabled={status === "running"}
-            className="gap-1.5"
+            className="gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700"
           >
-            <PlayIcon />
+            <Play className="size-3.5" />
             Run
           </Button>
 
           <Button
-            size="sm"
-            variant="secondary"
             onClick={handleStop}
             disabled={status !== "running"}
-            className="gap-1.5"
+            className="gap-1.5 rounded-xl bg-red-600 hover:bg-red-700"
           >
-            <StopIcon />
+            <Square className="size-3.5" />
             Stop
           </Button>
 
           <Button
-            size="sm"
             variant="outline"
             onClick={handleClear}
-            className="gap-1.5"
+            className="gap-1.5 rounded-xl"
           >
-            <ClearIcon />
+            <RotateCcw className="size-3.5" />
             Clear
+          </Button>
+
+          {/* Mute / unmute buzzer audio */}
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={handleToggleMute}
+            aria-label={audioMuted ? "Unmute buzzer" : "Mute buzzer"}
+            title={audioMuted ? "Unmute buzzer" : "Mute buzzer"}
+            className="ml-auto rounded-xl"
+          >
+            {audioMuted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
           </Button>
         </div>
       </CardContent>
@@ -220,52 +303,3 @@ export default function SimulatorPanel({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Inline SVG icons (tiny, no external dependency needed)
-// ---------------------------------------------------------------------------
-
-function PlayIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      className="size-3.5"
-      aria-hidden="true"
-    >
-      <path d="M3 2.5a.75.75 0 0 1 1.145-.638l9 5.5a.75.75 0 0 1 0 1.276l-9 5.5A.75.75 0 0 1 3 13.5v-11Z" />
-    </svg>
-  );
-}
-
-function StopIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      className="size-3.5"
-      aria-hidden="true"
-    >
-      <rect x="3" y="3" width="10" height="10" rx="1" />
-    </svg>
-  );
-}
-
-function ClearIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      className="size-3.5"
-      aria-hidden="true"
-    >
-      <path
-        fillRule="evenodd"
-        d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14Zm.75-10.25a.75.75 0 0 0-1.5 0v4.69L5.78 7.97a.75.75 0 0 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l2.5-2.5a.75.75 0 1 0-1.06-1.06l-1.47 1.47V4.75Z"
-        clipRule="evenodd"
-      />
-    </svg>
-  );
-}

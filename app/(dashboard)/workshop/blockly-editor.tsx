@@ -161,10 +161,12 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
 
       return () => {
         disposed = true;
-        if (workspaceRef.current) {
-          workspaceRef.current.dispose();
+        const ws = workspaceRef.current;
+        if (ws) {
+          ws.dispose();
           workspaceRef.current = null;
         }
+        blocklyModuleRef.current = null;
       };
       // initialXml is intentionally omitted -- we only restore once at mount
       // eslint-disable-next-line react-hooks/exhaustive-deps

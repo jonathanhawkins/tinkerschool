@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ function fireCelebration() {
     particleCount: 120,
     spread: 80,
     origin: { y: 0.7, x: 0.85 },
-    colors: ["#9333ea", "#facc15", "#22c55e", "#ec4899"],
+    colors: ["#F97316", "#facc15", "#22c55e", "#ec4899"],
   });
 }
 
@@ -44,11 +44,14 @@ interface BadgeCelebrationProps {
 export function BadgeCelebration({ badges, onDismiss }: BadgeCelebrationProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const prefersReducedMotion = useReducedMotion();
 
   // Fire confetti on mount and whenever we advance to the next badge
   useEffect(() => {
-    fireCelebration();
-  }, [currentIndex]);
+    if (!prefersReducedMotion) {
+      fireCelebration();
+    }
+  }, [currentIndex, prefersReducedMotion]);
 
   // Auto-dismiss after 5 seconds per badge
   useEffect(() => {
@@ -85,16 +88,16 @@ export function BadgeCelebration({ badges, onDismiss }: BadgeCelebrationProps) {
         transition={{ duration: 0.35, ease: "easeOut" }}
         className="fixed bottom-20 right-6 z-50 w-72"
       >
-        <Card className="overflow-hidden rounded-2xl border-2 border-yellow-300 bg-gradient-to-br from-purple-50 to-yellow-50 shadow-lg">
+        <Card className="overflow-hidden rounded-2xl border-2 border-yellow-300 bg-gradient-to-br from-orange-50 to-yellow-50 shadow-lg">
           <CardContent className="flex items-start gap-3 p-4">
             {/* Badge icon */}
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-purple-100">
-              <BadgeIcon name={badge.icon} className="size-6 text-purple-600" />
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15">
+              <BadgeIcon name={badge.icon} className="size-6 text-primary" />
             </div>
 
             {/* Text */}
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-purple-600">
+              <p className="text-xs font-semibold text-primary">
                 You earned a badge!
               </p>
               <p className="text-sm font-bold text-foreground">{badge.name}</p>
@@ -120,7 +123,7 @@ export function BadgeCelebration({ badges, onDismiss }: BadgeCelebrationProps) {
             initial={{ scaleX: 1 }}
             animate={{ scaleX: 0 }}
             transition={{ duration: 5, ease: "linear" }}
-            className="h-1 origin-left bg-gradient-to-r from-purple-400 to-yellow-400"
+            className="h-1 origin-left bg-gradient-to-r from-primary to-[#EA580C]"
           />
         </Card>
       </motion.div>

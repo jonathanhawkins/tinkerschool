@@ -4,42 +4,25 @@ import { auth } from "@clerk/nextjs/server";
 
 import { getChipSystemPrompt } from "@/lib/ai/chip-system-prompt";
 import type { ChipContext } from "@/lib/ai/chip-system-prompt";
+import { evaluateBadges } from "@/lib/badges/evaluate-badges";
+import { checkAiBuddyRateLimit } from "@/lib/rate-limit";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { isValidUUID } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
-// In-memory rate limiter: max 30 messages per hour per user
+// Request body schema & validation constants
 // ---------------------------------------------------------------------------
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const RATE_LIMIT_MAX = 30;
 
-interface RateLimitEntry {
-  timestamps: number[];
-}
+/** Known subject slugs — reject unknown values to prevent prompt injection. */
+const VALID_SUBJECTS = new Set([
+  "math", "reading", "science", "music", "art", "problem_solving", "coding",
+]);
 
-const rateLimitStore = new Map<string, RateLimitEntry>();
+/** Max length limits to prevent cost amplification and prompt injection. */
+const MAX_LESSON_LENGTH = 200;
+const MAX_CODE_LENGTH = 10_000;
+const MAX_MESSAGES = 50;
 
-function isRateLimited(userId: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitStore.get(userId) ?? { timestamps: [] };
-
-  // Remove timestamps outside the window
-  entry.timestamps = entry.timestamps.filter(
-    (t) => now - t < RATE_LIMIT_WINDOW_MS
-  );
-
-  if (entry.timestamps.length >= RATE_LIMIT_MAX) {
-    rateLimitStore.set(userId, entry);
-    return true;
-  }
-
-  entry.timestamps.push(now);
-  rateLimitStore.set(userId, entry);
-  return false;
-}
-
-// ---------------------------------------------------------------------------
-// Request body schema
-// ---------------------------------------------------------------------------
 interface AiBuddyRequestBody {
   messages: UIMessage[];
   kidName: string;
@@ -59,24 +42,35 @@ function parseRequestBody(body: unknown): AiBuddyRequestBody | null {
 
   const b = body as Record<string, unknown>;
 
-  if (!Array.isArray(b.messages)) return null;
+  if (!Array.isArray(b.messages) || b.messages.length > MAX_MESSAGES) return null;
   if (typeof b.kidName !== "string" || b.kidName.length === 0) return null;
   if (typeof b.age !== "number" || b.age < 4 || b.age > 14) return null;
   if (typeof b.band !== "number" || b.band < 1 || b.band > 5) return null;
+
+  // Validate currentSubject against whitelist (prevents prompt injection
+  // via arbitrary strings being interpolated into the system prompt)
+  const rawSubject = typeof b.currentSubject === "string" ? b.currentSubject : undefined;
+  const currentSubject = rawSubject && VALID_SUBJECTS.has(rawSubject) ? rawSubject : undefined;
+
+  // Truncate currentLesson and currentCode to prevent cost amplification
+  const rawLesson = typeof b.currentLesson === "string" ? b.currentLesson : undefined;
+  const currentLesson = rawLesson ? rawLesson.slice(0, MAX_LESSON_LENGTH) : undefined;
+
+  const rawCode = typeof b.currentCode === "string" ? b.currentCode : undefined;
+  const currentCode = rawCode ? rawCode.slice(0, MAX_CODE_LENGTH) : undefined;
 
   return {
     messages: b.messages as UIMessage[],
     kidName: b.kidName,
     age: b.age,
     band: b.band,
-    currentSubject:
-      typeof b.currentSubject === "string" ? b.currentSubject : undefined,
-    currentLesson:
-      typeof b.currentLesson === "string" ? b.currentLesson : undefined,
-    currentCode:
-      typeof b.currentCode === "string" ? b.currentCode : undefined,
+    currentSubject,
+    currentLesson,
+    currentCode,
     chatSessionId:
-      typeof b.chatSessionId === "string" ? b.chatSessionId : undefined,
+      typeof b.chatSessionId === "string" && isValidUUID(b.chatSessionId)
+        ? b.chatSessionId
+        : undefined,
   };
 }
 
@@ -153,9 +147,23 @@ async function persistChat(
       .select("id")
       .single();
 
+    // Evaluate badges after creating a new chat session (for "Chip's Friend"
+    // badge and similar). Uses the admin client since this runs in a
+    // fire-and-forget context outside the user's request scope.
+    if (inserted?.id) {
+      try {
+        await evaluateBadges(supabase, profile.id);
+      } catch (badgeErr) {
+        console.error(
+          "[ai-buddy] Badge evaluation failed:",
+          badgeErr instanceof Error ? badgeErr.message : "unknown error",
+        );
+      }
+    }
+
     return inserted?.id ?? null;
   } catch (err) {
-    console.error("[ai-buddy] Failed to persist chat:", err);
+    console.error("[ai-buddy] Failed to persist chat:", err instanceof Error ? err.message : "unknown error");
     return null;
   }
 }
@@ -188,6 +196,11 @@ interface ProgressRow {
  * the user is authenticated via Clerk.
  */
 async function fetchPersonalizationData(clerkId: string): Promise<{
+  /** Server-verified profile fields (never trust client-supplied values) */
+  displayName?: string;
+  gradeLevel?: number;
+  currentBand?: number;
+  subscriptionTier?: string;
   learningProfile?: ChipContext["learningProfile"];
   skillProficiency?: Record<string, string>;
   recentLessons?: string[];
@@ -195,14 +208,21 @@ async function fetchPersonalizationData(clerkId: string): Promise<{
   try {
     const supabase = createAdminSupabaseClient();
 
-    // Look up profile_id
+    // Look up profile (including name/grade/band — never trust client values)
     const { data: profile } = (await supabase
       .from("profiles")
-      .select("id")
+      .select("id, display_name, grade_level, current_band, family_id")
       .eq("clerk_id", clerkId)
-      .single()) as { data: { id: string } | null };
+      .single()) as { data: { id: string; display_name: string; grade_level: number | null; current_band: number; family_id: string } | null };
 
     if (!profile) return {};
+
+    // Fetch family subscription tier
+    const { data: family } = (await supabase
+      .from("families")
+      .select("subscription_tier")
+      .eq("id", profile.family_id)
+      .single()) as { data: { subscription_tier: string } | null };
 
     // Fetch learning profile, skill proficiency, and recent lessons in parallel
     const [learningProfileResult, skillResult, progressResult] =
@@ -218,7 +238,7 @@ async function fetchPersonalizationData(clerkId: string): Promise<{
 
         // Skill proficiency with skill slugs
         supabase
-          .from("skill_proficiency")
+          .from("skill_proficiencies")
           .select("level, skills(slug)")
           .eq("profile_id", profile.id)
           .neq("level", "not_started") as unknown as Promise<{
@@ -240,10 +260,19 @@ async function fetchPersonalizationData(clerkId: string): Promise<{
       ]);
 
     const result: {
+      displayName?: string;
+      gradeLevel?: number;
+      currentBand?: number;
+      subscriptionTier?: string;
       learningProfile?: ChipContext["learningProfile"];
       skillProficiency?: Record<string, string>;
       recentLessons?: string[];
-    } = {};
+    } = {
+      displayName: profile.display_name,
+      gradeLevel: profile.grade_level ?? undefined,
+      currentBand: profile.current_band,
+      subscriptionTier: family?.subscription_tier ?? "free",
+    };
 
     // Parse learning profile
     if (learningProfileResult.data) {
@@ -292,7 +321,7 @@ async function fetchPersonalizationData(clerkId: string): Promise<{
 
     return result;
   } catch (err) {
-    console.error("[ai-buddy] Failed to fetch personalization data:", err);
+    console.error("[ai-buddy] Failed to fetch personalization data:", err instanceof Error ? err.message : "unknown error");
     return {};
   }
 }
@@ -311,8 +340,9 @@ export async function POST(request: Request) {
     });
   }
 
-  // 2. Rate limit
-  if (isRateLimited(userId)) {
+  // 2. Rate limit (distributed via Upstash Redis)
+  const { limited, remaining } = await checkAiBuddyRateLimit(userId);
+  if (limited) {
     return new Response(
       JSON.stringify({
         error:
@@ -320,7 +350,10 @@ export async function POST(request: Request) {
       }),
       {
         status: 429,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-RateLimit-Remaining": String(remaining),
+        },
       }
     );
   }
@@ -350,23 +383,31 @@ export async function POST(request: Request) {
 
   const {
     messages,
-    kidName,
-    age,
-    band,
     currentSubject,
     currentLesson,
     currentCode,
     chatSessionId,
   } = parsed;
 
-  // 4. Fetch personalization data (learning profile, skills, recent lessons)
+  // 4. Fetch personalization data AND verified profile fields from DB.
+  // SECURITY: kidName, age, band are fetched server-side from the
+  // authenticated user's profile — never trust client-supplied values.
+  // Also fetch family tier for model selection (supporter vs free).
   const personalization = await fetchPersonalizationData(userId);
+
+  // Use server-verified values, falling back to safe defaults
+  const verifiedName = personalization.displayName ?? "Friend";
+  const verifiedBand = personalization.currentBand ?? 2;
+  // Approximate age from grade level (grade + 5), defaulting to 7
+  const verifiedAge = personalization.gradeLevel != null
+    ? personalization.gradeLevel + 5
+    : 7;
 
   // 5. Build system prompt with full personalization context
   const systemPrompt = getChipSystemPrompt({
-    childName: kidName,
-    age,
-    gradeLevel: band, // Legacy: band maps roughly to grade level
+    childName: verifiedName,
+    age: verifiedAge,
+    gradeLevel: verifiedBand,
     currentSubject,
     currentLesson,
     currentCode,
@@ -375,9 +416,9 @@ export async function POST(request: Request) {
     recentLessons: personalization.recentLessons,
   });
 
-  // 6. Log conversation for debugging
+  // 6. Log conversation for debugging (no child PII for COPPA compliance)
   console.log(
-    `[ai-buddy] userId=${userId} kidName=${kidName} age=${age} band=${band} subject=${currentSubject ?? "none"} messageCount=${messages.length} personalized=${!!personalization.learningProfile}`
+    `[ai-buddy] userId=${userId} band=${verifiedBand} subject=${currentSubject ?? "none"} messageCount=${messages.length} personalized=${!!personalization.learningProfile}`
   );
 
   // 7. Extract the latest user message text for persistence
@@ -393,11 +434,17 @@ export async function POST(request: Request) {
       .map((p: { type: string; text?: string }) => p.text)
       .join("") ?? "";
 
-  // 8. Convert UI messages to model messages and stream
+  // 8. Select model based on family tier
+  // TODO: When fine-tuned Chip model is ready, free tier uses it instead of Sonnet.
+  // For now, both tiers use Claude Sonnet — the tier check is scaffolded for the switch.
+  const _tier = personalization.subscriptionTier ?? "free";
+  const modelId = "claude-sonnet-4-5-20250929";
+
+  // 9. Convert UI messages to model messages and stream
   const modelMessages = await convertToModelMessages(messages);
 
   const result = streamText({
-    model: anthropic("claude-sonnet-4-5-20250929"),
+    model: anthropic(modelId),
     system: systemPrompt,
     messages: modelMessages,
     maxOutputTokens: 300,

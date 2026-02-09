@@ -32,7 +32,7 @@ export default async function GalleryPage() {
       {/* Page header */}
       <FadeIn>
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-foreground">My Gallery</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">My Gallery</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             All the awesome projects you have built so far!
           </p>

@@ -47,10 +47,21 @@ export type DeviceMode = "usb" | "simulator" | "none";
 // Row types (what you get back from a SELECT)
 // ---------------------------------------------------------------------------
 
+export type SubscriptionTier = "free" | "supporter";
+
 export interface Family {
   id: string;
   clerk_org_id: string;
   name: string;
+  coppa_consent_given: boolean;
+  coppa_consent_at: string | null;
+  coppa_consent_ip: string | null;
+  stripe_customer_id: string | null;
+  subscription_tier: SubscriptionTier;
+  stripe_subscription_id: string | null;
+  stripe_subscription_status: string | null;
+  stripe_price_id: string | null;
+  stripe_current_period_end: string | null;
   created_at: string;
 }
 
@@ -64,6 +75,7 @@ export interface Profile {
   grade_level: number | null;
   current_band: number;
   device_mode: DeviceMode;
+  pin_hash: string | null;
   created_at: string;
 }
 
@@ -94,6 +106,7 @@ export interface Lesson {
   device_required: boolean;
   device_features: string[];
   simulator_support: boolean;
+  simulator_compatible: boolean;
   estimated_minutes: number;
   content: Record<string, unknown>;
   created_at: string;
@@ -255,6 +268,15 @@ export interface FamilyInsert {
   id?: string;
   clerk_org_id: string;
   name: string;
+  coppa_consent_given?: boolean;
+  coppa_consent_at?: string;
+  coppa_consent_ip?: string;
+  stripe_customer_id?: string;
+  subscription_tier?: SubscriptionTier;
+  stripe_subscription_id?: string;
+  stripe_subscription_status?: string;
+  stripe_price_id?: string;
+  stripe_current_period_end?: string;
   created_at?: string;
 }
 
@@ -268,6 +290,7 @@ export interface ProfileInsert {
   grade_level?: number | null;
   current_band?: number;
   device_mode?: DeviceMode;
+  pin_hash?: string | null;
   created_at?: string;
 }
 
@@ -298,6 +321,7 @@ export interface LessonInsert {
   device_required?: boolean;
   device_features?: string[];
   simulator_support?: boolean;
+  simulator_compatible?: boolean;
   estimated_minutes?: number;
   content?: Record<string, unknown>;
   created_at?: string;
@@ -441,6 +465,15 @@ export interface ArtifactRatingInsert {
 export interface FamilyUpdate {
   clerk_org_id?: string;
   name?: string;
+  coppa_consent_given?: boolean;
+  coppa_consent_at?: string;
+  coppa_consent_ip?: string;
+  stripe_customer_id?: string | null;
+  subscription_tier?: SubscriptionTier;
+  stripe_subscription_id?: string | null;
+  stripe_subscription_status?: string | null;
+  stripe_price_id?: string | null;
+  stripe_current_period_end?: string | null;
 }
 
 export interface ProfileUpdate {
@@ -452,6 +485,7 @@ export interface ProfileUpdate {
   grade_level?: number | null;
   current_band?: number;
   device_mode?: DeviceMode;
+  pin_hash?: string | null;
 }
 
 export interface ModuleUpdate {
@@ -478,6 +512,7 @@ export interface LessonUpdate {
   device_required?: boolean;
   device_features?: string[];
   simulator_support?: boolean;
+  simulator_compatible?: boolean;
   estimated_minutes?: number;
   content?: Record<string, unknown>;
 }

@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/auth/require-auth";
 import type { Lesson, Project } from "@/lib/supabase/types";
 
 import ChipChatWrapper from "./chip-chat-wrapper";
@@ -13,44 +13,36 @@ interface WorkshopPageProps {
 }
 
 // ---------------------------------------------------------------------------
-// Data fetching
-// ---------------------------------------------------------------------------
-
-async function getLesson(lessonId: string): Promise<Lesson | null> {
-  const supabase = await createServerSupabaseClient();
-  const { data } = await supabase
-    .from("lessons")
-    .select("*")
-    .eq("id", lessonId)
-    .single();
-
-  return data;
-}
-
-async function getProject(projectId: string): Promise<Project | null> {
-  const supabase = await createServerSupabaseClient();
-  const { data } = await supabase
-    .from("projects")
-    .select("*")
-    .eq("id", projectId)
-    .single();
-
-  return data;
-}
-
-// ---------------------------------------------------------------------------
 // Page (Server Component)
 // ---------------------------------------------------------------------------
 
 export default async function WorkshopPage({ searchParams }: WorkshopPageProps) {
+  const { supabase, profile } = await requireAuth();
   const { lessonId, projectId } = await searchParams;
 
-  // Fetch saved project if projectId is present
-  const project = projectId ? await getProject(projectId) : null;
+  // Fetch saved project if projectId is present — scoped to user's family
+  let project: Project | null = null;
+  if (projectId) {
+    const { data } = (await supabase
+      .from("projects")
+      .select("*")
+      .eq("id", projectId)
+      .eq("family_id", profile.family_id)
+      .single()) as { data: Project | null };
+    project = data;
+  }
 
   // Resolve the lesson: either from direct lessonId param, or from the project's linked lesson
   const effectiveLessonId = lessonId ?? project?.lesson_id ?? null;
-  const lesson = effectiveLessonId ? await getLesson(effectiveLessonId) : null;
+  let lesson: Lesson | null = null;
+  if (effectiveLessonId) {
+    const { data } = (await supabase
+      .from("lessons")
+      .select("*")
+      .eq("id", effectiveLessonId)
+      .single()) as { data: Lesson | null };
+    lesson = data;
+  }
 
   // Build the serialisable lesson data for the client component.
   // If we have a saved project, use its blocks_xml instead of the lesson's starter blocks.

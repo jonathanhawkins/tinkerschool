@@ -2,24 +2,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
-  Calculator,
   BookOpen,
-  FlaskConical,
-  Music,
-  Palette,
-  Puzzle,
-  Code2,
   ChevronRight,
   MessageCircle,
   CheckCircle2,
   Circle,
   Clock,
+  Monitor,
   Star,
   Sparkles,
   GraduationCap,
   Rocket,
+  Usb,
 } from "lucide-react";
 
+import { SubjectIcon } from "@/components/subject-icon";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { FadeIn } from "@/components/motion";
 import type {
@@ -32,7 +29,7 @@ import type {
   Progress,
   ProgressStatus,
 } from "@/lib/supabase/types";
-import { cn } from "@/lib/utils";
+import { cn, safeColor } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -43,37 +40,6 @@ import {
 } from "@/components/ui/card";
 import { Badge as BadgeUI } from "@/components/ui/badge";
 import { Progress as ProgressBar } from "@/components/ui/progress";
-
-// ---------------------------------------------------------------------------
-// Icon mapping -- resolves a DB icon string to a lucide-react component
-// ---------------------------------------------------------------------------
-
-function SubjectIcon({
-  icon,
-  className,
-}: {
-  icon: string;
-  className?: string;
-}) {
-  switch (icon) {
-    case "calculator":
-      return <Calculator className={className} />;
-    case "book-open":
-      return <BookOpen className={className} />;
-    case "flask-conical":
-      return <FlaskConical className={className} />;
-    case "music":
-      return <Music className={className} />;
-    case "palette":
-      return <Palette className={className} />;
-    case "puzzle":
-      return <Puzzle className={className} />;
-    case "code-2":
-      return <Code2 className={className} />;
-    default:
-      return <BookOpen className={className} />;
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Subject descriptions (static, since they rarely change)
@@ -104,25 +70,25 @@ function getSkillLevelConfig(level: SkillLevel): SkillLevelConfig {
     case "mastered":
       return {
         label: "Mastered",
-        className: "border-emerald-400 bg-emerald-50 text-emerald-700",
+        className: "border-emerald-400 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
         icon: <Star className="size-3 fill-emerald-500 text-emerald-500" />,
       };
     case "proficient":
       return {
         label: "Proficient",
-        className: "border-green-400 bg-green-50 text-green-700",
+        className: "border-green-400 bg-green-500/10 text-green-700 dark:text-green-400",
         icon: <CheckCircle2 className="size-3" />,
       };
     case "developing":
       return {
         label: "Developing",
-        className: "border-amber-400 bg-amber-50 text-amber-700",
+        className: "border-amber-400 bg-amber-500/10 text-amber-700 dark:text-amber-400",
         icon: <Sparkles className="size-3" />,
       };
     case "beginning":
       return {
         label: "Beginning",
-        className: "border-blue-400 bg-blue-50 text-blue-700",
+        className: "border-blue-400 bg-blue-500/10 text-blue-700 dark:text-blue-400",
         icon: <Circle className="size-3" />,
       };
     default:
@@ -211,6 +177,30 @@ function SkillRow({
   );
 }
 
+function SimCompatBadge({ compatible }: { compatible: boolean }) {
+  if (compatible) {
+    return (
+      <BadgeUI
+        variant="outline"
+        className="gap-1 border-emerald-300 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+      >
+        <Monitor className="size-3" />
+        Simulator Ready
+      </BadgeUI>
+    );
+  }
+
+  return (
+    <BadgeUI
+      variant="outline"
+      className="gap-1 border-amber-300 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+    >
+      <Usb className="size-3" />
+      Hardware Needed
+    </BadgeUI>
+  );
+}
+
 function LessonRow({
   lesson,
   status,
@@ -230,9 +220,9 @@ function LessonRow({
         className={cn(
           "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
           status === "completed"
-            ? "bg-emerald-100 text-emerald-700"
+            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
             : status === "in_progress"
-              ? "bg-amber-100 text-amber-700"
+              ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
               : "bg-muted text-muted-foreground",
         )}
       >
@@ -244,9 +234,12 @@ function LessonRow({
       </span>
 
       <div className="min-w-0 flex-1">
-        <span className="text-sm font-medium text-foreground group-hover:text-primary">
-          {lesson.title}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-foreground group-hover:text-primary">
+            {lesson.title}
+          </span>
+          <SimCompatBadge compatible={lesson.simulator_compatible} />
+        </div>
         {lesson.estimated_minutes > 0 && (
           <p className="text-xs text-muted-foreground">
             ~{lesson.estimated_minutes} min
@@ -328,7 +321,7 @@ export default async function SubjectDetailPage({
     notFound();
   }
 
-  const safeSubject = subject as Subject;
+  const safeSubject = { ...(subject as Subject), color: safeColor((subject as Subject).color) };
 
   // Fetch skills for this subject
   const { data: skills } = await supabase
@@ -356,12 +349,13 @@ export default async function SubjectDetailPage({
     proficiencyMap.set(row.skill_id, row.level);
   }
 
-  // Fetch modules for this subject and kid's band
+  // Fetch modules for this subject at or below the kid's band
   const { data: modules } = await supabase
     .from("modules")
     .select("*")
-    .eq("band", profile.current_band)
+    .lte("band", profile.current_band)
     .eq("subject_id", safeSubject.id)
+    .order("band")
     .order("order_num");
 
   const safeModules: Module[] = (modules as Module[] | null) ?? [];

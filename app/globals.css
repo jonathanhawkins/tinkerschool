@@ -146,3 +146,58 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ---- App motion utilities ---- */
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.35s ease-out;
+}
+
+.fill-mode-both {
+  animation-fill-mode: both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up {
+    animation: none;
+  }
+}
+
+/* ---- Blockly workspace overrides ---- */
+
+/*
+ * Fix: Hide ALL Blockly scrollbar handles (workspace + flyout).
+ * Blockly renders scrollbars as SVG <rect> elements with the class
+ * .blocklyScrollbarHandle. By default they show as opaque gray bars
+ * that persist as visual artifacts. We hide them entirely and rely on
+ * drag/wheel scrolling which Blockly already supports.
+ */
+.blocklyScrollbarHandle {
+  fill-opacity: 0 !important;
+}
+
+.blocklyScrollbarBackground {
+  fill-opacity: 0 !important;
+}
+
+/* Soften the flyout background to match TinkerSchool theme */
+.blocklyFlyoutBackground {
+  fill: #f1f5f9;
+  fill-opacity: 0.95;
+}
+
+/* Soften the workspace grid background border */
+.blocklyMainBackground {
+  stroke: #e2e8f0;
+}

@@ -47,11 +47,9 @@ const LCD_COLOR_MAP: Record<string, string> = {
 };
 
 /** LED brightness values for Power.setLed() on the M5StickC Plus 2.
- *  The device has a single-color LED (not RGB), so any "color" maps to full brightness. */
+ *  The device has a single-color red LED (not RGB). */
 const LED_BRIGHTNESS_MAP: Record<string, string> = {
-  red: "255",
-  green: "255",
-  blue: "255",
+  on: "255",
   off: "0",
 };
 
@@ -334,9 +332,7 @@ Blockly.Blocks["m5_led_set"] = {
       .appendField("set LED")
       .appendField(
         new Blockly.FieldDropdown([
-          ["red", "red"],
-          ["green", "green"],
-          ["blue", "blue"],
+          ["on", "on"],
           ["off", "off"],
         ]),
         "COLOR"
@@ -344,7 +340,7 @@ Blockly.Blocks["m5_led_set"] = {
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour(LED_COLOR);
-    this.setTooltip("Set the built-in LED color or turn it off.");
+    this.setTooltip("Turn the built-in red LED on or off.");
     this.setHelpUrl("");
   },
 };

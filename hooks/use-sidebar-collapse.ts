@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-const STORAGE_KEY = "codebuddy-sidebar-collapsed";
+const STORAGE_KEY = "tinkerschool-sidebar-collapsed";
 
 export function useSidebarCollapse() {
   const [isCollapsed, setIsCollapsed] = useState(false);

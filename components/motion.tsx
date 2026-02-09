@@ -1,119 +1,55 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
-import type { ComponentPropsWithoutRef } from "react";
+import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
-// Shared Framer Motion wrapper components for consistent animations.
-// Use these in Server Components via composition (import as client islands).
+// Shared animation wrapper components using CSS animations.
+// Reliable across SSR hydration — no JS animation engine dependency.
 // ---------------------------------------------------------------------------
 
-const fadeInUpVariants = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-};
-
-const staggerContainerVariants = {
-  animate: { transition: { staggerChildren: 0.06 } },
-};
-
-const staggerItemVariants = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0 },
-};
-
-interface FadeInProps extends ComponentPropsWithoutRef<typeof motion.div> {
+interface FadeInProps {
   children: React.ReactNode;
   className?: string;
   delay?: number;
 }
 
-export function FadeIn({ children, className, delay = 0, ...props }: FadeInProps) {
-  const prefersReducedMotion = useReducedMotion();
-
-  if (prefersReducedMotion) {
-    return <div className={className}>{children}</div>;
-  }
-
+export function FadeIn({ children, className, delay = 0 }: FadeInProps) {
   return (
-    <motion.div
-      className={className}
-      initial={fadeInUpVariants.initial}
-      whileInView={fadeInUpVariants.animate}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.4, ease: "easeOut", delay }}
-      {...props}
+    <div
+      className={cn("animate-fade-in-up fill-mode-both", className)}
+      style={delay > 0 ? { animationDelay: `${delay}s` } : undefined}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
-interface StaggerProps extends ComponentPropsWithoutRef<typeof motion.div> {
+interface StaggerProps {
   children: React.ReactNode;
   className?: string;
 }
 
-export function Stagger({ children, className, ...props }: StaggerProps) {
-  const prefersReducedMotion = useReducedMotion();
+export function Stagger({ children, className }: StaggerProps) {
+  return <div className={className}>{children}</div>;
+}
 
-  if (prefersReducedMotion) {
-    return <div className={className}>{children}</div>;
-  }
-
+export function StaggerItem({ children, className }: StaggerProps) {
   return (
-    <motion.div
-      className={className}
-      variants={staggerContainerVariants}
-      initial="initial"
-      whileInView="animate"
-      viewport={{ once: true, margin: "-60px" }}
-      {...props}
-    >
+    <div className={cn("animate-fade-in-up fill-mode-both", className)}>
       {children}
-    </motion.div>
+    </div>
   );
 }
 
-export function StaggerItem({ children, className, ...props }: StaggerProps) {
-  const prefersReducedMotion = useReducedMotion();
-
-  if (prefersReducedMotion) {
-    return <div className={className}>{children}</div>;
-  }
-
-  return (
-    <motion.div
-      className={className}
-      variants={staggerItemVariants}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      {...props}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-interface HoverLiftProps extends ComponentPropsWithoutRef<typeof motion.div> {
+interface HoverLiftProps {
   children: React.ReactNode;
   className?: string;
 }
 
-export function HoverLift({ children, className, ...props }: HoverLiftProps) {
-  const prefersReducedMotion = useReducedMotion();
-
-  if (prefersReducedMotion) {
-    return <div className={className}>{children}</div>;
-  }
-
+export function HoverLift({ children, className }: HoverLiftProps) {
   return (
-    <motion.div
-      className={className}
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
-      {...props}
-    >
+    <div className={cn("transition-transform duration-200 ease-out hover:-translate-y-1", className)}>
       {children}
-    </motion.div>
+    </div>
   );
 }

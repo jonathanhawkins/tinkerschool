@@ -76,6 +76,11 @@ export interface Profile {
   current_band: number;
   device_mode: DeviceMode;
   pin_hash: string | null;
+  current_streak: number;
+  longest_streak: number;
+  last_activity_date: string | null;
+  xp: number;
+  level: number;
   created_at: string;
 }
 
@@ -260,6 +265,22 @@ export interface ArtifactRating {
   created_at: string;
 }
 
+export interface ActivitySession {
+  id: string;
+  profile_id: string;
+  lesson_id: string;
+  score: number;
+  total_questions: number;
+  correct_first_try: number;
+  correct_total: number;
+  time_seconds: number;
+  hints_used: number;
+  activity_data: unknown[];
+  started_at: string;
+  completed_at: string | null;
+  created_at: string;
+}
+
 // ---------------------------------------------------------------------------
 // Insert types (what you pass to INSERT — omit server-generated fields)
 // ---------------------------------------------------------------------------
@@ -291,6 +312,11 @@ export interface ProfileInsert {
   current_band?: number;
   device_mode?: DeviceMode;
   pin_hash?: string | null;
+  current_streak?: number;
+  longest_streak?: number;
+  last_activity_date?: string | null;
+  xp?: number;
+  level?: number;
   created_at?: string;
 }
 
@@ -458,6 +484,22 @@ export interface ArtifactRatingInsert {
   created_at?: string;
 }
 
+export interface ActivitySessionInsert {
+  id?: string;
+  profile_id: string;
+  lesson_id: string;
+  score: number;
+  total_questions: number;
+  correct_first_try?: number;
+  correct_total?: number;
+  time_seconds?: number;
+  hints_used?: number;
+  activity_data?: unknown[];
+  started_at?: string;
+  completed_at?: string | null;
+  created_at?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Update types (all fields optional except id)
 // ---------------------------------------------------------------------------
@@ -486,6 +528,11 @@ export interface ProfileUpdate {
   current_band?: number;
   device_mode?: DeviceMode;
   pin_hash?: string | null;
+  current_streak?: number;
+  longest_streak?: number;
+  last_activity_date?: string | null;
+  xp?: number;
+  level?: number;
 }
 
 export interface ModuleUpdate {
@@ -619,6 +666,17 @@ export interface ArtifactRatingUpdate {
   rating?: number;
 }
 
+export interface ActivitySessionUpdate {
+  score?: number;
+  total_questions?: number;
+  correct_first_try?: number;
+  correct_total?: number;
+  time_seconds?: number;
+  hints_used?: number;
+  activity_data?: unknown[];
+  completed_at?: string | null;
+}
+
 // ---------------------------------------------------------------------------
 // Table definition helper — maps table name to Row / Insert / Update shapes
 // ---------------------------------------------------------------------------
@@ -675,6 +733,11 @@ export interface Database {
         ArtifactRating,
         ArtifactRatingInsert,
         ArtifactRatingUpdate
+      >;
+      activity_sessions: TableDefinition<
+        ActivitySession,
+        ActivitySessionInsert,
+        ActivitySessionUpdate
       >;
     };
     Views: Record<string, never>;

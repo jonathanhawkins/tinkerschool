@@ -86,7 +86,7 @@ export function BadgeCelebration({ badges, onDismiss }: BadgeCelebrationProps) {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.95 }}
         transition={{ duration: 0.35, ease: "easeOut" }}
-        className="fixed bottom-20 right-6 z-50 w-72"
+        className="fixed bottom-[104px] right-6 z-50 w-72"
       >
         <Card className="overflow-hidden rounded-2xl border-2 border-yellow-300 bg-gradient-to-br from-orange-50 to-yellow-50 shadow-lg">
           <CardContent className="flex items-start gap-3 p-4">

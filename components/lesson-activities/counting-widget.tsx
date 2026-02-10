@@ -7,6 +7,7 @@ import { Plus, Minus, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useActivity } from "@/lib/activities/activity-context";
+import { useSound } from "@/lib/activities/use-sound";
 import type { CountingContent } from "@/lib/activities/types";
 import { ActivityFeedback } from "./activity-feedback";
 
@@ -16,6 +17,7 @@ import { ActivityFeedback } from "./activity-feedback";
 
 export function CountingWidget() {
   const { currentActivity, state, recordAnswer, subjectColor } = useActivity();
+  const { play } = useSound();
   const activity = currentActivity as CountingContent;
   const question = activity.questions[state.currentQuestionIndex];
   const prefersReducedMotion = useReducedMotion();
@@ -35,6 +37,7 @@ export function CountingWidget() {
     if (state.showingFeedback && state.feedbackType === "correct") return;
     if (submitted && state.feedbackType === "correct") return;
 
+    play("tap");
     setTappedItems((prev) => {
       const next = new Set(prev);
       if (next.has(index)) {

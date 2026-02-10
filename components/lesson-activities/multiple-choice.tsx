@@ -6,6 +6,7 @@ import { CheckCircle2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useActivity } from "@/lib/activities/activity-context";
+import { useSound } from "@/lib/activities/use-sound";
 import type { MultipleChoiceContent } from "@/lib/activities/types";
 import { ActivityFeedback } from "./activity-feedback";
 
@@ -15,6 +16,7 @@ import { ActivityFeedback } from "./activity-feedback";
 
 export function MultipleChoice() {
   const { currentActivity, state, recordAnswer, subjectColor } = useActivity();
+  const { play } = useSound();
   const activity = currentActivity as MultipleChoiceContent;
   const question = activity.questions[state.currentQuestionIndex];
   const prefersReducedMotion = useReducedMotion();
@@ -35,6 +37,7 @@ export function MultipleChoice() {
       // Allow re-selection after wrong answer
     }
 
+    play("tap");
     setSelectedId(optionId);
     const isCorrect = optionId === question.correctOptionId;
     recordAnswer(optionId, isCorrect);

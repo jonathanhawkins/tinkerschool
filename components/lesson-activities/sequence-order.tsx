@@ -7,6 +7,7 @@ import { GripVertical, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useActivity } from "@/lib/activities/activity-context";
+import { useSound } from "@/lib/activities/use-sound";
 import type { SequenceOrderContent, SequenceItem } from "@/lib/activities/types";
 import { ActivityFeedback } from "./activity-feedback";
 
@@ -26,6 +27,7 @@ function shuffle<T>(arr: T[]): T[] {
 
 export function SequenceOrder() {
   const { currentActivity, state, recordAnswer, subjectColor } = useActivity();
+  const { play } = useSound();
   const activity = currentActivity as SequenceOrderContent;
   const question = activity.questions[state.currentQuestionIndex];
   const prefersReducedMotion = useReducedMotion();
@@ -59,6 +61,7 @@ export function SequenceOrder() {
   function handleTapItem(index: number) {
     if (state.showingFeedback && state.feedbackType === "correct") return;
 
+    play("tap");
     if (selectedIndex === null) {
       setSelectedIndex(index);
     } else if (selectedIndex === index) {

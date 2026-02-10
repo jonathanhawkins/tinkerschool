@@ -7,6 +7,7 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useActivity } from "@/lib/activities/activity-context";
+import { useSound } from "@/lib/activities/use-sound";
 import type { FillInBlankContent } from "@/lib/activities/types";
 import { ActivityFeedback } from "./activity-feedback";
 
@@ -16,6 +17,7 @@ import { ActivityFeedback } from "./activity-feedback";
 
 export function FillInBlank() {
   const { currentActivity, state, recordAnswer, subjectColor } = useActivity();
+  const { play } = useSound();
   const activity = currentActivity as FillInBlankContent;
   const question = activity.questions[state.currentQuestionIndex];
   const prefersReducedMotion = useReducedMotion();
@@ -60,6 +62,7 @@ export function FillInBlank() {
   }
 
   function handleWordBankTap(word: string) {
+    play("tap");
     setAnswer(word);
   }
 

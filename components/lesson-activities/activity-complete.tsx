@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useActivity } from "@/lib/activities/activity-context";
+import { useSound } from "@/lib/activities/use-sound";
 
 // ---------------------------------------------------------------------------
 // Stars display (1-3 stars based on score)
@@ -17,6 +18,25 @@ import { useActivity } from "@/lib/activities/activity-context";
 function StarRating({ score }: { score: number }) {
   const stars = score >= 90 ? 3 : score >= 60 ? 2 : 1;
   const prefersReducedMotion = useReducedMotion();
+  const { play } = useSound();
+  const starsSounded = useRef(0);
+
+  // Play "star" sound for each earned star, staggered to match animation
+  useEffect(() => {
+    if (prefersReducedMotion) return;
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let i = 1; i <= stars; i++) {
+      if (i > starsSounded.current) {
+        const timer = setTimeout(() => {
+          play("star");
+        }, i * 150 + 100); // Offset to sync with spring animation
+        timers.push(timer);
+      }
+    }
+    starsSounded.current = stars;
+    return () => timers.forEach(clearTimeout);
+  }, [stars, play, prefersReducedMotion]);
 
   return (
     <div className="flex items-center gap-1">
@@ -60,8 +80,14 @@ export function ActivityComplete({ onRetry }: ActivityCompleteProps) {
   const { state, totalQuestions, subjectColor, lessonId } = useActivity();
   const prefersReducedMotion = useReducedMotion();
   const confettiFired = useRef(false);
+  const { play } = useSound();
 
   const { metrics, hasPassed } = state;
+
+  // Play "complete" sound on mount
+  useEffect(() => {
+    play("complete");
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- fire once on mount
 
   // Fire confetti on first render
   useEffect(() => {

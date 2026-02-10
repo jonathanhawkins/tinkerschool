@@ -6,6 +6,7 @@ import { CheckCircle2, Link2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useActivity } from "@/lib/activities/activity-context";
+import { useSound } from "@/lib/activities/use-sound";
 import type { MatchingPairsContent } from "@/lib/activities/types";
 import { ActivityFeedback } from "./activity-feedback";
 
@@ -25,6 +26,7 @@ function shuffle<T>(arr: T[]): T[] {
 
 export function MatchingPairs() {
   const { currentActivity, state, recordAnswer, subjectColor } = useActivity();
+  const { play } = useSound();
   const activity = currentActivity as MatchingPairsContent;
   const prefersReducedMotion = useReducedMotion();
 
@@ -60,6 +62,7 @@ export function MatchingPairs() {
       const isCorrect = pair.right.id === rightId;
 
       if (isCorrect) {
+        play("match");
         const newMatches = new Map(matches);
         newMatches.set(selectedLeftId, rightId);
         setMatches(newMatches);
@@ -75,15 +78,16 @@ export function MatchingPairs() {
         setTimeout(() => setShakeId(null), 500);
       }
     },
-    [selectedLeftId, matches, activity.pairs, totalPairs, recordAnswer],
+    [selectedLeftId, matches, activity.pairs, totalPairs, recordAnswer, play],
   );
 
   const handleLeftSelect = useCallback(
     (leftId: string) => {
       if (matches.has(leftId)) return; // Already matched
+      play("tap");
       setSelectedLeftId((prev) => (prev === leftId ? null : leftId));
     },
-    [matches],
+    [matches, play],
   );
 
   // Color for matched pairs - cycle through pleasant colors

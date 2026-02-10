@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { CheckCircle2, XCircle, Lightbulb } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useActivity } from "@/lib/activities/activity-context";
+import { useSound } from "@/lib/activities/use-sound";
 
 // ---------------------------------------------------------------------------
 // Kid-friendly encouragement messages
@@ -55,9 +56,28 @@ export function ActivityFeedback({
 }: ActivityFeedbackProps) {
   const { state, nextQuestion, dismissFeedback, useHint: markHintUsed } = useActivity();
   const prefersReducedMotion = useReducedMotion();
+  const { play } = useSound();
+  const lastPlayedRef = useRef<string | null>(null);
 
   const isCorrect = state.feedbackType === "correct";
   const isIncorrect = state.feedbackType === "incorrect";
+
+  // Play sound on feedback change
+  useEffect(() => {
+    if (!state.showingFeedback) {
+      lastPlayedRef.current = null;
+      return;
+    }
+    const key = `${state.feedbackType}-${state.currentQuestionIndex}`;
+    if (lastPlayedRef.current === key) return;
+    lastPlayedRef.current = key;
+
+    if (isCorrect) {
+      play("correct");
+    } else if (isIncorrect) {
+      play("incorrect");
+    }
+  }, [state.showingFeedback, state.feedbackType, state.currentQuestionIndex, isCorrect, isIncorrect, play]);
 
   // Auto-advance on correct answer
   useEffect(() => {

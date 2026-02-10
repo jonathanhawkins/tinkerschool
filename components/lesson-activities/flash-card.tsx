@@ -7,6 +7,7 @@ import { RotateCcw, ArrowRight, ThumbsUp, ThumbsDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useActivity } from "@/lib/activities/activity-context";
+import { useSound } from "@/lib/activities/use-sound";
 import type { FlashCardContent } from "@/lib/activities/types";
 
 // ---------------------------------------------------------------------------
@@ -16,6 +17,7 @@ import type { FlashCardContent } from "@/lib/activities/types";
 export function FlashCard() {
   const { currentActivity, state, recordAnswer, nextQuestion, subjectColor } =
     useActivity();
+  const { play } = useSound();
   const activity = currentActivity as FlashCardContent;
   const card = activity.cards[state.currentQuestionIndex];
   const prefersReducedMotion = useReducedMotion();
@@ -28,6 +30,7 @@ export function FlashCard() {
   if (!card) return null;
 
   function handleFlip() {
+    play("flip");
     setIsFlipped((prev) => !prev);
   }
 

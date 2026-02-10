@@ -1,6 +1,8 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
+import ChipVoiceServer from "@/components/chip-voice-server";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
 import { MobileNav } from "@/components/mobile-nav";
 
@@ -40,6 +42,11 @@ export default async function DashboardLayout({
           {children}
         </main>
       </div>
+
+      {/* Floating Chip voice button — persists across all dashboard pages */}
+      <Suspense fallback={null}>
+        <ChipVoiceServer />
+      </Suspense>
     </div>
   );
 }

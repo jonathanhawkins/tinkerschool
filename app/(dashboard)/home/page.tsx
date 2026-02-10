@@ -35,6 +35,8 @@ import {
   Sparkles,
   MapPin,
   MessageCircle,
+  Flame,
+  Star,
 } from "lucide-react";
 
 import { SubjectIcon } from "@/components/subject-icon";
@@ -63,6 +65,7 @@ import {
 import { Badge as BadgeUI } from "@/components/ui/badge";
 import { Progress as ProgressBar } from "@/components/ui/progress";
 import { FadeIn, Stagger, StaggerItem, HoverLift } from "@/components/motion";
+import { getLevelForXP, getNextLevelXP } from "@/lib/gamification/xp";
 
 function ModuleIcon({
   icon,
@@ -771,6 +774,55 @@ export default async function MissionControlPage() {
             </p>
           </div>
         </header>
+      </FadeIn>
+
+      {/* ----- Streak + XP Stats ----- */}
+      <FadeIn delay={0.05}>
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Streak */}
+          <div className="flex items-center gap-2 rounded-xl bg-orange-500/10 px-3 py-2">
+            <Flame className="size-4 text-orange-500" />
+            <span className="text-sm font-semibold text-orange-700">
+              {profile.current_streak > 0
+                ? `${profile.current_streak} day streak!`
+                : "Start a streak today!"}
+            </span>
+          </div>
+
+          {/* XP + Level */}
+          {(() => {
+            const xp = profile.xp ?? 0;
+            const levelInfo = getLevelForXP(xp);
+            const nextXP = getNextLevelXP(xp);
+            const progressPct = nextXP
+              ? Math.round(((xp - levelInfo.minXP) / (nextXP - levelInfo.minXP)) * 100)
+              : 100;
+            return (
+              <div className="flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2">
+                <Star className="size-4 text-primary" />
+                <span className="text-sm font-semibold text-primary">
+                  Level {levelInfo.level} &middot; {levelInfo.name}
+                </span>
+                <div
+                  className="h-2 w-16 overflow-hidden rounded-full bg-primary/20"
+                  role="progressbar"
+                  aria-valuenow={progressPct}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label="XP progress"
+                >
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-300"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {xp}{nextXP ? `/${nextXP}` : ""} XP
+                </span>
+              </div>
+            );
+          })()}
+        </div>
       </FadeIn>
 
       {/* ----- Getting Started hero for brand-new users ----- */}

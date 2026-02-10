@@ -62,6 +62,12 @@ export default async function ParentDashboardPage() {
   ).length;
   const badgesEarned = allUserBadges.length;
 
+  // Aggregate streak across all kids (show the best active streak)
+  const bestStreak = kids.reduce(
+    (max, kid) => Math.max(max, kid.current_streak ?? 0),
+    0,
+  );
+
   // Recent activity: combine completed lessons and earned badges, sort by date
   const recentActivity: ActivityItem[] = [];
 
@@ -143,10 +149,10 @@ export default async function ParentDashboardPage() {
           <SummaryCard
             icon={Flame}
             label="Active Streak"
-            value="--"
+            value={bestStreak > 0 ? `${bestStreak} day${bestStreak !== 1 ? "s" : ""}` : "0"}
             accent="text-chart-4"
             bgAccent="bg-chart-4/10"
-            subtitle="Coming soon"
+            subtitle="Active Streak"
           />
         </StaggerItem>
       </Stagger>

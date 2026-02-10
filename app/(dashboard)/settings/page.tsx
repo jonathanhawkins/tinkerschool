@@ -11,9 +11,12 @@ import {
   GraduationCap,
   Shield,
   ExternalLink,
+  RotateCcw,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+
+import { DevResetButton } from "./dev-reset-button";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -340,6 +343,27 @@ export default async function SettingsPage() {
             </Link>
           </Button>
         </StaggerItem>
+
+        {/* ---- Dev Tools (development only) ---- */}
+        {process.env.NODE_ENV !== "production" && (
+          <StaggerItem>
+            <Card className="rounded-2xl border-dashed border-destructive/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base text-destructive">
+                  <RotateCcw className="size-4" />
+                  Dev Tools
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Reset all lesson progress, badges, XP, and streaks for the
+                  current profile. Chip will treat you as a brand-new user.
+                </p>
+                <DevResetButton />
+              </CardContent>
+            </Card>
+          </StaggerItem>
+        )}
       </Stagger>
     </div>
   );

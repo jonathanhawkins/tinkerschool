@@ -1,6 +1,7 @@
 import {
   Home,
   BookOpen,
+  HelpCircle,
   Wrench,
   Image,
   Trophy,
@@ -22,5 +23,6 @@ export const navItems: NavItem[] = [
   { href: "/gallery", label: "Gallery", icon: Image },
   { href: "/achievements", label: "Achievements", icon: Trophy },
   { href: "/setup", label: "Device Setup", icon: Usb },
+  { href: "/help", label: "Help", icon: HelpCircle },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

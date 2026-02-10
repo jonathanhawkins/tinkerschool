@@ -1133,6 +1133,8 @@ export class SimulatorCodeRunner {
         break;
 
       case "tone":
+        // Track buzzer usage for lesson validation
+        this.simulator.markBuzzerUsed();
         if (this.onTone) {
           this.onTone(
             args.frequency as number,

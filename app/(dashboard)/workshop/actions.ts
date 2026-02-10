@@ -7,6 +7,8 @@ import {
   evaluateBadges,
   type EarnedBadgeInfo,
 } from "@/lib/badges/evaluate-badges";
+import { updateStreak } from "@/lib/gamification/streaks";
+import { awardXP } from "@/lib/gamification/xp";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { ProgressInsert, ProjectInsert } from "@/lib/supabase/types";
@@ -89,8 +91,13 @@ export async function saveProject(
   // Check for newly earned badges after saving
   const newBadges = await evaluateBadges(supabase, profile.id);
 
+  // Update streak and award XP for saving a project
+  await updateStreak(supabase, profile.id);
+  await awardXP(supabase, profile.id, "project_saved");
+
   revalidatePath("/gallery");
   revalidatePath("/achievements");
+  revalidatePath("/home");
   return { success: true, newBadges };
 }
 
@@ -182,6 +189,10 @@ export async function updateProgress(
   let newBadges: EarnedBadgeInfo[] = [];
   if (status === "completed") {
     newBadges = await evaluateBadges(supabase, profile.id);
+
+    // Update streak and award XP for completing a lesson
+    await updateStreak(supabase, profile.id);
+    await awardXP(supabase, profile.id, "lesson_completed");
   }
 
   revalidatePath("/home");

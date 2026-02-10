@@ -51,6 +51,7 @@ function createMockSimulator() {
     setBackground: vi.fn(),
     getCanvas: vi.fn(),
     getBackgroundColor: vi.fn(() => "#000000"),
+    markBuzzerUsed: vi.fn(),
   };
 }
 

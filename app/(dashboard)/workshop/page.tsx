@@ -50,15 +50,21 @@ export default async function WorkshopPage({ searchParams }: WorkshopPageProps) 
     ? {
         id: lesson.id,
         title: lesson.title,
+        description: lesson.description,
         storyText: lesson.story_text,
         starterBlocksXml: project?.blocks_xml ?? lesson.starter_blocks_xml,
+        solutionCode: lesson.solution_code,
+        hints: lesson.hints ?? [],
       }
     : project
       ? {
           id: "",
           title: project.title,
+          description: "",
           storyText: null,
           starterBlocksXml: project.blocks_xml,
+          solutionCode: null,
+          hints: [],
         }
       : null;
 

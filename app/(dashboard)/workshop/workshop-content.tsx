@@ -12,7 +12,7 @@ import {
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Blocks, CheckCircle, Eye, Info, Monitor, PartyPopper, Play, Save, X, Sparkles } from "lucide-react";
+import { Blocks, BookOpen, CheckCircle, ChevronDown, ChevronUp, Eye, Info, Lightbulb, Monitor, PartyPopper, Play, Save, Target, X, Sparkles } from "lucide-react";
 
 import { useWorkshopBanners } from "@/hooks/use-workshop-banners";
 
@@ -29,8 +29,21 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { wrapM5StickCode } from "@/lib/codegen/wrap-m5stick";
+import type { SimulatorOutput } from "@/lib/simulator/types";
+import {
+  parseExpectedOutput,
+  usesBuzzer,
+  validateLessonOutput,
+} from "@/lib/lessons/validate-output";
 import { saveProject, updateProgress } from "./actions";
 import type { BlocklyEditorHandle } from "./blockly-editor";
 
@@ -81,11 +94,19 @@ const PythonEditor = dynamic(() => import("./python-editor"), {
 // Types
 // ---------------------------------------------------------------------------
 
+interface LessonHintData {
+  order: number;
+  text: string;
+}
+
 interface LessonData {
   id: string;
   title: string;
+  description: string;
   storyText: string | null;
   starterBlocksXml: string | null;
+  solutionCode: string | null;
+  hints: LessonHintData[];
 }
 
 interface WorkshopContentProps {
@@ -226,43 +247,200 @@ function SimulatorBanner({ onDismiss }: { onDismiss: () => void }) {
 }
 
 // ---------------------------------------------------------------------------
-// Lesson story card
+// Lesson story card -- collapsible, never fully dismissed
 // ---------------------------------------------------------------------------
 
 function LessonStoryCard({
   title,
   storyText,
-  onDismiss,
 }: {
   title: string;
   storyText: string;
-  onDismiss: () => void;
 }) {
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
     <motion.div {...storyCardVariants}>
       <Card className="relative overflow-hidden rounded-2xl border-2 border-primary/30 bg-gradient-to-r from-primary/5 to-secondary/5">
-        <CardContent className="flex items-start gap-3 p-4">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-            <Sparkles className="size-5 text-primary" />
+        {/* Collapsed bar -- always visible */}
+        <button
+          type="button"
+          onClick={() => setCollapsed((v) => !v)}
+          className="flex w-full items-center gap-3 p-3 text-left"
+        >
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <Sparkles className="size-4 text-primary" />
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-base font-semibold text-foreground">{title}</p>
-            <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-              {storyText}
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onDismiss}
-            className="shrink-0 rounded-full text-muted-foreground hover:text-foreground"
-            aria-label="Dismiss lesson story"
-          >
-            <X className="size-4" />
-          </Button>
-        </CardContent>
+          <p className="flex-1 truncate text-sm font-semibold text-foreground">
+            {title}
+          </p>
+          {collapsed ? (
+            <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronUp className="size-4 shrink-0 text-muted-foreground" />
+          )}
+        </button>
+
+        {/* Expandable story text */}
+        <AnimatePresence initial={false}>
+          {!collapsed && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="overflow-hidden"
+            >
+              <CardContent className="px-4 pb-3 pt-0">
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {storyText}
+                </p>
+              </CardContent>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </Card>
     </motion.div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Lesson Goal Panel -- shows what kids should build
+// ---------------------------------------------------------------------------
+
+function LessonGoalPanel({
+  description,
+  solutionCode,
+  hints,
+}: {
+  description: string;
+  solutionCode: string | null;
+  hints: LessonHintData[];
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const [hintsExpanded, setHintsExpanded] = useState(false);
+
+  const expectedTexts = solutionCode ? parseExpectedOutput(solutionCode) : [];
+  const hasBuzzer = solutionCode ? usesBuzzer(solutionCode) : false;
+  const sortedHints = [...hints].sort((a, b) => a.order - b.order);
+
+  return (
+    <Card className="rounded-2xl border-2 border-primary/30 bg-gradient-to-b from-primary/5 to-transparent">
+      {/* Header -- always visible, toggles expand */}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center gap-2 px-4 py-3 text-left"
+      >
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+          <Target className="size-4 text-primary" />
+        </div>
+        <span className="flex-1 text-sm font-bold text-foreground">
+          Your Goal
+        </span>
+        <ChevronDown
+          className={cn(
+            "size-4 text-muted-foreground transition-transform duration-200",
+            expanded && "rotate-180",
+          )}
+        />
+      </button>
+
+      {/* Collapsible content */}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <CardContent className="space-y-3 px-4 pb-4 pt-0">
+              {/* Description */}
+              <p className="text-sm leading-relaxed text-foreground/80">
+                {description}
+              </p>
+
+              {/* Expected output preview */}
+              {expectedTexts.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Expected Screen
+                  </p>
+                  <div className="rounded-xl bg-black/90 px-3 py-2">
+                    {expectedTexts.map((text, i) => (
+                      <p
+                        key={i}
+                        className="font-mono text-xs leading-relaxed text-emerald-400"
+                      >
+                        {text}
+                      </p>
+                    ))}
+                    {hasBuzzer && (
+                      <p className="mt-1 font-mono text-xs text-amber-400/70">
+                        + sound effects
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Hints (collapsible) */}
+              {sortedHints.length > 0 && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setHintsExpanded((v) => !v);
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 hover:text-amber-700"
+                  >
+                    <Lightbulb className="size-3.5" />
+                    {hintsExpanded ? "Hide" : "Show"} Steps ({sortedHints.length})
+                    <ChevronDown
+                      className={cn(
+                        "size-3 transition-transform duration-200",
+                        hintsExpanded && "rotate-180",
+                      )}
+                    />
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {hintsExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="overflow-hidden"
+                      >
+                        <ol className="mt-2 space-y-2">
+                          {sortedHints.map((hint) => (
+                            <li
+                              key={hint.order}
+                              className="flex gap-2 text-xs leading-relaxed"
+                            >
+                              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[10px] font-bold text-amber-700">
+                                {hint.order}
+                              </span>
+                              <span className="text-foreground/80">
+                                {hint.text}
+                              </span>
+                            </li>
+                          ))}
+                        </ol>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+            </CardContent>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Card>
   );
 }
 
@@ -278,21 +456,20 @@ export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
   const [isPending, startTransition] = useTransition();
   const [earnedBadges, setEarnedBadges] = useState<EarnedBadge[]>([]);
 
+  // Lesson validation state
+  const [lastSimOutput, setLastSimOutput] = useState<SimulatorOutput | null>(null);
+  const [validationFeedback, setValidationFeedback] = useState<string | null>(null);
+
   // Persisted banner dismissal (survives page reloads / sessions)
   const {
-    storyDismissed,
     simBannerDismissed,
-    dismissStory,
     dismissSimBanner,
     resetBanners,
   } = useWorkshopBanners();
 
-  // Derive visible state: story shows only if there is story text AND the user
-  // has not previously dismissed it.
-  const showStory = !!lesson?.storyText && !storyDismissed;
   const showSimBanner = !simBannerDismissed;
-  // Show the "Show tips" affordance when at least one banner has been dismissed
-  const canShowTips = storyDismissed || simBannerDismissed;
+  // Show the "Show tips" affordance when the sim banner has been dismissed
+  const canShowTips = simBannerDismissed;
 
   const editorRef = useRef<BlocklyEditorHandle>(null);
 
@@ -311,10 +488,6 @@ export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
   const handleCodeChange = useCallback((python: string) => {
     setCode(python);
   }, []);
-
-  const handleDismissStory = useCallback(() => {
-    dismissStory();
-  }, [dismissStory]);
 
   const handleDismissSimBanner = useCallback(() => {
     dismissSimBanner();
@@ -351,9 +524,31 @@ export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
     });
   }, [code, lesson]);
 
+  const handleSimRunComplete = useCallback((output: SimulatorOutput) => {
+    setLastSimOutput(output);
+    setValidationFeedback(null); // Clear previous feedback on new run
+  }, []);
+
   const handleCompleteLesson = useCallback(() => {
     if (!lesson) return;
 
+    // Require at least one simulator run
+    if (!lastSimOutput) {
+      setValidationFeedback("Run your code in the simulator first!");
+      return;
+    }
+
+    // Validate output if the lesson has solution code
+    if (lesson.solutionCode) {
+      const result = validateLessonOutput(lastSimOutput, lesson.solutionCode);
+      if (!result.passed) {
+        setValidationFeedback(result.feedback);
+        return;
+      }
+    }
+
+    // Validation passed — complete the lesson
+    setValidationFeedback(null);
     startTransition(async () => {
       const result = await updateProgress(lesson.id, "completed");
       if (result.success) {
@@ -363,7 +558,7 @@ export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
         }
       }
     });
-  }, [lesson]);
+  }, [lesson, lastSimOutput]);
 
   // ---- Render --------------------------------------------------------------
 
@@ -380,6 +575,100 @@ export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
         <h1 className="text-2xl font-bold text-foreground">
           {lesson ? lesson.title : "Workshop"}
         </h1>
+
+        {/* Lesson Info sheet trigger */}
+        {lesson && lesson.storyText && (
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 rounded-xl border-primary/30 text-primary hover:bg-primary/5"
+              >
+                <BookOpen className="size-4" />
+                <span className="hidden sm:inline">Lesson Info</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>{lesson.title}</SheetTitle>
+              </SheetHeader>
+              <div className="space-y-5 px-1 pt-4">
+                {/* Description */}
+                <div>
+                  <p className="text-sm leading-relaxed text-foreground/80">
+                    {lesson.description}
+                  </p>
+                </div>
+
+                {/* Story */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="size-4 text-primary" />
+                    <h3 className="text-sm font-semibold">The Story</h3>
+                  </div>
+                  <p className="whitespace-pre-line text-sm leading-relaxed text-foreground/80">
+                    {lesson.storyText}
+                  </p>
+                </div>
+
+                {/* Hints */}
+                {lesson.hints.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Lightbulb className="size-4 text-amber-500" />
+                      <h3 className="text-sm font-semibold">Hints</h3>
+                    </div>
+                    <ol className="space-y-2">
+                      {[...lesson.hints]
+                        .sort((a, b) => a.order - b.order)
+                        .map((hint) => (
+                          <li
+                            key={hint.order}
+                            className="flex gap-2.5 rounded-xl bg-muted/40 p-3 text-sm"
+                          >
+                            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700">
+                              {hint.order}
+                            </span>
+                            <span className="leading-relaxed text-foreground/80">
+                              {hint.text}
+                            </span>
+                          </li>
+                        ))}
+                    </ol>
+                  </div>
+                )}
+
+                {/* Expected output */}
+                {lesson.solutionCode && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Target className="size-4 text-primary" />
+                      <h3 className="text-sm font-semibold">Expected Output</h3>
+                    </div>
+                    <div className="rounded-xl bg-black/90 px-3 py-2.5">
+                      {parseExpectedOutput(lesson.solutionCode).map(
+                        (text, i) => (
+                          <p
+                            key={i}
+                            className="font-mono text-xs leading-relaxed text-emerald-400"
+                          >
+                            {text}
+                          </p>
+                        ),
+                      )}
+                      {usesBuzzer(lesson.solutionCode) && (
+                        <p className="mt-1 font-mono text-xs text-amber-400/70">
+                          + sound effects
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
+        )}
 
         <TabsList className="w-fit">
           <TabsTrigger value="blocks" className="gap-1.5">
@@ -420,17 +709,38 @@ export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
             </Button>
           </motion.div>
           {lesson && !lessonCompleted && (
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                onClick={handleCompleteLesson}
-                disabled={isPending}
-                variant="outline"
-                className="gap-1.5 rounded-xl border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
-              >
-                <CheckCircle className="size-4" />
-                Complete Lesson
-              </Button>
-            </motion.div>
+            <div className="flex items-center gap-2">
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  onClick={handleCompleteLesson}
+                  disabled={isPending}
+                  variant="outline"
+                  className={cn(
+                    "gap-1.5 rounded-xl",
+                    lastSimOutput
+                      ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                      : "border-muted-foreground/30 text-muted-foreground",
+                  )}
+                >
+                  <CheckCircle className="size-4" />
+                  Complete Lesson
+                </Button>
+              </motion.div>
+              {validationFeedback && (
+                <motion.p
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="text-xs font-medium text-amber-600"
+                >
+                  {validationFeedback}
+                </motion.p>
+              )}
+              {!lastSimOutput && !validationFeedback && (
+                <p className="text-xs text-muted-foreground">
+                  Run your code first!
+                </p>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -469,16 +779,13 @@ export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
         )}
       </AnimatePresence>
 
-      {/* Lesson story (dismissible) */}
-      <AnimatePresence>
-        {showStory && lesson?.storyText && (
-          <LessonStoryCard
-            title={lesson.title}
-            storyText={lesson.storyText}
-            onDismiss={handleDismissStory}
-          />
-        )}
-      </AnimatePresence>
+      {/* Lesson story (collapsible, always present when lesson has story) */}
+      {lesson?.storyText && (
+        <LessonStoryCard
+          title={lesson.title}
+          storyText={lesson.storyText}
+        />
+      )}
 
       {/* Simulator encouragement banner (dismissible) */}
       <AnimatePresence>
@@ -523,13 +830,20 @@ export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
           </div>
         </motion.div>
 
-        {/* ---- Right column: Simulator + Device ---- */}
+        {/* ---- Right column: Goal + Simulator + Device ---- */}
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.05 }}
           className="flex flex-col gap-3 overflow-y-auto"
         >
-          <SimulatorPanel code={wrappedCode} />
+          {lesson && lesson.description && (
+            <LessonGoalPanel
+              description={lesson.description}
+              solutionCode={lesson.solutionCode}
+              hints={lesson.hints}
+            />
+          )}
+          <SimulatorPanel code={wrappedCode} onRunComplete={handleSimRunComplete} />
           <DevicePanel code={wrappedCode} />
         </motion.div>
       </div>

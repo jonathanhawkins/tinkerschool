@@ -21,6 +21,14 @@ export interface SimulatorState {
   backgroundColor: string;
 }
 
+/** Snapshot of what the simulator displayed during a code run */
+export interface SimulatorOutput {
+  /** All text strings drawn via Lcd.drawString() */
+  texts: string[];
+  /** Whether Speaker.tone() was called at least once */
+  hasBuzzer: boolean;
+}
+
 /**
  * M5StickC Plus 2 color constants mapped to CSS hex values.
  * These match the common M5.Lcd color names used in MicroPython.

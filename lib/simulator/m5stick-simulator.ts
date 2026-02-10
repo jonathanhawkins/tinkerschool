@@ -1,4 +1,5 @@
 import { M5_COLORS, M5_COLOR_VALUES } from "./types";
+import type { SimulatorOutput } from "./types";
 
 /**
  * M5StickSimulator - Browser-based canvas simulator for the M5StickC Plus 2 display.
@@ -16,6 +17,10 @@ export class M5StickSimulator {
   private backgroundColor: string = "#000000";
   private textColor: string = "#FFFFFF";
   private textSize: number = 1;
+
+  /** Output tracking -- records what was drawn for validation */
+  private drawnTexts: string[] = [];
+  private buzzerUsed: boolean = false;
 
   /** Physical display width in pixels */
   static readonly WIDTH = 135;
@@ -96,6 +101,9 @@ export class M5StickSimulator {
     this.ctx.font = `${size}px monospace`;
     this.ctx.textBaseline = "top";
     this.ctx.fillText(text, x, y);
+
+    // Track for output validation
+    this.drawnTexts.push(text);
   }
 
   /**
@@ -221,6 +229,32 @@ export class M5StickSimulator {
    */
   setTextSize(size: number): void {
     this.textSize = Math.max(1, Math.min(7, size));
+  }
+
+  /**
+   * Record that the buzzer was used (called by code runner on Speaker.tone).
+   */
+  markBuzzerUsed(): void {
+    this.buzzerUsed = true;
+  }
+
+  /**
+   * Get a snapshot of what was output during the last run.
+   * Used for lesson validation (comparing actual vs expected output).
+   */
+  getOutputSnapshot(): SimulatorOutput {
+    return {
+      texts: [...new Set(this.drawnTexts)],
+      hasBuzzer: this.buzzerUsed,
+    };
+  }
+
+  /**
+   * Clear the output tracking log. Call before each new run.
+   */
+  clearOutputLog(): void {
+    this.drawnTexts = [];
+    this.buzzerUsed = false;
   }
 
   /**

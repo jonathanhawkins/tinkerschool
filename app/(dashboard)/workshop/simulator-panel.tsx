@@ -4,6 +4,7 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { Play, Square, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import { Simulator, type SimulatorHandle } from "@/components/simulator";
 import { SimulatorCodeRunner } from "@/lib/simulator/code-runner";
+import type { SimulatorOutput } from "@/lib/simulator/types";
 import { BuzzerAudio } from "@/lib/simulator/buzzer-audio";
 import {
   BadgeCelebration,
@@ -31,6 +32,8 @@ interface SimulatorPanelProps {
   code: string;
   /** Additional CSS class for the card wrapper */
   className?: string;
+  /** Called after a successful run with the output snapshot for lesson validation */
+  onRunComplete?: (output: SimulatorOutput) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -61,6 +64,7 @@ const STATUS_CONFIG: Record<
 export default function SimulatorPanel({
   code,
   className,
+  onRunComplete,
 }: SimulatorPanelProps) {
   const simulatorRef = useRef<SimulatorHandle>(null);
   const runnerRef = useRef<SimulatorCodeRunner | null>(null);
@@ -126,12 +130,21 @@ export default function SimulatorPanel({
       runner.stop();
     }
 
+    // Clear output tracking before each run
+    const sim = simulatorRef.current?.getSimulator();
+    sim?.clearOutputLog();
+
     setStatus("running");
 
     try {
       await runner.run(code);
       // Only set "ready" if it finished naturally (not stopped)
       setStatus((prev) => (prev === "running" ? "ready" : prev));
+
+      // Capture output snapshot for lesson validation
+      if (sim && onRunComplete) {
+        onRunComplete(sim.getOutputSnapshot());
+      }
 
       // Record the simulator run server-side for badge tracking
       try {
@@ -145,7 +158,7 @@ export default function SimulatorPanel({
     } catch {
       setStatus("error");
     }
-  }, [code, ensureRunner]);
+  }, [code, ensureRunner, onRunComplete]);
 
   // -------------------------------------------------------------------------
   // Stop code
@@ -167,6 +180,7 @@ export default function SimulatorPanel({
       runner.stop();
     }
     simulatorRef.current?.clear();
+    simulatorRef.current?.getSimulator()?.clearOutputLog();
     setLedBrightness(0);
     setStatus("ready");
   }, []);

@@ -7,12 +7,14 @@ import type { LessonActivityConfig, ActivitySessionMetrics } from "@/lib/activit
 
 import { ActivityProgress } from "./activity-progress";
 import { ActivityComplete } from "./activity-complete";
+import { ChipActivityBubble } from "./chip-activity-bubble";
 import { MultipleChoice } from "./multiple-choice";
 import { CountingWidget } from "./counting-widget";
 import { MatchingPairs } from "./matching-pairs";
 import { SequenceOrder } from "./sequence-order";
 import { FlashCard } from "./flash-card";
 import { FillInBlank } from "./fill-in-blank";
+import { SoundToggle } from "./sound-toggle";
 
 // ---------------------------------------------------------------------------
 // ActivityRenderer - renders the current activity widget based on type
@@ -87,12 +89,20 @@ export function ActivityRouter({
       subjectColor={subjectColor}
       onComplete={handleComplete}
     >
-      <div className="space-y-6">
-        {/* Progress bar */}
-        <ActivityProgress />
+      <div className="relative space-y-6">
+        {/* Progress bar + sound toggle */}
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <ActivityProgress />
+          </div>
+          <SoundToggle />
+        </div>
 
         {/* Current activity widget */}
         <ActivityRenderer />
+
+        {/* Chip mascot floating companion */}
+        <ChipActivityBubble />
       </div>
     </ActivityProvider>
   );

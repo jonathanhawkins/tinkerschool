@@ -1,9 +1,15 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { Component, useCallback, useState, type ErrorInfo, type ReactNode } from "react";
+import Image from "next/image";
+import Link from "next/link";
 
 import { ActivityProvider, useActivity } from "@/lib/activities/activity-context";
 import type { LessonActivityConfig, ActivitySessionMetrics } from "@/lib/activities/types";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+
+import { SessionTimer } from "@/lib/activities/session-timer";
 
 import { ActivityProgress } from "./activity-progress";
 import { ActivityComplete } from "./activity-complete";
@@ -14,7 +20,69 @@ import { MatchingPairs } from "./matching-pairs";
 import { SequenceOrder } from "./sequence-order";
 import { FlashCard } from "./flash-card";
 import { FillInBlank } from "./fill-in-blank";
+import { NumberBond } from "./number-bond";
+import { TenFrame } from "./ten-frame";
+import { NumberLine } from "./number-line";
+import { Rekenrek } from "./rekenrek";
 import { SoundToggle } from "./sound-toggle";
+
+// ---------------------------------------------------------------------------
+// Error boundary for activity widgets
+// ---------------------------------------------------------------------------
+
+interface ActivityErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ActivityErrorBoundaryState {
+  hasError: boolean;
+}
+
+class ActivityErrorBoundary extends Component<ActivityErrorBoundaryProps, ActivityErrorBoundaryState> {
+  constructor(props: ActivityErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): ActivityErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("[ActivityErrorBoundary] Widget crashed:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Card className="rounded-2xl border-2 border-amber-300">
+          <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
+            <Image
+              src="/images/chip.png"
+              alt="Chip"
+              width={64}
+              height={64}
+              className="size-16 drop-shadow-sm"
+            />
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold text-foreground">
+                Oops! This lesson has a hiccup.
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Something went wrong with this activity. Let&apos;s try another one!
+              </p>
+            </div>
+            <Button asChild size="lg" className="rounded-xl">
+              <Link href="/">Back to Mission Control</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // ActivityRenderer - renders the current activity widget based on type
@@ -40,6 +108,14 @@ function ActivityRenderer() {
       return <FlashCard />;
     case "fill_in_blank":
       return <FillInBlank />;
+    case "number_bond":
+      return <NumberBond />;
+    case "ten_frame":
+      return <TenFrame />;
+    case "number_line":
+      return <NumberLine />;
+    case "rekenrek":
+      return <Rekenrek />;
     default:
       return (
         <p className="text-center text-sm text-muted-foreground">
@@ -60,6 +136,9 @@ interface ActivityRouterProps {
   subjectColor: string;
   /** Server action to call when the activity completes */
   onComplete?: (metrics: ActivitySessionMetrics) => Promise<void>;
+  /** Next lesson in sequence (for "Next Lesson" navigation) */
+  nextLessonId?: string;
+  nextLessonTitle?: string;
 }
 
 export function ActivityRouter({
@@ -68,6 +147,8 @@ export function ActivityRouter({
   profileId,
   subjectColor,
   onComplete,
+  nextLessonId,
+  nextLessonTitle,
 }: ActivityRouterProps) {
   const [key, setKey] = useState(0);
 
@@ -88,18 +169,23 @@ export function ActivityRouter({
       profileId={profileId}
       subjectColor={subjectColor}
       onComplete={handleComplete}
+      nextLessonId={nextLessonId}
+      nextLessonTitle={nextLessonTitle}
     >
       <div className="relative space-y-6">
-        {/* Progress bar + sound toggle */}
+        {/* Progress bar + sound toggle + timer */}
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <ActivityProgress />
           </div>
+          <SessionTimer limitMinutes={30} />
           <SoundToggle />
         </div>
 
         {/* Current activity widget */}
-        <ActivityRenderer />
+        <ActivityErrorBoundary>
+          <ActivityRenderer />
+        </ActivityErrorBoundary>
 
         {/* Chip mascot floating companion */}
         <ChipActivityBubble />

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import confetti from "canvas-confetti";
-import { Star, Trophy, Clock, Lightbulb, Sparkles, ArrowLeft, RotateCcw } from "lucide-react";
+import { Star, Trophy, Clock, Lightbulb, Sparkles, ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -77,7 +77,7 @@ interface ActivityCompleteProps {
 }
 
 export function ActivityComplete({ onRetry }: ActivityCompleteProps) {
-  const { state, totalQuestions, subjectColor, lessonId } = useActivity();
+  const { state, totalQuestions, subjectColor, lessonId, nextLessonId, nextLessonTitle } = useActivity();
   const prefersReducedMotion = useReducedMotion();
   const confettiFired = useRef(false);
   const { play } = useSound();
@@ -218,6 +218,7 @@ export function ActivityComplete({ onRetry }: ActivityCompleteProps) {
 
       {/* Action buttons */}
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+        {/* Failed: Try Again is primary */}
         {!hasPassed && onRetry && (
           <Button
             onClick={onRetry}
@@ -230,7 +231,27 @@ export function ActivityComplete({ onRetry }: ActivityCompleteProps) {
           </Button>
         )}
 
-        <Button asChild size="lg" variant={hasPassed ? "default" : "outline"} className="rounded-xl">
+        {/* Passed + has next: Next Lesson is primary */}
+        {hasPassed && nextLessonId && (
+          <Button
+            asChild
+            size="lg"
+            className="rounded-xl"
+            style={{ backgroundColor: subjectColor }}
+          >
+            <Link href={`/lessons/${nextLessonId}`}>
+              {nextLessonTitle ? `Next: ${nextLessonTitle}` : "Next Lesson"}
+              <ArrowRight className="size-4" />
+            </Link>
+          </Button>
+        )}
+
+        <Button
+          asChild
+          size="lg"
+          variant={hasPassed && nextLessonId ? "outline" : hasPassed ? "default" : "outline"}
+          className="rounded-xl"
+        >
           <Link href="/">
             <ArrowLeft className="size-4" />
             Back to Mission Control

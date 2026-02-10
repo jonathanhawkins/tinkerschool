@@ -17,6 +17,13 @@ import { isValidUUID } from "@/lib/utils";
 // Helpers
 // ---------------------------------------------------------------------------
 
+// Note: `as any` casts on .from() calls are needed because the hand-written
+// Database type's TableDefinition omits Relationships, which breaks the
+// Supabase client's type inference for insert/upsert. The interfaces
+// (ProgressInsert, ActivitySessionInsert) are still correct — only the
+// generic plumbing is off. TODO: replace hand-written types with
+// `npx supabase gen types` output to eliminate these casts.
+
 async function getSupabase() {
   try {
     return await createServerSupabaseClient();
@@ -26,6 +33,51 @@ async function getSupabase() {
     );
     return createAdminSupabaseClient();
   }
+}
+
+// ---------------------------------------------------------------------------
+// Start a lesson (create in_progress record if none exists)
+// ---------------------------------------------------------------------------
+
+export async function startLesson(lessonId: string): Promise<{ success: boolean }> {
+  if (!isValidUUID(lessonId)) {
+    return { success: false };
+  }
+
+  const { userId } = await auth();
+  if (!userId) {
+    return { success: false };
+  }
+
+  const supabase = await getSupabase();
+
+  const { data: profile } = (await supabase
+    .from("profiles")
+    .select("id")
+    .eq("clerk_id", userId)
+    .single()) as { data: { id: string } | null };
+
+  if (!profile) {
+    return { success: false };
+  }
+
+  // Only insert if no record exists (don't overwrite completed/in_progress)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase.from("progress") as any).upsert(
+    {
+      profile_id: profile.id,
+      lesson_id: lessonId,
+      status: "in_progress",
+      started_at: new Date().toISOString(),
+      attempts: 0,
+    },
+    {
+      onConflict: "profile_id, lesson_id",
+      ignoreDuplicates: true,
+    },
+  );
+
+  return { success: true };
 }
 
 // ---------------------------------------------------------------------------

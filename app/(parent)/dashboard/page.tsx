@@ -225,6 +225,27 @@ export default async function ParentDashboardPage() {
 
           <Card className="rounded-2xl">
             <CardContent className="flex items-center gap-4 py-5">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-chart-2/10">
+                <Star className="size-5 text-chart-2" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-foreground">
+                  Learning Reports
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Per-subject analytics & trends
+                </p>
+              </div>
+              <Button asChild variant="ghost" size="icon" aria-label="View learning reports">
+                <Link href="/dashboard/reports">
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl">
+            <CardContent className="flex items-center gap-4 py-5">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-chart-5/10">
                 <MessageSquare className="size-5 text-chart-5" />
               </div>

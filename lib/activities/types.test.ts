@@ -129,6 +129,10 @@ describe("parseActivityConfig", () => {
       "sequence_order",
       "flash_card",
       "fill_in_blank",
+      "number_bond",
+      "ten_frame",
+      "number_line",
+      "rekenrek",
     ];
 
     for (const type of validTypes) {
@@ -136,6 +140,98 @@ describe("parseActivityConfig", () => {
       const result = parseActivityConfig(config);
       expect(result).not.toBeNull();
     }
+  });
+
+  it("parses valid number_bond config", () => {
+    const config = {
+      activities: [
+        {
+          type: "number_bond",
+          questions: [
+            {
+              id: "nb1",
+              prompt: "Find the missing part",
+              whole: 10,
+              part1: 6,
+              part2: null,
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = parseActivityConfig(config);
+    expect(result).not.toBeNull();
+    expect(result!.activities[0].type).toBe("number_bond");
+  });
+
+  it("parses valid ten_frame config", () => {
+    const config = {
+      activities: [
+        {
+          type: "ten_frame",
+          questions: [
+            {
+              id: "tf1",
+              prompt: "Show 7",
+              targetNumber: 7,
+              frameCount: 1,
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = parseActivityConfig(config);
+    expect(result).not.toBeNull();
+    expect(result!.activities[0].type).toBe("ten_frame");
+  });
+
+  it("parses valid number_line config", () => {
+    const config = {
+      activities: [
+        {
+          type: "number_line",
+          questions: [
+            {
+              id: "nl1",
+              prompt: "Add 3 + 4",
+              min: 0,
+              max: 15,
+              startPosition: 3,
+              correctEndPosition: 7,
+              operation: "add",
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = parseActivityConfig(config);
+    expect(result).not.toBeNull();
+    expect(result!.activities[0].type).toBe("number_line");
+  });
+
+  it("parses valid rekenrek config", () => {
+    const config = {
+      activities: [
+        {
+          type: "rekenrek",
+          questions: [
+            {
+              id: "rk1",
+              prompt: "Show 8",
+              targetNumber: 8,
+              mode: "show",
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = parseActivityConfig(config);
+    expect(result).not.toBeNull();
+    expect(result!.activities[0].type).toBe("rekenrek");
   });
 });
 

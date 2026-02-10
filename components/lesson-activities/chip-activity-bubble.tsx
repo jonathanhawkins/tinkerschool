@@ -307,40 +307,8 @@ export function ChipActivityBubble() {
   }, [questionKey]);
 
   // ---------------------------------------------------------------------------
-  // Hide when activity is complete (completion screen handles celebration)
-  // ---------------------------------------------------------------------------
-  if (state.isComplete) {
-    return null;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Tap handler: dismiss message or trigger hint
-  // ---------------------------------------------------------------------------
-  const handleTap = () => {
-    if (showHintRequest && currentMessage?.type === "incorrect_hint") {
-      // The hint is handled by the ActivityFeedback component.
-      // Dismiss our message so it doesn't compete.
-      setShowHintRequest(false);
-      setCurrentMessage(null);
-      if (messageTimerRef.current) {
-        clearTimeout(messageTimerRef.current);
-      }
-      return;
-    }
-
-    // Toggle visibility / dismiss current message
-    if (currentMessage) {
-      setCurrentMessage(null);
-      if (messageTimerRef.current) {
-        clearTimeout(messageTimerRef.current);
-      }
-    } else {
-      setIsVisible((prev) => !prev);
-    }
-  };
-
-  // ---------------------------------------------------------------------------
   // Derive speech bubble color from message type
+  // (must be above early returns to respect rules of hooks)
   // ---------------------------------------------------------------------------
   const bubbleBgClass = useMemo(() => {
     if (!currentMessage) return "bg-primary/10";
@@ -375,6 +343,39 @@ export function ChipActivityBubble() {
         return "border-primary/30";
     }
   }, [currentMessage]);
+
+  // ---------------------------------------------------------------------------
+  // Hide when activity is complete (completion screen handles celebration)
+  // ---------------------------------------------------------------------------
+  if (state.isComplete) {
+    return null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tap handler: dismiss message or trigger hint
+  // ---------------------------------------------------------------------------
+  const handleTap = () => {
+    if (showHintRequest && currentMessage?.type === "incorrect_hint") {
+      // The hint is handled by the ActivityFeedback component.
+      // Dismiss our message so it doesn't compete.
+      setShowHintRequest(false);
+      setCurrentMessage(null);
+      if (messageTimerRef.current) {
+        clearTimeout(messageTimerRef.current);
+      }
+      return;
+    }
+
+    // Toggle visibility / dismiss current message
+    if (currentMessage) {
+      setCurrentMessage(null);
+      if (messageTimerRef.current) {
+        clearTimeout(messageTimerRef.current);
+      }
+    } else {
+      setIsVisible((prev) => !prev);
+    }
+  };
 
   return (
     <div

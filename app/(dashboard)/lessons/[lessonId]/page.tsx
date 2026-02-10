@@ -34,6 +34,8 @@ import {
   isInteractiveLesson,
   parseActivityConfig,
 } from "@/lib/activities/types";
+import { computeDifficulty } from "@/lib/activities/adaptive-difficulty";
+import { DeviceEnhancementCard } from "@/components/device-enhancement-card";
 import { InteractiveLesson } from "./interactive-lesson";
 
 // ---------------------------------------------------------------------------
@@ -95,6 +97,14 @@ export default async function LessonPage({
   const isCompleted = progress?.status === "completed";
   const isInProgress = progress?.status === "in_progress";
 
+  // Check if this is the user's very first lesson (for walkthrough)
+  const { count: completedCount } = await supabase
+    .from("progress")
+    .select("*", { count: "exact", head: true })
+    .eq("profile_id", profile.id)
+    .eq("status", "completed");
+  const isFirstLesson = (completedCount ?? 0) === 0;
+
   // Check if this is an interactive lesson
   const isInteractive = isInteractiveLesson(
     safeLesson.lesson_type,
@@ -103,6 +113,63 @@ export default async function LessonPage({
   const activityConfig = isInteractive
     ? parseActivityConfig(safeLesson.content)
     : null;
+
+  // Compute adaptive difficulty for interactive lessons
+  const difficulty = isInteractive
+    ? await computeDifficulty(supabase, profile.id, safeLesson.subject_id)
+    : null;
+
+  // Apply difficulty adjustments to config
+  if (activityConfig && difficulty) {
+    activityConfig.passingScore = difficulty.passingScore;
+  }
+
+  // Query next lesson for "Next Lesson" navigation
+  let nextLessonId: string | null = null;
+  let nextLessonTitle: string | null = null;
+
+  if (safeModule && safeModule.subject_id) {
+    // Try: next lesson in same module
+    const { data: nextInModule } = await supabase
+      .from("lessons")
+      .select("id, title")
+      .eq("module_id", safeModule.id)
+      .gt("order_num", safeLesson.order_num)
+      .order("order_num", { ascending: true })
+      .limit(1)
+      .single();
+
+    if (nextInModule) {
+      nextLessonId = (nextInModule as { id: string; title: string }).id;
+      nextLessonTitle = (nextInModule as { id: string; title: string }).title;
+    } else {
+      // Try: first lesson of next module in same subject/band
+      const { data: nextModule } = await supabase
+        .from("modules")
+        .select("id")
+        .eq("subject_id", safeModule.subject_id)
+        .eq("band", safeModule.band)
+        .gt("order_num", safeModule.order_num)
+        .order("order_num", { ascending: true })
+        .limit(1)
+        .single();
+
+      if (nextModule) {
+        const { data: firstLesson } = await supabase
+          .from("lessons")
+          .select("id, title")
+          .eq("module_id", (nextModule as { id: string }).id)
+          .order("order_num", { ascending: true })
+          .limit(1)
+          .single();
+
+        if (firstLesson) {
+          nextLessonId = (firstLesson as { id: string; title: string }).id;
+          nextLessonTitle = (firstLesson as { id: string; title: string }).title;
+        }
+      }
+    }
+  }
 
   // Sort hints by order
   const hints = [...(safeLesson.hints ?? [])].sort(
@@ -249,9 +316,25 @@ export default async function LessonPage({
                 profileId={profile.id}
                 subjectColor={subjectColor}
                 lessonTitle={safeLesson.title}
+                difficultyLevel={difficulty?.level ?? "standard"}
+                encouragementMessage={difficulty?.encouragementMessage}
+                isFirstLesson={isFirstLesson}
+                nextLessonId={nextLessonId}
+                nextLessonTitle={nextLessonTitle}
               />
             </CardContent>
           </Card>
+        </FadeIn>
+      )}
+
+      {/* ----- Device Enhancement (shown for interactive lessons) ----- */}
+      {isInteractive && (
+        <FadeIn delay={0.2}>
+          <DeviceEnhancementCard
+            subjectSlug={safeSubject?.slug ?? null}
+            subjectColor={subjectColor}
+            lessonTitle={safeLesson.title}
+          />
         </FadeIn>
       )}
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { CheckCircle2, Link2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -137,7 +137,7 @@ export function MatchingPairs() {
               : undefined;
 
             return (
-              <motion.button
+              <motion.div
                 key={pair.left.id}
                 initial={
                   prefersReducedMotion
@@ -146,46 +146,49 @@ export function MatchingPairs() {
                 }
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.06 }}
-                onClick={() => handleLeftSelect(pair.left.id)}
-                disabled={isMatched || allMatched}
-                className={cn(
-                  "flex min-h-[52px] w-full items-center gap-2 rounded-2xl border-2 p-3 text-left transition-all duration-200",
-                  isMatched &&
-                    "opacity-80",
-                  isSelected &&
-                    !isMatched &&
-                    "shadow-md",
-                  !isSelected &&
-                    !isMatched &&
-                    "border-border bg-card hover:border-border/80 hover:shadow-sm",
-                )}
-                style={{
-                  ...(isMatched
-                    ? {
-                        borderColor: matchColor,
-                        backgroundColor: `${matchColor}15`,
-                      }
-                    : isSelected
-                      ? {
-                          borderColor: subjectColor,
-                          backgroundColor: `${subjectColor}10`,
-                        }
-                      : undefined),
-                }}
               >
-                {pair.left.emoji && (
-                  <span className="text-xl">{pair.left.emoji}</span>
-                )}
-                <span className="flex-1 text-sm font-medium">
-                  {pair.left.text}
-                </span>
-                {isMatched && (
-                  <CheckCircle2
-                    className="size-4 shrink-0"
-                    style={{ color: matchColor }}
-                  />
-                )}
-              </motion.button>
+                <button
+                  onClick={() => handleLeftSelect(pair.left.id)}
+                  disabled={isMatched || allMatched}
+                  className={cn(
+                    "flex min-h-[52px] w-full items-center gap-2 rounded-2xl border-2 p-3 text-left transition-all duration-200",
+                    isMatched &&
+                      "opacity-80",
+                    isSelected &&
+                      !isMatched &&
+                      "shadow-md",
+                    !isSelected &&
+                      !isMatched &&
+                      "border-border bg-card hover:border-border/80 hover:shadow-sm",
+                  )}
+                  style={{
+                    ...(isMatched
+                      ? {
+                          borderColor: matchColor,
+                          backgroundColor: `${matchColor}15`,
+                        }
+                      : isSelected
+                        ? {
+                            borderColor: subjectColor,
+                            backgroundColor: `${subjectColor}10`,
+                          }
+                        : undefined),
+                  }}
+                >
+                  {pair.left.emoji && (
+                    <span className="text-xl">{pair.left.emoji}</span>
+                  )}
+                  <span className="flex-1 text-sm font-medium">
+                    {pair.left.text}
+                  </span>
+                  {isMatched && (
+                    <CheckCircle2
+                      className="size-4 shrink-0"
+                      style={{ color: matchColor }}
+                    />
+                  )}
+                </button>
+              </motion.div>
             );
           })}
         </div>
@@ -203,7 +206,7 @@ export function MatchingPairs() {
               : undefined;
 
             return (
-              <motion.button
+              <motion.div
                 key={right.id}
                 initial={
                   prefersReducedMotion
@@ -219,40 +222,43 @@ export function MatchingPairs() {
                     ? { duration: 0.4 }
                     : { delay: i * 0.06 }
                 }
-                onClick={() => handleRightSelect(right.id)}
-                disabled={isMatched || !selectedLeftId || allMatched}
-                className={cn(
-                  "flex min-h-[52px] w-full items-center gap-2 rounded-2xl border-2 p-3 text-left transition-all duration-200",
-                  isMatched && "opacity-80",
-                  !isMatched &&
-                    selectedLeftId &&
-                    "border-border bg-card hover:border-border/80 hover:shadow-sm cursor-pointer",
-                  !isMatched &&
-                    !selectedLeftId &&
-                    "border-border bg-card opacity-60",
-                )}
-                style={
-                  isMatched
-                    ? {
-                        borderColor: matchColor,
-                        backgroundColor: `${matchColor}15`,
-                      }
-                    : undefined
-                }
               >
-                {right.emoji && (
-                  <span className="text-xl">{right.emoji}</span>
-                )}
-                <span className="flex-1 text-sm font-medium">
-                  {right.text}
-                </span>
-                {isMatched && (
-                  <CheckCircle2
-                    className="size-4 shrink-0"
-                    style={{ color: matchColor }}
-                  />
-                )}
-              </motion.button>
+                <button
+                  onClick={() => handleRightSelect(right.id)}
+                  disabled={isMatched || !selectedLeftId || allMatched}
+                  className={cn(
+                    "flex min-h-[52px] w-full items-center gap-2 rounded-2xl border-2 p-3 text-left transition-all duration-200",
+                    isMatched && "opacity-80",
+                    !isMatched &&
+                      selectedLeftId &&
+                      "border-border bg-card hover:border-border/80 hover:shadow-sm cursor-pointer",
+                    !isMatched &&
+                      !selectedLeftId &&
+                      "border-border bg-card opacity-60",
+                  )}
+                  style={
+                    isMatched
+                      ? {
+                          borderColor: matchColor,
+                          backgroundColor: `${matchColor}15`,
+                        }
+                      : undefined
+                  }
+                >
+                  {right.emoji && (
+                    <span className="text-xl">{right.emoji}</span>
+                  )}
+                  <span className="flex-1 text-sm font-medium">
+                    {right.text}
+                  </span>
+                  {isMatched && (
+                    <CheckCircle2
+                      className="size-4 shrink-0"
+                      style={{ color: matchColor }}
+                    />
+                  )}
+                </button>
+              </motion.div>
             );
           })}
         </div>

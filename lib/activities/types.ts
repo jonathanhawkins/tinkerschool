@@ -17,7 +17,11 @@ export type ActivityWidgetType =
   | "matching_pairs"
   | "sequence_order"
   | "flash_card"
-  | "fill_in_blank";
+  | "fill_in_blank"
+  | "number_bond"
+  | "ten_frame"
+  | "number_line"
+  | "rekenrek";
 
 // ---------------------------------------------------------------------------
 // Shared primitives
@@ -182,6 +186,107 @@ export interface FillInBlankContent {
 }
 
 // ---------------------------------------------------------------------------
+// Math-focused widget content definitions
+// ---------------------------------------------------------------------------
+
+/** Number Bond: Part-part-whole diagram with three connected circles */
+export interface NumberBondQuestion {
+  id: string;
+  /** Instruction prompt */
+  prompt: string;
+  /** The whole (top circle) — null if student must fill */
+  whole: number | null;
+  /** First part (bottom-left) — null if student must fill */
+  part1: number | null;
+  /** Second part (bottom-right) — null if student must fill */
+  part2: number | null;
+  /** Hint text */
+  hint?: string;
+}
+
+export interface NumberBondContent {
+  type: "number_bond";
+  questions: NumberBondQuestion[];
+}
+
+/** Ten Frame: 2x5 grid for placing counters and visualizing making-10 */
+export interface TenFrameQuestion {
+  id: string;
+  /** Instruction prompt */
+  prompt: string;
+  /** For "show this number" tasks */
+  targetNumber?: number;
+  /** For addition tasks */
+  operation?: {
+    a: number;
+    b: number;
+    type: "add" | "subtract";
+  };
+  /** Highlight the "making 10" step */
+  showMakingTen?: boolean;
+  /** One frame (0-10) or two frames (0-20) */
+  frameCount: 1 | 2;
+  /** Hint text */
+  hint?: string;
+}
+
+export interface TenFrameContent {
+  type: "ten_frame";
+  questions: TenFrameQuestion[];
+}
+
+/** Number Line: Hop along a number line to solve add/subtract */
+export interface NumberLineQuestion {
+  id: string;
+  /** Instruction prompt */
+  prompt: string;
+  /** Start of number line (usually 0) */
+  min: number;
+  /** End of number line (usually 20) */
+  max: number;
+  /** Where the initial marker starts */
+  startPosition: number;
+  /** Where the marker should end up */
+  correctEndPosition: number;
+  /** Optional: force a specific jump size */
+  jumpSize?: number;
+  /** Show arc lines above the number line */
+  showJumpArcs?: boolean;
+  /** Whether adding or subtracting */
+  operation: "add" | "subtract";
+  /** Hint text */
+  hint?: string;
+}
+
+export interface NumberLineContent {
+  type: "number_line";
+  questions: NumberLineQuestion[];
+}
+
+/** Rekenrek: Virtual counting rack with 2 rows of 10 beads (5 red + 5 white) */
+export interface RekenrekQuestion {
+  id: string;
+  /** Instruction prompt */
+  prompt: string;
+  /** The number to represent */
+  targetNumber: number;
+  /** Interaction mode */
+  mode: "show" | "add" | "subtract";
+  /** Operands for add/subtract mode */
+  operands?: {
+    a: number;
+    b: number;
+  };
+  /** Hint text */
+  hint?: string;
+}
+
+export interface RekenrekContent {
+  type: "rekenrek";
+  questions: RekenrekQuestion[];
+}
+
+// ---------------------------------------------------------------------------
 // Union of all activity content types
 // ---------------------------------------------------------------------------
 
@@ -191,7 +296,11 @@ export type ActivityContent =
   | MatchingPairsContent
   | SequenceOrderContent
   | FlashCardContent
-  | FillInBlankContent;
+  | FillInBlankContent
+  | NumberBondContent
+  | TenFrameContent
+  | NumberLineContent
+  | RekenrekContent;
 
 /** A lesson may contain one or more activity steps */
 export interface LessonActivityConfig {
@@ -292,6 +401,10 @@ export function parseActivityConfig(
       "sequence_order",
       "flash_card",
       "fill_in_blank",
+      "number_bond",
+      "ten_frame",
+      "number_line",
+      "rekenrek",
     ];
 
     if (!validTypes.includes(activity.type as ActivityWidgetType)) return null;

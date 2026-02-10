@@ -47,6 +47,9 @@ interface ActivityContextValue {
   lessonId: string;
   /** Profile ID for server actions */
   profileId: string;
+  /** Next lesson in sequence (for navigation after completion) */
+  nextLessonId?: string;
+  nextLessonTitle?: string;
 }
 
 const ActivityContext = createContext<ActivityContextValue | null>(null);
@@ -110,6 +113,14 @@ function questionsInActivity(activity: ActivityContent): number {
       return activity.cards.length;
     case "fill_in_blank":
       return activity.questions.length;
+    case "number_bond":
+      return activity.questions.length;
+    case "ten_frame":
+      return activity.questions.length;
+    case "number_line":
+      return activity.questions.length;
+    case "rekenrek":
+      return activity.questions.length;
   }
 }
 
@@ -149,6 +160,9 @@ interface ActivityProviderProps {
   children: React.ReactNode;
   /** Called when the activity is fully completed */
   onComplete?: (metrics: ActivitySessionMetrics) => void;
+  /** Next lesson in sequence (for navigation after completion) */
+  nextLessonId?: string;
+  nextLessonTitle?: string;
 }
 
 export function ActivityProvider({
@@ -158,6 +172,8 @@ export function ActivityProvider({
   subjectColor,
   children,
   onComplete,
+  nextLessonId,
+  nextLessonTitle,
 }: ActivityProviderProps) {
   const [state, setState] = useState<ActivityState>(createInitialState);
 
@@ -365,6 +381,8 @@ export function ActivityProvider({
       subjectColor,
       lessonId,
       profileId,
+      nextLessonId,
+      nextLessonTitle,
     }),
     [
       config,
@@ -379,6 +397,8 @@ export function ActivityProvider({
       subjectColor,
       lessonId,
       profileId,
+      nextLessonId,
+      nextLessonTitle,
     ],
   );
 

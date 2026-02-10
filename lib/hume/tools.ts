@@ -24,9 +24,18 @@ export function createChipToolCallHandler(
     try {
       switch (name) {
         case "navigate": {
-          const params = JSON.parse(parameters) as { path: string };
-          onAction({ type: "navigate", path: params.path });
-          return send.success({ status: "navigating", path: params.path });
+          const params = JSON.parse(parameters) as { path?: string };
+          const path = params.path;
+          if (!path || typeof path !== "string" || !path.startsWith("/")) {
+            return send.error({
+              error: "Invalid path",
+              code: "invalid_params",
+              level: "warn",
+              content: `Navigate tool requires a valid path starting with "/". Got: ${JSON.stringify(path)}`,
+            });
+          }
+          onAction({ type: "navigate", path });
+          return send.success({ status: "navigating", path });
         }
 
         case "highlight_element": {

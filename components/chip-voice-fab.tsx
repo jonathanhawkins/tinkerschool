@@ -116,6 +116,7 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
     isSocketError,
     isAudioError,
     sendSessionSettings,
+    chatMetadata,
   } = useVoice();
 
   const pathname = usePathname();
@@ -126,6 +127,19 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
   const [connectError, setConnectError] = useState<string | null>(null);
   const [isAttemptingConnect, setIsAttemptingConnect] = useState(false);
   const prefersReducedMotion = useReducedMotion();
+
+  // Persist the chat group ID across reconnects so Chip remembers the
+  // conversation when the user disconnects and reconnects (or if the
+  // WebSocket drops briefly). Hume's `resumedChatGroupId` parameter
+  // tells EVI to continue from the previous chat group's context.
+  const chatGroupIdRef = useRef<string | null>(null);
+
+  // Capture the chat group ID whenever chat metadata arrives
+  useEffect(() => {
+    if (chatMetadata?.chatGroupId) {
+      chatGroupIdRef.current = chatMetadata.chatGroupId;
+    }
+  }, [chatMetadata]);
 
   // Is this a brand-new user who hasn't started any lessons?
   const isNewUser = pageContext
@@ -172,9 +186,9 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
     scrollAnchorRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Click outside to close (disabled during active voice session)
+  // Click outside to close
   useEffect(() => {
-    if (!isOpen || status === "connected") return;
+    if (!isOpen) return;
 
     function handleClickOutside(e: MouseEvent) {
       const target = e.target as Node;
@@ -184,25 +198,33 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
         fabRef.current &&
         !fabRef.current.contains(target)
       ) {
+        if (readyState === VoiceReadyState.OPEN) {
+          disconnect();
+        }
         setIsOpen(false);
       }
     }
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen, status]);
+  }, [isOpen, readyState, disconnect]);
 
   // Escape key to close
   useEffect(() => {
     if (!isOpen) return;
 
     function handleEscape(e: KeyboardEvent) {
-      if (e.key === "Escape") setIsOpen(false);
+      if (e.key === "Escape") {
+        if (readyState === VoiceReadyState.OPEN) {
+          disconnect();
+        }
+        setIsOpen(false);
+      }
     }
 
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [isOpen]);
+  }, [isOpen, readyState, disconnect]);
 
   // Build system prompt from page context + current pathname
   const systemPrompt = useMemo(() => {
@@ -221,7 +243,9 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
     sendSessionSettings({ systemPrompt });
   }, [pathname, status, systemPrompt, sendSessionSettings]);
 
-  // Connect handler — fetches a fresh token, then connects with page-aware prompt
+  // Connect handler — fetches a fresh token, then connects with page-aware prompt.
+  // If we have a previous `chatGroupId`, pass it as `resumedChatGroupId` so Hume
+  // continues from the prior conversation context instead of starting fresh.
   const tokenRef = useRef(accessToken);
   const handleConnect = useCallback(async () => {
     setConnectError(null);
@@ -236,6 +260,7 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
       await connect({
         auth: { type: "accessToken", value: tokenRef.current },
         configId,
+        resumedChatGroupId: chatGroupIdRef.current ?? undefined,
         sessionSettings: systemPrompt
           ? { type: "session_settings" as const, systemPrompt }
           : undefined,
@@ -301,7 +326,15 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
     [messages],
   );
 
-  const toggleOpen = useCallback(() => setIsOpen((prev) => !prev), []);
+  const toggleOpen = useCallback(() => {
+    setIsOpen((prev) => {
+      // When closing the panel, disconnect active voice session
+      if (prev && readyState === VoiceReadyState.OPEN) {
+        disconnect();
+      }
+      return !prev;
+    });
+  }, [readyState, disconnect]);
 
   return (
     <>
@@ -566,7 +599,9 @@ export default function ChipVoiceFab({
     (action: VoiceAction) => {
       switch (action.type) {
         case "navigate":
-          router.push(action.path);
+          if (action.path) {
+            router.push(action.path);
+          }
           break;
         case "celebrate":
           if (!prefersReducedMotionOuter) {
@@ -594,7 +629,7 @@ export default function ChipVoiceFab({
   return (
     <VoiceProvider
       onToolCall={handleToolCall}
-      clearMessagesOnDisconnect
+      clearMessagesOnDisconnect={false}
       messageHistoryLimit={50}
     >
       <FabUI

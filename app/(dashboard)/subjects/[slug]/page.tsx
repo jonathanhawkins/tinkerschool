@@ -483,34 +483,6 @@ export default async function SubjectDetailPage({
         </Card>
       </FadeIn>
 
-      {/* ----- Skills Section ----- */}
-      {safeSkills.length > 0 && (
-        <section className="space-y-4">
-          <FadeIn>
-            <div className="flex items-center gap-2">
-              <GraduationCap className="size-5 text-primary" />
-              <h2 className="text-lg font-semibold text-foreground">
-                Your Skills
-              </h2>
-            </div>
-          </FadeIn>
-
-          <FadeIn delay={0.1}>
-            <Card className="rounded-2xl">
-              <CardContent className="space-y-1 pt-4">
-                {safeSkills.map((skill) => (
-                  <SkillRow
-                    key={skill.id}
-                    skill={skill}
-                    level={proficiencyMap.get(skill.id) ?? "not_started"}
-                  />
-                ))}
-              </CardContent>
-            </Card>
-          </FadeIn>
-        </section>
-      )}
-
       {/* ----- Lessons Section ----- */}
       <section className="space-y-4">
         <FadeIn>
@@ -547,6 +519,34 @@ export default async function SubjectDetailPage({
           </Card>
         )}
       </section>
+
+      {/* ----- Skills Section ----- */}
+      {safeSkills.length > 0 && (
+        <section className="space-y-4">
+          <FadeIn>
+            <div className="flex items-center gap-2">
+              <GraduationCap className="size-5 text-primary" />
+              <h2 className="text-lg font-semibold text-foreground">
+                Your Skills
+              </h2>
+            </div>
+          </FadeIn>
+
+          <FadeIn delay={0.1}>
+            <Card className="rounded-2xl">
+              <CardContent className="space-y-1 pt-4">
+                {safeSkills.map((skill) => (
+                  <SkillRow
+                    key={skill.id}
+                    skill={skill}
+                    level={proficiencyMap.get(skill.id) ?? "not_started"}
+                  />
+                ))}
+              </CardContent>
+            </Card>
+          </FadeIn>
+        </section>
+      )}
 
       {/* ----- Back to Subjects ----- */}
       <div className="flex items-center gap-3 pt-2">

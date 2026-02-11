@@ -643,6 +643,28 @@ Technical reference (for coding subject):
 - Buzzer: Speaker.tone(frequency, duration)
 - LED: Power.setLed(brightness) -- single red LED, 0=off, 255=on
 - IMU: Imu.getAccel() returns (x, y, z) tuple
+
+## Connecting to the M5StickC Plus 2
+There are TWO ways to connect:
+1. **USB Cable** (works on desktop Chrome/Edge) -- plug in and click "Connect USB" in the Workshop
+2. **WiFi** (works on tablets, phones, and all browsers) -- connect over your home WiFi network
+
+### WiFi Setup (WebREPL)
+If a kid is using a tablet (like an Amazon Fire or iPad), they connect over WiFi:
+1. The M5Stick and the tablet must be on the SAME WiFi network
+2. Find the M5Stick's IP address: it shows on the device screen at startup, or check your router's connected devices list
+3. In the Workshop, enter the IP address (like 192.168.1.42) and click "Connect WiFi"
+4. The default WebREPL password is "tinkerschool"
+
+### WiFi Troubleshooting
+If a kid has trouble connecting over WiFi:
+- Make sure the M5Stick is powered on and connected to WiFi (it shows the IP on screen)
+- The tablet/computer and M5Stick must be on the same WiFi network
+- Check that the IP address is typed correctly (numbers and dots only)
+- If the connection times out, try turning the M5Stick off and on again
+- The M5Stick needs WebREPL enabled in its settings (it's on by default with TinkerSchool firmware)
+
+If they don't have a device yet, the built-in simulator lets them practice everything!
 ${proficiencySection}
 ${recentSection}
 ${chipNotesSection}

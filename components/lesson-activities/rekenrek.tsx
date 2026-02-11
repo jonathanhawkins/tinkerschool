@@ -51,7 +51,7 @@ function BeadRow({
   }
 
   return (
-    <div className="flex items-center gap-1" role="group" aria-label={rowLabel}>
+    <div className="flex items-center gap-1.5" role="group" aria-label={rowLabel}>
       {/* Rod background */}
       <div className="relative flex items-center rounded-full bg-muted/40 px-1 py-1.5">
         {/* Active zone highlight */}
@@ -78,7 +78,7 @@ function BeadRow({
               whileTap={prefersReducedMotion ? {} : { scale: 0.9 }}
               transition={{ type: "spring", stiffness: 400, damping: 20 }}
               className={cn(
-                "relative z-10 size-8 rounded-full border-2 transition-all duration-200 sm:size-10",
+                "relative z-10 size-10 rounded-full border-2 transition-all duration-200 touch-manipulation sm:size-12",
                 isActive
                   ? "shadow-md"
                   : "opacity-60 hover:opacity-80",
@@ -98,7 +98,7 @@ function BeadRow({
               aria-label={`Bead ${i + 1}, ${color === RED ? "red" : "white"}, ${isActive ? "active" : "inactive"}`}
             >
               {/* Highlight shine */}
-              <div className="absolute left-1 top-1 size-2 rounded-full bg-white/40 sm:size-2.5" />
+              <div className="absolute left-1.5 top-1.5 size-2.5 rounded-full bg-white/40 sm:size-3" />
             </motion.button>
           );
         })}

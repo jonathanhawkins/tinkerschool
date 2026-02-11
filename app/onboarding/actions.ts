@@ -2,7 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -144,7 +144,22 @@ export async function completeOnboarding(
     redirect("/home");
   }
 
-  // 1. Create the family row (upsert to handle double-submit race condition).
+  // 1. Create a real Clerk Organization for this family.
+  // The creating user is automatically added as an org:admin member.
+  let clerkOrgId: string;
+  try {
+    const clerk = await clerkClient();
+    const org = await clerk.organizations.createOrganization({
+      name: familyName,
+      createdBy: userId,
+    });
+    clerkOrgId = org.id;
+  } catch (err) {
+    console.error("Failed to create Clerk Organization:", err);
+    return { success: false, error: "Failed to create family organization." };
+  }
+
+  // 2. Create the family row (upsert to handle double-submit race condition).
   // families.clerk_org_id has a UNIQUE constraint, so concurrent requests
   // for the same user will resolve to the same family row.
 
@@ -156,7 +171,7 @@ export async function completeOnboarding(
     null;
 
   const familyPayload: FamilyInsert = {
-    clerk_org_id: userId, // placeholder until Clerk Organization is created
+    clerk_org_id: clerkOrgId,
     name: familyName,
     coppa_consent_given: true,
     coppa_consent_at: new Date().toISOString(),
@@ -173,7 +188,7 @@ export async function completeOnboarding(
     return { success: false, error: "Failed to create family." };
   }
 
-  // 2. Create the parent profile.
+  // 3. Create the parent profile.
   const parentPayload: ProfileInsert = {
     clerk_id: userId,
     family_id: family.id,
@@ -192,7 +207,7 @@ export async function completeOnboarding(
     return { success: false, error: "Failed to create parent profile." };
   }
 
-  // 3. Create the kid profile.
+  // 4. Create the kid profile.
   // In production this would create a Clerk managed user under the
   // parent's Organization. For now we use a cryptographically random ID.
   const kidClerkId = `kid_${randomUUID()}`;
@@ -219,7 +234,7 @@ export async function completeOnboarding(
     return { success: false, error: "Failed to create kid profile." };
   }
 
-  // 4. Create a default learning profile for the kid.
+  // 5. Create a default learning profile for the kid.
   // Uses the admin client because the RLS insert policy on learning_profiles
   // requires the requesting user's clerk_id to match the profile -- but during
   // onboarding the parent (not the kid) is the authenticated user.
@@ -267,7 +282,7 @@ export async function updateDeviceMode(
   }
 
   // Validate device_mode value
-  if (!["usb", "simulator", "none"].includes(deviceMode)) {
+  if (!["usb", "wifi", "simulator", "none"].includes(deviceMode)) {
     return { success: false, error: "Invalid device mode." };
   }
 
@@ -344,4 +359,137 @@ export async function getStarterLessonId(
     .single()) as { data: { id: string } | null };
 
   return firstLesson?.id ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Check if the current user was invited to an existing family
+// ---------------------------------------------------------------------------
+
+interface InvitedParentInfo {
+  isInvitedParent: boolean;
+  familyName?: string;
+  orgId?: string;
+}
+
+/**
+ * Checks if the authenticated user has an existing Clerk Organization
+ * membership (meaning they were invited to join a family). Used by the
+ * onboarding page to show a simplified flow for invited parents.
+ */
+export async function checkInvitedParentStatus(): Promise<InvitedParentInfo> {
+  const { userId } = await auth();
+  if (!userId) {
+    return { isInvitedParent: false };
+  }
+
+  try {
+    const clerk = await clerkClient();
+    const memberships = await clerk.users.getOrganizationMembershipList({
+      userId,
+    });
+
+    if (memberships.totalCount > 0 && memberships.data.length > 0) {
+      const firstOrg = memberships.data[0].organization;
+      return {
+        isInvitedParent: true,
+        familyName: firstOrg.name,
+        orgId: firstOrg.id,
+      };
+    }
+  } catch (err) {
+    console.error("Failed to check org memberships:", err);
+  }
+
+  return { isInvitedParent: false };
+}
+
+// ---------------------------------------------------------------------------
+// Complete invited parent onboarding (simplified flow)
+// ---------------------------------------------------------------------------
+
+export async function completeInvitedParentOnboarding(
+  formData: FormData,
+): Promise<OnboardingResult> {
+  const { userId } = await auth();
+  if (!userId) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  const displayName = (formData.get("display_name") as string | null)?.trim();
+  if (!displayName) {
+    return { success: false, error: "Display name is required." };
+  }
+  if (displayName.length > MAX_NAME_LENGTH) {
+    return { success: false, error: `Name must be ${MAX_NAME_LENGTH} characters or fewer.` };
+  }
+  if (!NAME_PATTERN.test(displayName)) {
+    return { success: false, error: "Name can only contain letters, numbers, spaces, hyphens, and apostrophes." };
+  }
+
+  // Look up the user's org membership to find the family
+  let clerkOrgId: string;
+  try {
+    const clerk = await clerkClient();
+    const memberships = await clerk.users.getOrganizationMembershipList({
+      userId,
+    });
+
+    if (memberships.totalCount === 0 || memberships.data.length === 0) {
+      return { success: false, error: "No family invitation found." };
+    }
+
+    clerkOrgId = memberships.data[0].organization.id;
+  } catch (err) {
+    console.error("Failed to look up org membership:", err);
+    return { success: false, error: "Failed to look up family invitation." };
+  }
+
+  // Find the family record for this org
+  const supabase = await createServerSupabaseClient();
+  const { data: family } = (await supabase
+    .from("families")
+    .select("id")
+    .eq("clerk_org_id", clerkOrgId)
+    .single()) as { data: { id: string } | null };
+
+  if (!family) {
+    return { success: false, error: "Family not found. The invitation may still be processing." };
+  }
+
+  // Check if profile already exists (webhook may have created it)
+  const { data: existingProfile } = (await supabase
+    .from("profiles")
+    .select("id")
+    .eq("clerk_id", userId)
+    .single()) as { data: { id: string } | null };
+
+  if (existingProfile) {
+    // Profile already exists (webhook created it) -- just update the display name
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("profiles") as any)
+      .update({ display_name: displayName })
+      .eq("id", existingProfile.id);
+    return { success: true };
+  }
+
+  // Create the parent profile
+  const parentPayload: ProfileInsert = {
+    clerk_id: userId,
+    family_id: family.id,
+    display_name: displayName,
+    avatar_id: "parent",
+    role: "parent",
+    current_band: 0,
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: profileError } = await (supabase.from("profiles") as any).insert(
+    parentPayload,
+  );
+
+  if (profileError) {
+    return { success: false, error: "Failed to create profile." };
+  }
+
+  return { success: true };
 }

@@ -88,39 +88,69 @@ export function CountingWidget() {
         </p>
       </div>
 
-      {/* Emoji grid - tap to count */}
-      <div className="flex flex-wrap justify-center gap-3 rounded-2xl bg-muted/20 p-6">
-        {items.map((index) => {
-          const isTapped = tappedItems.has(index);
-          return (
-            <motion.button
-              key={index}
-              initial={
-                prefersReducedMotion
-                  ? { opacity: 1 }
-                  : { opacity: 0, scale: 0.5 }
-              }
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: index * 0.05, duration: 0.2 }}
-              whileTap={prefersReducedMotion ? {} : { scale: 0.85 }}
-              onClick={() => handleTapItem(index)}
-              disabled={
-                state.showingFeedback && state.feedbackType === "correct"
-              }
-              className={cn(
-                "flex size-16 items-center justify-center rounded-2xl border-2 text-3xl transition-all duration-200",
-                isTapped
-                  ? "border-primary bg-primary/10 shadow-md"
-                  : "border-transparent bg-card hover:border-border hover:shadow-sm",
-              )}
-              aria-label={`${question.emoji} item ${index + 1}${isTapped ? ", counted" : ""}`}
-            >
-              <span className={cn(isTapped && "scale-110 transition-transform")}>
-                {question.emoji}
-              </span>
-            </motion.button>
-          );
-        })}
+      {/* Emoji grid - tap to count, grouped in rows of 5 */}
+      <div className="space-y-1 rounded-2xl bg-muted/20 p-4 sm:p-6">
+        {Array.from(
+          { length: Math.ceil(items.length / 5) },
+          (_, rowIdx) => {
+            const rowStart = rowIdx * 5;
+            const rowItems = items.slice(rowStart, rowStart + 5);
+            // Extra gap between every pair of rows (groups of 10)
+            const isGroupBoundary = rowIdx > 0 && rowIdx % 2 === 0;
+
+            return (
+              <div
+                key={rowIdx}
+                className={cn(
+                  "flex justify-center gap-2.5",
+                  isGroupBoundary && "mt-3",
+                )}
+              >
+                {rowItems.map((index) => {
+                  const isTapped = tappedItems.has(index);
+                  return (
+                    <motion.button
+                      key={index}
+                      initial={
+                        prefersReducedMotion
+                          ? { opacity: 1 }
+                          : { opacity: 0, scale: 0.5 }
+                      }
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{
+                        delay: index * 0.03,
+                        duration: 0.2,
+                      }}
+                      whileTap={
+                        prefersReducedMotion ? {} : { scale: 0.85 }
+                      }
+                      onClick={() => handleTapItem(index)}
+                      disabled={
+                        state.showingFeedback &&
+                        state.feedbackType === "correct"
+                      }
+                      className={cn(
+                        "flex size-12 items-center justify-center rounded-xl border-2 text-2xl transition-all duration-200 touch-manipulation sm:size-14 sm:text-3xl",
+                        isTapped
+                          ? "border-primary bg-primary/10 shadow-md"
+                          : "border-transparent bg-card hover:border-border hover:shadow-sm",
+                      )}
+                      aria-label={`${question.emoji} item ${index + 1}${isTapped ? ", counted" : ""}`}
+                    >
+                      <span
+                        className={cn(
+                          isTapped && "scale-110 transition-transform",
+                        )}
+                      >
+                        {question.emoji}
+                      </span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            );
+          },
+        )}
       </div>
 
       {/* Counter controls */}

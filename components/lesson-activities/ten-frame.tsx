@@ -37,7 +37,7 @@ function Frame({
   frameOffset: number;
 }) {
   return (
-    <div className="grid grid-cols-5 gap-1.5 rounded-2xl border-2 border-border bg-muted/20 p-3 sm:gap-2 sm:p-4">
+    <div className="grid grid-cols-5 gap-2 rounded-2xl border-2 border-border bg-muted/20 p-3 sm:gap-2.5 sm:p-4">
       {cells.map((cell, i) => {
         const filled = cell !== null;
         const color = cell === "b" ? secondColor : subjectColor;
@@ -50,7 +50,7 @@ function Frame({
             onClick={() => onToggle(frameOffset + i)}
             disabled={disabled}
             className={cn(
-              "flex size-12 items-center justify-center rounded-xl border-2 text-lg font-bold transition-all duration-200 sm:size-14",
+              "flex size-12 items-center justify-center rounded-xl border-2 text-lg font-bold transition-all duration-200 touch-manipulation sm:size-14",
               filled
                 ? "border-transparent shadow-sm"
                 : "border-dashed border-border/60 bg-card hover:border-border",

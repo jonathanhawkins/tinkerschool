@@ -22,6 +22,7 @@ import {
   Shield,
   Sparkles,
   Usb,
+  Wifi,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -55,7 +56,7 @@ interface AvatarOption {
   label: string;
 }
 
-type DeviceMode = "usb" | "simulator" | "none";
+type DeviceMode = "usb" | "wifi" | "simulator" | "none";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -1019,12 +1020,13 @@ interface StepDeviceProps {
 
 function StepDevice({ childName, onDeviceModeSelected }: StepDeviceProps) {
   const [selectedPath, setSelectedPath] = useState<
-    "have" | "not_yet" | "whats_that" | null
+    "have" | "have_wifi" | "not_yet" | "whats_that" | null
   >(null);
   const [connectionStatus, setConnectionStatus] = useState<
     "idle" | "connecting" | "testing" | "success" | "error"
   >("idle");
   const [connectionError, setConnectionError] = useState("");
+  const [wifiIP, setWifiIP] = useState("");
 
   // Check Web Serial support on mount
   const [serialSupported, setSerialSupported] = useState(false);
@@ -1227,6 +1229,108 @@ function StepDevice({ childName, onDeviceModeSelected }: StepDeviceProps) {
   }
 
   // ---------------------------------------------------------------------------
+  // Path: "I have one!" -- WiFi connection UI
+  // ---------------------------------------------------------------------------
+
+  if (selectedPath === "have_wifi") {
+    return (
+      <div className="flex flex-col gap-4 py-4">
+        <div className="flex flex-col items-center gap-1 text-center">
+          <h2 className="text-xl font-semibold text-foreground">
+            Connect Over WiFi
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Connect your M5Stick wirelessly
+          </p>
+        </div>
+
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
+            <Wifi className="size-8 text-primary" />
+          </div>
+
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <p className="text-center font-medium text-foreground">
+              How to find your M5Stick&apos;s IP address:
+            </p>
+            <ol className="space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                  1
+                </span>
+                Turn on your M5Stick and connect it to your WiFi network
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                  2
+                </span>
+                The IP address shows on the M5Stick screen at startup (e.g. 192.168.1.42)
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                  3
+                </span>
+                Make sure this device is on the same WiFi network
+              </li>
+            </ol>
+          </div>
+
+          <div className="flex w-full max-w-xs flex-col gap-3">
+            <Input
+              type="text"
+              placeholder="M5Stick IP (e.g. 192.168.1.42)"
+              value={wifiIP}
+              onChange={(e) => setWifiIP(e.target.value)}
+              className="rounded-xl text-center text-sm"
+              inputMode="decimal"
+              autoComplete="off"
+            />
+            <Button
+              size="lg"
+              onClick={() => {
+                const ip = wifiIP.trim();
+                if (ip && /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
+                  // Save IP for later use in the Workshop
+                  if (typeof localStorage !== "undefined") {
+                    localStorage.setItem("tinkerschool-wifi-ip", ip);
+                  }
+                  onDeviceModeSelected("wifi");
+                }
+              }}
+              disabled={!wifiIP.trim() || !/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(wifiIP.trim())}
+              className="rounded-xl"
+            >
+              <Wifi className="size-4" />
+              Continue with WiFi
+            </Button>
+          </div>
+
+          <p className="text-center text-xs text-muted-foreground">
+            You can always change this later in the Workshop.
+            The default WiFi password is <span className="font-semibold">tinkerschool</span>.
+          </p>
+        </div>
+
+        {/* Skip / back options */}
+        <div className="flex flex-col items-center gap-1">
+          <button
+            onClick={() => onDeviceModeSelected("simulator")}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            Skip -- use simulator instead
+          </button>
+          <button
+            onClick={() => setSelectedPath(null)}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            Back to options
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // Path: "What's that?" -- explanation
   // ---------------------------------------------------------------------------
 
@@ -1296,7 +1400,7 @@ function StepDevice({ childName, onDeviceModeSelected }: StepDeviceProps) {
       </div>
 
       <div className="flex flex-col gap-3">
-        {/* Path A: I have one! */}
+        {/* Path A: Connect via USB (only on browsers with Web Serial) */}
         {serialSupported && (
           <motion.button
             initial={{ opacity: 0, y: 10 }}
@@ -1310,20 +1414,48 @@ function StepDevice({ childName, onDeviceModeSelected }: StepDeviceProps) {
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">
-                I have one!
+                Connect via USB
               </p>
               <p className="text-xs text-muted-foreground">
-                Let&apos;s connect it right now via USB
+                Plug in your M5Stick with a USB cable
               </p>
             </div>
           </motion.button>
         )}
 
-        {/* Path B: Not yet */}
+        {/* Path B: Connect via WiFi (shown on ALL devices, prominent on tablets) */}
         <motion.button
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
+          transition={{ delay: serialSupported ? 0.1 : 0.05 }}
+          onClick={() => setSelectedPath("have_wifi")}
+          className={cn(
+            "flex items-center gap-3 rounded-2xl border-2 p-4 text-left transition-all duration-200 hover:border-primary hover:bg-primary/5",
+            !serialSupported
+              ? "border-primary/30 bg-primary/5"
+              : "border-transparent bg-muted/40",
+          )}
+        >
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
+            <Wifi className="size-5 text-emerald-500" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              Connect via WiFi
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {!serialSupported
+                ? "Best for tablets -- connect wirelessly over your home network"
+                : "Connect wirelessly over your home WiFi network"}
+            </p>
+          </div>
+        </motion.button>
+
+        {/* Path C: No device yet */}
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: serialSupported ? 0.15 : 0.1 }}
           onClick={() => onDeviceModeSelected("simulator")}
           className="flex items-center gap-3 rounded-2xl border-2 border-transparent bg-muted/40 p-4 text-left transition-all duration-200 hover:border-primary hover:bg-primary/5"
         >
@@ -1332,7 +1464,7 @@ function StepDevice({ childName, onDeviceModeSelected }: StepDeviceProps) {
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">
-              Not yet
+              No device yet
             </p>
             <p className="text-xs text-muted-foreground">
               Use the built-in simulator to start learning
@@ -1340,11 +1472,11 @@ function StepDevice({ childName, onDeviceModeSelected }: StepDeviceProps) {
           </div>
         </motion.button>
 
-        {/* Path C: What's that? */}
+        {/* Path D: What's that? */}
         <motion.button
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
+          transition={{ delay: serialSupported ? 0.2 : 0.15 }}
           onClick={() => setSelectedPath("whats_that")}
           className="flex items-center gap-3 rounded-2xl border-2 border-transparent bg-muted/40 p-4 text-left transition-all duration-200 hover:border-primary hover:bg-primary/5"
         >
@@ -1362,12 +1494,14 @@ function StepDevice({ childName, onDeviceModeSelected }: StepDeviceProps) {
         </motion.button>
       </div>
 
-      {/* Browser compatibility notice */}
+      {/* Tablet hint */}
       {!serialSupported && (
-        <p className="text-center text-xs text-muted-foreground">
-          USB device connection requires Chrome or Edge browser.
-          You can still use the simulator in any browser.
-        </p>
+        <div className="flex items-center gap-2 rounded-xl bg-accent px-3 py-2 text-xs text-muted-foreground">
+          <Wifi className="size-4 shrink-0" />
+          <span>
+            On tablets, connect your M5Stick over WiFi. USB connection requires a desktop with Chrome or Edge.
+          </span>
+        </div>
       )}
     </div>
   );

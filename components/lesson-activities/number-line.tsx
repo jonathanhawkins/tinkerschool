@@ -164,10 +164,10 @@ export function NumberLine() {
               <button
                 key={n}
                 className={cn(
-                  "absolute top-6 flex -translate-x-1/2 flex-col items-center",
+                  "absolute top-6 flex -translate-x-1/2 flex-col items-center px-1 py-0.5 touch-manipulation",
                   isCorrectFeedback ? "cursor-default" : "cursor-pointer",
                 )}
-                style={{ left: `${pct}%` }}
+                style={{ left: `${pct}%`, minWidth: "24px", minHeight: "44px" }}
                 onClick={() => handleTickClick(n)}
                 disabled={isCorrectFeedback}
                 aria-label={`Number ${n}${isCurrent ? ", current position" : ""}`}

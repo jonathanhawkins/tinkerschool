@@ -15,17 +15,44 @@ import { ActivityFeedback } from "./activity-feedback";
 // FillInBlank - Complete a sentence or equation with typed/tapped answer
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Normalize fill_in_blank data — seed migrations use 3 different schemas:
+//   1. { template, correctAnswer }          (migrations 015-016)
+//   2. { prompt, blanks: [{ correctAnswer }] } (migrations 018-021)
+//   3. { sentence, correctAnswer }           (migrations 022-025)
+// ---------------------------------------------------------------------------
+interface RawFillInBlankQuestion {
+  id: string;
+  template?: string;
+  prompt?: string;
+  sentence?: string;
+  correctAnswer?: string;
+  acceptableAnswers?: string[];
+  blanks?: { id: string; correctAnswer: string; acceptableAnswers?: string[] }[];
+  hint?: string;
+  wordBank?: string[];
+}
+
+function normalizeQuestion(raw: RawFillInBlankQuestion) {
+  const templateText = raw.template ?? raw.sentence ?? raw.prompt ?? "___";
+  const correctAnswer =
+    raw.correctAnswer ?? raw.blanks?.[0]?.correctAnswer ?? "";
+  const acceptableAnswers =
+    raw.acceptableAnswers ?? raw.blanks?.[0]?.acceptableAnswers ?? [];
+  return { ...raw, template: templateText, correctAnswer, acceptableAnswers };
+}
+
 export function FillInBlank() {
   const { currentActivity, state, recordAnswer, subjectColor } = useActivity();
   const { play } = useSound();
   const activity = currentActivity as FillInBlankContent;
-  const question = activity.questions[state.currentQuestionIndex];
+  const rawQuestion = activity.questions[state.currentQuestionIndex] as unknown as RawFillInBlankQuestion | undefined;
   const prefersReducedMotion = useReducedMotion();
 
   const [answer, setAnswer] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const questionKey = question?.id ?? state.currentQuestionIndex;
+  const questionKey = rawQuestion?.id ?? state.currentQuestionIndex;
 
   // Auto-focus the input on mount / question change
   useEffect(() => {
@@ -33,7 +60,9 @@ export function FillInBlank() {
     inputRef.current?.focus();
   }, [questionKey]);
 
-  if (!question) return null;
+  if (!rawQuestion) return null;
+
+  const question = normalizeQuestion(rawQuestion);
 
   // Split template on "___" to render the blank inline
   const parts = question.template.split("___");
@@ -92,7 +121,7 @@ export function FillInBlank() {
                     state.showingFeedback && state.feedbackType === "correct"
                   }
                   className={cn(
-                    "inline-block w-24 rounded-xl border-2 border-dashed bg-card px-3 py-2 text-center text-xl font-bold outline-none transition-colors",
+                    "inline-block w-24 rounded-xl border-2 border-dashed bg-card px-3 py-2.5 text-center text-xl font-bold outline-none transition-colors",
                     "focus:border-solid",
                     state.showingFeedback && state.feedbackType === "correct"
                       ? "border-emerald-400 bg-emerald-500/10 text-emerald-700"
@@ -130,7 +159,7 @@ export function FillInBlank() {
                   state.showingFeedback && state.feedbackType === "correct"
                 }
                 className={cn(
-                  "rounded-xl border-2 px-4 py-2 text-sm font-medium transition-all duration-200",
+                  "rounded-xl border-2 px-5 py-2.5 text-base font-medium transition-all duration-200 touch-manipulation",
                   answer.toLowerCase() === word.toLowerCase()
                     ? "shadow-sm"
                     : "border-border bg-card hover:border-border/80 hover:shadow-sm",

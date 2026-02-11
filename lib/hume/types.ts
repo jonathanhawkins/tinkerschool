@@ -27,7 +27,7 @@ export interface VoicePageContext {
   gradeLevel: number;
   currentStreak: number;
   xp: number;
-  deviceMode: "usb" | "simulator" | "none";
+  deviceMode: "usb" | "wifi" | "simulator" | "none";
   inProgressLesson?: { title: string; subject: string; id: string };
   subjects: { name: string; slug: string }[];
   completedLessonCount: number;

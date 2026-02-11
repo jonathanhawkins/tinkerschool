@@ -4,7 +4,7 @@ import { Component, useCallback, useState, type ErrorInfo, type ReactNode } from
 import Image from "next/image";
 import Link from "next/link";
 
-import { ActivityProvider, useActivity } from "@/lib/activities/activity-context";
+import { ActivityProvider, useActivity, type MilestoneNudgeData } from "@/lib/activities/activity-context";
 import type { LessonActivityConfig, ActivitySessionMetrics } from "@/lib/activities/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -139,6 +139,8 @@ interface ActivityRouterProps {
   /** Next lesson in sequence (for "Next Lesson" navigation) */
   nextLessonId?: string;
   nextLessonTitle?: string;
+  /** Milestone nudge data (parent-facing supporter nudge) */
+  milestoneNudge?: MilestoneNudgeData;
 }
 
 export function ActivityRouter({
@@ -149,6 +151,7 @@ export function ActivityRouter({
   onComplete,
   nextLessonId,
   nextLessonTitle,
+  milestoneNudge,
 }: ActivityRouterProps) {
   const [key, setKey] = useState(0);
 
@@ -171,6 +174,7 @@ export function ActivityRouter({
       onComplete={handleComplete}
       nextLessonId={nextLessonId}
       nextLessonTitle={nextLessonTitle}
+      milestoneNudge={milestoneNudge}
     >
       <div className="relative space-y-6">
         {/* Progress bar + sound toggle + timer */}

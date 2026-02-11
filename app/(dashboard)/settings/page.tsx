@@ -12,15 +12,20 @@ import {
   Shield,
   ExternalLink,
   RotateCcw,
+  Heart,
+  ArrowRight,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
 import { DevResetButton } from "./dev-reset-button";
+import { FamilySection } from "./invite-co-parent";
+import { listFamilyParents, listPendingInvitations } from "./invite-actions";
 
 export const metadata: Metadata = { title: "Settings" };
 
 import { requireAuth } from "@/lib/auth/require-auth";
+import { getFamilyTier } from "@/lib/stripe/get-family-tier";
 import { FadeIn, Stagger, StaggerItem } from "@/components/motion";
 import type { Profile } from "@/lib/supabase/types";
 import {
@@ -77,7 +82,15 @@ export default async function SettingsPage() {
 
   const safeMembers: Profile[] = familyMembers ?? [];
   const kidProfiles = safeMembers.filter((m) => m.role === "kid");
-  const parentProfile = safeMembers.find((m) => m.role === "parent") ?? profile;
+  const parentProfiles = safeMembers.filter((m) => m.role === "parent");
+  const parentProfile = parentProfiles.find((m) => m.clerk_id === profile.clerk_id) ?? profile;
+
+  // Fetch family parents, pending invitations, and subscription tier
+  const [familyParents, pendingInvitations, familyTier] = await Promise.all([
+    listFamilyParents(),
+    listPendingInvitations(),
+    getFamilyTier(supabase, profile.family_id),
+  ]);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -128,12 +141,30 @@ export default async function SettingsPage() {
           </Card>
         </StaggerItem>
 
-        {/* ---- Kid Profiles ---- */}
+        {/* ---- Family ---- */}
         <StaggerItem>
           <Card className="rounded-2xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Users className="size-4 text-primary" />
+                Family
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FamilySection
+                initialParents={familyParents}
+                initialInvitations={pendingInvitations}
+              />
+            </CardContent>
+          </Card>
+        </StaggerItem>
+
+        {/* ---- Kid Profiles ---- */}
+        <StaggerItem>
+          <Card className="rounded-2xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <GraduationCap className="size-4 text-primary" />
                 Learner Profiles
               </CardTitle>
             </CardHeader>
@@ -329,6 +360,38 @@ export default async function SettingsPage() {
             </CardContent>
           </Card>
         </StaggerItem>
+
+        {/* ---- Support TinkerSchool (free-tier parents only) ---- */}
+        {profile.role === "parent" && familyTier === "free" && (
+          <StaggerItem>
+            <Card className="rounded-2xl border-rose-200/60 bg-rose-50/30 dark:border-rose-500/20 dark:bg-rose-950/20">
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-500/20">
+                  <Heart className="size-5 text-rose-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">
+                    Support TinkerSchool
+                  </p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                    Love TinkerSchool? Help us keep it free and open source for
+                    every family.
+                  </p>
+                </div>
+                <Button
+                  asChild
+                  size="sm"
+                  className="shrink-0 gap-1.5 rounded-xl bg-rose-500 text-white hover:bg-rose-600"
+                >
+                  <Link href="/dashboard/billing">
+                    Support
+                    <ArrowRight className="size-3.5" />
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </StaggerItem>
+        )}
 
         {/* ---- Parent Dashboard link ---- */}
         <StaggerItem>

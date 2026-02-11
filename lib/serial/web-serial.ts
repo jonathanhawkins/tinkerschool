@@ -2,29 +2,35 @@
  * WebSerialManager -- manages the Web Serial API connection to the
  * M5StickC Plus 2 device.
  *
+ * Implements the DeviceTransport interface so it can be used
+ * interchangeably with WiFi WebREPL on tablets.
+ *
  * This is a pure TypeScript class with no React or Next.js dependencies.
  * It must be used exclusively in client-side code because the Web Serial
  * API is a browser-only feature.
  */
 
-import type { SerialEventCallbacks, SerialPort } from "@/lib/serial/types";
+import type { DeviceTransport, TransportType } from "@/lib/serial/device-transport";
+import type { SerialPort } from "@/lib/serial/types";
 import {
   M5STICK_SERIAL_OPTIONS,
   M5STICK_USB_FILTERS,
 } from "@/lib/serial/types";
 
-export class WebSerialManager {
+export class WebSerialManager implements DeviceTransport {
+  readonly type: TransportType = "usb-serial";
+
   private port: SerialPort | null = null;
   private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
   private readLoopActive = false;
   private _isConnected = false;
 
-  // Event callbacks
-  onData: SerialEventCallbacks["onData"] = undefined;
-  onConnect: SerialEventCallbacks["onConnect"] = undefined;
-  onDisconnect: SerialEventCallbacks["onDisconnect"] = undefined;
-  onError: SerialEventCallbacks["onError"] = undefined;
+  // Event callbacks (from DeviceTransport)
+  onData: ((data: string) => void) | undefined = undefined;
+  onConnect: (() => void) | undefined = undefined;
+  onDisconnect: (() => void) | undefined = undefined;
+  onError: ((error: Error) => void) | undefined = undefined;
 
   // Decoder for incoming bytes
   private decoder = new TextDecoder();

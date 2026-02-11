@@ -13,6 +13,7 @@ import {
   Puzzle,
   Code2,
   Bot,
+  Brain,
   Cpu,
   Globe,
   Lightbulb,
@@ -38,6 +39,7 @@ import {
   X,
   ShoppingCart,
   ExternalLink,
+  Users,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -270,6 +272,24 @@ const builderModules = [
     lessons: ["Tilt-o-Meter", "Balance Game", "Tilt Maze"],
   },
 ];
+
+const supporterPillars = [
+  {
+    icon: Brain,
+    title: "AI Tutoring",
+    description: "Powers Chip's personalized teaching for every child, every subject.",
+  },
+  {
+    icon: Heart,
+    title: "Open Source",
+    description: "Keeps the platform free for every family, everywhere.",
+  },
+  {
+    icon: Rocket,
+    title: "Future Features",
+    description: "Funds new subjects, activities, and learning tools.",
+  },
+] as const;
 
 // ---------------------------------------------------------------------------
 // Animation variants
@@ -1230,6 +1250,75 @@ export function LandingContent() {
             </Badge>
           </a>
         </motion.div>
+      </section>
+
+      {/* ================================================================= */}
+      {/* Section 6b: Supported by Families */}
+      {/* ================================================================= */}
+      <section className="relative overflow-hidden bg-primary/[0.04] px-6 py-20">
+        {/* Warm radial accent */}
+        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+          <div className="absolute left-1/2 top-1/2 h-[500px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.05] blur-3xl" />
+        </div>
+
+        <div className="relative z-10 mx-auto flex max-w-4xl flex-col items-center gap-10">
+          <motion.div
+            className="flex flex-col items-center gap-4 text-center"
+            {...motionProps(fadeInUp)}
+          >
+            <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10">
+              <Users className="size-6 text-primary" />
+            </div>
+            <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
+              Free Because of Families Like Yours
+            </h2>
+            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+              TinkerSchool is free and open source. Every lesson, every subject,
+              every AI conversation — always free. Supporters help cover the
+              cost of AI tutoring so every kid can learn, regardless of their
+              family&apos;s budget.
+            </p>
+          </motion.div>
+
+          <motion.div
+            className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3"
+            variants={prefersReducedMotion ? {} : staggerContainer}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true, margin: "-60px" }}
+          >
+            {supporterPillars.map((pillar) => (
+              <motion.div
+                key={pillar.title}
+                variants={prefersReducedMotion ? {} : staggerItem}
+              >
+                <Card className="h-full rounded-2xl border bg-card shadow-sm">
+                  <CardContent className="flex flex-col items-center gap-3 p-6 text-center">
+                    <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10">
+                      <pillar.icon className="size-5 text-primary" />
+                    </div>
+                    <h3 className="text-base font-semibold text-foreground">
+                      {pillar.title}
+                    </h3>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      {pillar.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          <motion.div {...motionProps(fadeInUp)}>
+            <Link
+              href="/support"
+              className="group inline-flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
+            >
+              Learn more about supporting TinkerSchool
+              <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
+            </Link>
+          </motion.div>
+        </div>
       </section>
 
       {/* ================================================================= */}

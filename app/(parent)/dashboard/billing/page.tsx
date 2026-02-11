@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { CheckCircle2, Heart } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getBillingInterval, type SubscriptionTier } from "@/lib/stripe/config";
 
 import { BillingActions } from "./billing-actions";
@@ -22,7 +22,9 @@ export default async function BillingPage() {
     redirect("/sign-in");
   }
 
-  const supabase = await createServerSupabaseClient();
+  // Admin client — the layout already verified auth + parent role, and billing
+  // data is family-scoped by the query (not RLS), so this is safe.
+  const supabase = createAdminSupabaseClient();
 
   // Get profile + family billing data
   const { data: profile } = (await supabase

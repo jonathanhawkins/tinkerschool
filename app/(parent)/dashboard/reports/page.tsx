@@ -15,6 +15,7 @@ import { requireAuth } from "@/lib/auth/require-auth";
 import { SubjectIcon } from "@/components/subject-icon";
 import { FadeIn, Stagger, StaggerItem } from "@/components/motion";
 import { safeColor } from "@/lib/utils";
+import { PrintButton } from "./print-button";
 import {
   Card,
   CardContent,
@@ -23,7 +24,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { Profile, Subject } from "@/lib/supabase/types";
+import type { Profile, Subject, SkillLevel } from "@/lib/supabase/types";
 
 export const metadata: Metadata = { title: "Learning Reports" };
 
@@ -50,6 +51,23 @@ interface LessonRow {
   title: string;
 }
 
+interface SkillProficiencyRow {
+  id: string;
+  profile_id: string;
+  skill_id: string;
+  level: SkillLevel;
+  attempts: number;
+  correct: number;
+  skills: { id: string; name: string; subject_id: string } | null;
+}
+
+interface SkillMastery {
+  skillId: string;
+  name: string;
+  level: SkillLevel;
+  levelValue: number;
+}
+
 interface SubjectReport {
   subject: Subject;
   sessionsCount: number;
@@ -59,14 +77,28 @@ interface SubjectReport {
   correctFirstTry: number;
   hintsUsed: number;
   recentTrend: "improving" | "stable" | "declining";
+  skills: SkillMastery[];
 }
+
+const MASTERY_ORDER: Record<SkillLevel, number> = {
+  not_started: 0,
+  beginning: 1,
+  developing: 2,
+  proficient: 3,
+  mastered: 4,
+};
 
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ kid?: string }>;
+}) {
   const { profile, supabase } = await requireAuth();
+  const { kid: selectedKidId } = await searchParams;
 
   // Fetch kid profiles
   const { data: kidProfiles } = await supabase
@@ -75,7 +107,14 @@ export default async function ReportsPage() {
     .eq("family_id", profile.family_id)
     .eq("role", "kid");
 
-  const kids = (kidProfiles ?? []) as Profile[];
+  const allKids = (kidProfiles ?? []) as Profile[];
+  const allKidIds = new Set(allKids.map((k) => k.id));
+
+  // Filter to selected kid if the param is valid, otherwise show all
+  const kids =
+    selectedKidId && allKidIds.has(selectedKidId)
+      ? allKids.filter((k) => k.id === selectedKidId)
+      : allKids;
   const kidIds = kids.map((k) => k.id);
 
   if (kidIds.length === 0) {
@@ -93,24 +132,33 @@ export default async function ReportsPage() {
     );
   }
 
-  // Fetch subjects, activity sessions, and lessons
-  const [subjectsResult, sessionsResult, lessonsResult, progressResult] =
-    await Promise.all([
-      supabase.from("subjects").select("*").order("sort_order"),
-      supabase
-        .from("activity_sessions")
-        .select(
-          "id, profile_id, lesson_id, score, total_questions, correct_first_try, correct_total, time_seconds, hints_used, created_at",
-        )
-        .in("profile_id", kidIds)
-        .order("created_at", { ascending: false }),
-      supabase.from("lessons").select("id, subject_id, title"),
-      supabase
-        .from("progress")
-        .select("*")
-        .in("profile_id", kidIds)
-        .eq("status", "completed"),
-    ]);
+  // Fetch subjects, activity sessions, lessons, and skill proficiency
+  const [
+    subjectsResult,
+    sessionsResult,
+    lessonsResult,
+    progressResult,
+    skillProfResult,
+  ] = await Promise.all([
+    supabase.from("subjects").select("*").order("sort_order"),
+    supabase
+      .from("activity_sessions")
+      .select(
+        "id, profile_id, lesson_id, score, total_questions, correct_first_try, correct_total, time_seconds, hints_used, created_at",
+      )
+      .in("profile_id", kidIds)
+      .order("created_at", { ascending: false }),
+    supabase.from("lessons").select("id, subject_id, title"),
+    supabase
+      .from("progress")
+      .select("*")
+      .in("profile_id", kidIds)
+      .eq("status", "completed"),
+    supabase
+      .from("skill_proficiency")
+      .select("*, skills(id, name, subject_id)")
+      .in("profile_id", kidIds),
+  ]);
 
   const subjects = ((subjectsResult.data ?? []) as Subject[]).map((s) => ({
     ...s,
@@ -119,6 +167,32 @@ export default async function ReportsPage() {
   const sessions = (sessionsResult.data ?? []) as ActivitySessionRow[];
   const lessons = (lessonsResult.data ?? []) as LessonRow[];
   const completedCount = (progressResult.data ?? []).length;
+  const skillProficiencies = (skillProfResult.data ??
+    []) as SkillProficiencyRow[];
+
+  // Group skill proficiencies by subject, taking the best mastery per skill
+  const skillsBySubject = new Map<string, Map<string, SkillMastery>>();
+  for (const sp of skillProficiencies) {
+    if (!sp.skills) continue;
+    const { subject_id } = sp.skills;
+    const levelValue = MASTERY_ORDER[sp.level];
+
+    if (!skillsBySubject.has(subject_id)) {
+      skillsBySubject.set(subject_id, new Map());
+    }
+    const subjectSkills = skillsBySubject.get(subject_id)!;
+    const existing = subjectSkills.get(sp.skill_id);
+
+    // Keep the highest mastery level across all kids
+    if (!existing || levelValue > existing.levelValue) {
+      subjectSkills.set(sp.skill_id, {
+        skillId: sp.skill_id,
+        name: sp.skills.name,
+        level: sp.level,
+        levelValue,
+      });
+    }
+  }
 
   // Build lesson -> subject map
   const lessonSubjectMap = new Map<string, string>();
@@ -178,6 +252,21 @@ export default async function ReportsPage() {
       else if (olderAvg - recentAvg > 5) recentTrend = "declining";
     }
 
+    // Gather skills for this subject (skip not_started)
+    const subjectSkillMap = skillsBySubject.get(subject.id);
+    const subjectSkills: SkillMastery[] = [];
+    if (subjectSkillMap) {
+      for (const skill of subjectSkillMap.values()) {
+        if (skill.level !== "not_started") {
+          subjectSkills.push(skill);
+        }
+      }
+      // Sort by mastery level descending, then alphabetically
+      subjectSkills.sort(
+        (a, b) => b.levelValue - a.levelValue || a.name.localeCompare(b.name),
+      );
+    }
+
     reports.push({
       subject,
       sessionsCount: subSessions.length,
@@ -187,6 +276,7 @@ export default async function ReportsPage() {
       correctFirstTry,
       hintsUsed,
       recentTrend,
+      skills: subjectSkills,
     });
   }
 
@@ -211,16 +301,36 @@ export default async function ReportsPage() {
 
   return (
     <div className="space-y-8">
+      {/* Print-only header -- hidden on screen, shown when printing */}
+      <div className="print-header hidden">
+        <div className="mb-6 border-b pb-4">
+          <h1 className="text-xl font-bold">TinkerSchool Learning Report</h1>
+          <p className="text-sm text-gray-600">
+            Student: {kids.map((k) => k.display_name).join(", ")} | Generated:{" "}
+            {new Date().toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </p>
+        </div>
+      </div>
+
       {/* Page header */}
       <FadeIn>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Learning Reports
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Detailed analytics for{" "}
-            {kids.map((k) => k.display_name).join(", ")}
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Learning Reports
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Detailed analytics for{" "}
+              {selectedKidId && allKidIds.has(selectedKidId)
+                ? kids[0].display_name
+                : kids.map((k) => k.display_name).join(", ")}
+            </p>
+          </div>
+          <PrintButton />
         </div>
       </FadeIn>
 
@@ -399,7 +509,7 @@ function StatCard({
 }
 
 function SubjectReportCard({ report }: { report: SubjectReport }) {
-  const { subject, sessionsCount, avgScore, totalTimeMinutes, totalQuestions, correctFirstTry, hintsUsed, recentTrend } = report;
+  const { subject, sessionsCount, avgScore, totalTimeMinutes, totalQuestions, correctFirstTry, hintsUsed, recentTrend, skills } = report;
   const firstTryRate = totalQuestions > 0 ? Math.round((correctFirstTry / totalQuestions) * 100) : 0;
 
   return (
@@ -462,6 +572,22 @@ function SubjectReportCard({ report }: { report: SubjectReport }) {
             />
           </div>
         </div>
+
+        {/* Skill mastery pills */}
+        {skills.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Skills</p>
+            <div className="flex flex-wrap gap-1.5">
+              {skills.map((skill) => (
+                <SkillPill
+                  key={skill.skillId}
+                  skill={skill}
+                  subjectColor={subject.color}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -479,6 +605,49 @@ function MiniStat({
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-lg font-semibold text-foreground">{value}</p>
     </div>
+  );
+}
+
+function SkillPill({
+  skill,
+  subjectColor,
+}: {
+  skill: SkillMastery;
+  subjectColor: string;
+}) {
+  // Mastery-based styling using subject color
+  const styles: Record<
+    Exclude<SkillLevel, "not_started">,
+    { backgroundColor: string; color: string }
+  > = {
+    mastered: {
+      backgroundColor: subjectColor,
+      color: "#ffffff",
+    },
+    proficient: {
+      backgroundColor: `${subjectColor}4D`, // 30% opacity
+      color: subjectColor,
+    },
+    developing: {
+      backgroundColor: "var(--muted)",
+      color: "var(--foreground)",
+    },
+    beginning: {
+      backgroundColor: "color-mix(in srgb, var(--muted) 60%, transparent)",
+      color: "var(--muted-foreground)",
+    },
+  };
+
+  const style = styles[skill.level as Exclude<SkillLevel, "not_started">];
+
+  return (
+    <span
+      className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
+      style={style}
+      title={`${skill.name}: ${skill.level.replace("_", " ")}`}
+    >
+      {skill.name}
+    </span>
   );
 }
 

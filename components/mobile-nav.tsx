@@ -17,24 +17,41 @@ import {
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 
+/**
+ * Items shown in the bottom tab nav -- the hamburger menu only shows
+ * additional pages not covered by the bottom nav.
+ */
+const BOTTOM_NAV_HREFS = new Set([
+  "/home",
+  "/subjects",
+  "/workshop",
+  "/achievements",
+  "/settings",
+]);
+
 export function MobileNav() {
   const items = navItems;
+  // Items not in the bottom tab nav -- these go in the hamburger drawer
+  const drawerItems = items.filter((item) => !BOTTOM_NAV_HREFS.has(item.href));
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
   return (
     <>
-      {/* Mobile header bar - visible on small/medium screens, hidden on lg+ */}
-      <header className="flex h-16 items-center gap-3 border-b border-border bg-sidebar px-4 lg:hidden">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-10"
-          onClick={() => setOpen(true)}
-          aria-label="Open navigation menu"
-        >
-          <Menu className="size-6" />
-        </Button>
+      {/* Mobile/tablet header bar - visible on small/medium screens, hidden on lg+ */}
+      <header className="flex h-14 items-center gap-3 border-b border-border bg-sidebar px-4 lg:hidden">
+        {/* Hamburger menu -- only needed for overflow nav items */}
+        {drawerItems.length > 0 && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-10 touch-manipulation"
+            onClick={() => setOpen(true)}
+            aria-label="Open navigation menu"
+          >
+            <Menu className="size-5" />
+          </Button>
+        )}
         <div className="flex items-center gap-2">
           <Image
             src="/images/chip.png"
@@ -47,7 +64,7 @@ export function MobileNav() {
         </div>
       </header>
 
-      {/* Sheet drawer from left */}
+      {/* Sheet drawer for overflow items not in bottom nav */}
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="left" className="w-72 p-0">
           <SheetHeader className="px-4 pt-6 pb-2">
@@ -68,7 +85,7 @@ export function MobileNav() {
           </SheetHeader>
           <Separator />
           <nav className="flex flex-col gap-1.5 p-4">
-            {items.map((item) => {
+            {drawerItems.map((item) => {
               const isActive =
                 pathname === item.href || pathname.startsWith(item.href + "/");
               const Icon = item.icon;
@@ -79,7 +96,7 @@ export function MobileNav() {
                   href={item.href}
                   onClick={() => setOpen(false)}
                   className={cn(
-                    "flex h-12 items-center gap-3 rounded-xl px-4 text-base font-medium transition-colors",
+                    "flex h-12 items-center gap-3 rounded-xl px-4 text-base font-medium transition-colors touch-manipulation",
                     "hover:bg-accent hover:text-accent-foreground",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     isActive &&

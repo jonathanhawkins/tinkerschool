@@ -105,8 +105,10 @@ export async function POST(request: Request) {
         const clerkOrgId = memberData.organization.id;
         const orgName = memberData.organization.name;
         const clerkUserId = memberData.public_user_data.user_id;
-        const firstName =
-          memberData.public_user_data.first_name || "Member";
+        const displayName = [
+          memberData.public_user_data.first_name,
+          memberData.public_user_data.last_name,
+        ].filter(Boolean).join(" ") || "Member";
         const isAdmin = memberData.role === "org:admin";
 
         // Upsert the family record
@@ -139,7 +141,7 @@ export async function POST(request: Request) {
           await (supabase.from("profiles") as any).insert({
             clerk_id: clerkUserId,
             family_id: family.id,
-            display_name: firstName,
+            display_name: displayName,
             avatar_id: "chip",
             role: isAdmin ? "parent" : "kid",
             current_band: isAdmin ? 0 : 2,

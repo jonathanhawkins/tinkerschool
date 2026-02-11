@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Nunito, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 
+import ChipVoiceGlobal from "@/components/chip-voice-global";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -65,6 +66,7 @@ export default function RootLayout({
           className={`${nunito.variable} ${geistMono.variable} font-sans antialiased`}
         >
           {children}
+          <ChipVoiceGlobal />
         </body>
       </html>
     </ClerkProvider>

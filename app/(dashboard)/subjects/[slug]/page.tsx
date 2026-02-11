@@ -9,6 +9,7 @@ import {
   Circle,
   Clock,
   Monitor,
+  Play,
   Star,
   Sparkles,
   GraduationCap,
@@ -247,7 +248,14 @@ function LessonRow({
         )}
       </div>
 
-      <StatusBadge status={status} />
+      {status === "in_progress" ? (
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground shadow-sm">
+          <Play className="size-3" />
+          Continue
+        </span>
+      ) : (
+        <StatusBadge status={status} />
+      )}
     </Link>
   );
 }

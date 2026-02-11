@@ -1,29 +1,27 @@
 import type { Metadata } from "next";
-import { BookOpen, CheckCircle2, Circle, Clock } from "lucide-react";
-
-export const metadata: Metadata = { title: "Learning Progress" };
 
 import { requireAuth } from "@/lib/auth/require-auth";
 import { FadeIn } from "@/components/motion";
-import { formatDate } from "@/lib/format-date";
-import { cn } from "@/lib/utils";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { safeColor } from "@/lib/utils";
 import type {
   Profile,
   Module,
   Lesson,
   Progress as ProgressRow,
+  Subject,
   ProgressStatus,
 } from "@/lib/supabase/types";
+import { ProgressExplorer } from "./progress-explorer";
 
-export default async function ProgressPage() {
+export const metadata: Metadata = { title: "Learning Progress" };
+
+export default async function ProgressPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ kid?: string }>;
+}) {
   const { profile, supabase } = await requireAuth();
+  const { kid: selectedKidId } = await searchParams;
 
   // Fetch kid profiles in the family
   const { data: kidProfiles } = await supabase
@@ -32,18 +30,31 @@ export default async function ProgressPage() {
     .eq("family_id", profile.family_id)
     .eq("role", "kid");
 
-  const kids = (kidProfiles ?? []) as Profile[];
+  const allKids = (kidProfiles ?? []) as Profile[];
+  const allKidIds = new Set(allKids.map((k) => k.id));
+
+  // Filter to selected kid if the param is valid, otherwise show all
+  const kids =
+    selectedKidId && allKidIds.has(selectedKidId)
+      ? allKids.filter((k) => k.id === selectedKidId)
+      : allKids;
   const kidIds = kids.map((k) => k.id);
 
-  // Fetch modules, lessons, and progress
-  const [modulesResult, lessonsResult, progressResult] = await Promise.all([
-    supabase.from("modules").select("*").order("band").order("order_num"),
-    supabase.from("lessons").select("*").order("order_num"),
-    kidIds.length > 0
-      ? supabase.from("progress").select("*").in("profile_id", kidIds)
-      : Promise.resolve({ data: [] }),
-  ]);
+  // Fetch subjects, modules, lessons, and progress in parallel
+  const [subjectsResult, modulesResult, lessonsResult, progressResult] =
+    await Promise.all([
+      supabase.from("subjects").select("*").order("sort_order"),
+      supabase.from("modules").select("*").order("band").order("order_num"),
+      supabase.from("lessons").select("*").order("order_num"),
+      kidIds.length > 0
+        ? supabase.from("progress").select("*").in("profile_id", kidIds)
+        : Promise.resolve({ data: [] }),
+    ]);
 
+  const subjects = ((subjectsResult.data ?? []) as Subject[]).map((s) => ({
+    ...s,
+    color: safeColor(s.color),
+  }));
   const modules = (modulesResult.data ?? []) as Module[];
   const lessons = (lessonsResult.data ?? []) as Lesson[];
   const progress = (progressResult.data ?? []) as ProgressRow[];
@@ -60,182 +71,72 @@ export default async function ProgressPage() {
   const progressByLesson = new Map<string, ProgressRow>();
   for (const p of progress) {
     const existing = progressByLesson.get(p.lesson_id);
-    if (
-      !existing ||
-      statusRank(p.status) > statusRank(existing.status)
-    ) {
+    if (!existing || statusRank(p.status) > statusRank(existing.status)) {
       progressByLesson.set(p.lesson_id, p);
     }
   }
+
+  // Shape subjects for the client component
+  const subjectData = subjects.map((s) => ({
+    id: s.id,
+    display_name: s.display_name,
+    color: s.color,
+    slug: s.slug,
+    icon: s.icon,
+  }));
+
+  // Shape modules + lessons with progress for the client component
+  const moduleData = modules.map((mod) => {
+    const modLessons = lessonsByModule.get(mod.id) ?? [];
+
+    return {
+      id: mod.id,
+      title: mod.title,
+      description: mod.description,
+      subjectId: mod.subject_id,
+      band: mod.band,
+      lessons: modLessons.map((lesson) => {
+        const p = progressByLesson.get(lesson.id);
+        return {
+          id: lesson.id,
+          title: lesson.title,
+          status: (p?.status ?? "not_started") as ProgressStatus,
+          completedAt: p?.completed_at ?? null,
+          attempts: p?.attempts ?? 0,
+        };
+      }),
+    };
+  });
 
   return (
     <div className="space-y-8">
       {/* Page header */}
       <FadeIn>
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Progress Detail
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Lesson-by-lesson progress for{" "}
             {kids.length > 0
-              ? kids.map((k) => k.display_name).join(", ")
+              ? selectedKidId && allKidIds.has(selectedKidId)
+                ? kids[0].display_name
+                : "all kids"
               : "your family"}
             .
           </p>
         </div>
       </FadeIn>
 
-      {/* Modules list */}
-      {modules.length === 0 ? (
-        <Card className="rounded-2xl">
-          <CardContent className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">
-              No curriculum data available yet.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          {modules.map((mod) => {
-            const modLessons = lessonsByModule.get(mod.id) ?? [];
-            const completedCount = modLessons.filter(
-              (l) => progressByLesson.get(l.id)?.status === "completed",
-            ).length;
-
-            return (
-              <FadeIn key={mod.id}>
-                <Card className="rounded-2xl">
-                <CardHeader>
-                  <div className="flex items-center justify-between gap-4">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <BookOpen className="size-4 text-primary" />
-                      {mod.title}
-                    </CardTitle>
-                    <Badge variant="outline" className="shrink-0">
-                      {completedCount} / {modLessons.length} done
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {mod.description}
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  {modLessons.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No lessons in this module yet.
-                    </p>
-                  ) : (
-                    <div className="divide-y divide-border rounded-xl border">
-                      {modLessons.map((lesson) => {
-                        const p = progressByLesson.get(lesson.id);
-                        const status: ProgressStatus =
-                          p?.status ?? "not_started";
-
-                        return (
-                          <LessonRow
-                            key={lesson.id}
-                            title={lesson.title}
-                            status={status}
-                            completedAt={p?.completed_at ?? null}
-                            attempts={p?.attempts ?? 0}
-                          />
-                        );
-                      })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </FadeIn>
-            );
-          })}
-        </div>
-      )}
+      {/* Interactive filterable progress explorer */}
+      <ProgressExplorer subjects={subjectData} modules={moduleData} />
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Sub-components
+// Helpers
 // ---------------------------------------------------------------------------
-
-interface LessonRowProps {
-  title: string;
-  status: ProgressStatus;
-  completedAt: string | null;
-  attempts: number;
-}
-
-function LessonRow({ title, status, completedAt, attempts }: LessonRowProps) {
-  return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      {/* Status icon */}
-      <StatusIcon status={status} />
-
-      {/* Lesson title */}
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-foreground">{title}</p>
-        {completedAt && (
-          <p className="text-xs text-muted-foreground">
-            Completed {formatDate(completedAt)}
-          </p>
-        )}
-      </div>
-
-      {/* Status badge */}
-      <StatusBadge status={status} />
-
-      {/* Attempts */}
-      {attempts > 0 && (
-        <span className="text-xs text-muted-foreground">
-          {attempts} {attempts === 1 ? "attempt" : "attempts"}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function StatusIcon({ status }: { status: ProgressStatus }) {
-  switch (status) {
-    case "completed":
-      return <CheckCircle2 className="size-5 shrink-0 text-chart-3" />;
-    case "in_progress":
-      return <Clock className="size-5 shrink-0 text-chart-4" />;
-    default:
-      return <Circle className="size-5 shrink-0 text-muted-foreground/40" />;
-  }
-}
-
-function StatusBadge({ status }: { status: ProgressStatus }) {
-  const config: Record<
-    ProgressStatus,
-    { label: string; className: string }
-  > = {
-    completed: {
-      label: "Completed",
-      className: "bg-chart-3/10 text-chart-3 border-chart-3/20",
-    },
-    in_progress: {
-      label: "In Progress",
-      className: "bg-chart-4/10 text-chart-4 border-chart-4/20",
-    },
-    not_started: {
-      label: "Not Started",
-      className: "bg-muted text-muted-foreground",
-    },
-  };
-
-  const { label, className } = config[status];
-
-  return (
-    <Badge
-      variant="outline"
-      className={cn("shrink-0 text-xs", className)}
-    >
-      {label}
-    </Badge>
-  );
-}
 
 function statusRank(status: ProgressStatus): number {
   switch (status) {

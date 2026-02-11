@@ -388,10 +388,10 @@ interface RecordFlashResult {
  * has been successfully sent to the device or run in the simulator.
  */
 export async function recordDeviceFlash(
-  deviceType: "usb-serial" | "simulator",
+  deviceType: "usb-serial" | "wifi-webrepl" | "simulator",
 ): Promise<RecordFlashResult> {
   // TypeScript types are erased at runtime — validate the value
-  if (deviceType !== "usb-serial" && deviceType !== "simulator") {
+  if (deviceType !== "usb-serial" && deviceType !== "wifi-webrepl" && deviceType !== "simulator") {
     return { success: false, error: "Invalid device type" };
   }
 

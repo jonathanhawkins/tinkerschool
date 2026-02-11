@@ -174,6 +174,45 @@
   }
 }
 
+/* ---- Touch-friendly defaults for tablets & phones ---- */
+
+/*
+ * Eliminate 300ms tap delay on all interactive elements.
+ * This is critical for kids on Fire tablets -- without it,
+ * every tap feels laggy.
+ */
+@media (pointer: coarse) {
+  button,
+  a,
+  [role="button"],
+  input,
+  select,
+  textarea,
+  label,
+  [tabindex] {
+    touch-action: manipulation;
+  }
+
+  /* Slightly increase minimum target size for touch */
+  button:not([class*="size-"]) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/*
+ * Prevent text selection on interactive UI elements during
+ * touch interactions (prevents blue highlight on long press).
+ */
+@media (pointer: coarse) {
+  nav a,
+  button,
+  [role="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
 /* ---- Blockly workspace overrides ---- */
 
 /*
@@ -200,4 +239,53 @@
 /* Soften the workspace grid background border */
 .blocklyMainBackground {
   stroke: #e2e8f0;
+}
+
+/* ---- Print styles for progress reports ---- */
+
+@media print {
+  /* Hide navigation, header, and non-essential UI */
+  header,
+  nav,
+  .print\:hidden,
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  /* Reset background and ensure text prints cleanly */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt !important;
+  }
+
+  /* Remove shadows and use a softer radius for cleaner print output */
+  .rounded-2xl {
+    border-radius: 8px !important;
+  }
+
+  /* Ensure cards have visible borders and don't split across pages */
+  [class*="card"] {
+    border: 1px solid #e5e7eb !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  /* Show the branded print header */
+  .print-header {
+    display: block !important;
+  }
+
+  /* Ensure progress bars print with color */
+  [role="progressbar"] * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Preserve subject color swatches, borders, and badges */
+  [style*="background-color"],
+  [style*="border-left-color"] {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 }

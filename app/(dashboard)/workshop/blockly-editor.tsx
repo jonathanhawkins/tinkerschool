@@ -6,6 +6,9 @@
  * Renders a Blockly workspace with custom M5Stick blocks, generates
  * MicroPython on every workspace change, and exposes a ref-based API
  * for reading the current workspace XML (used for saving projects).
+ *
+ * Touch-optimized: detects tablet/phone and uses larger blocks, bigger
+ * grid spacing, and touch-friendly zoom settings.
  */
 
 import {
@@ -18,6 +21,7 @@ import {
 } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { m5stickToolbox } from "@/lib/blocks/m5stick-toolbox";
+import { useDeviceMode, isTouchDevice } from "@/hooks/use-device-mode";
 
 import type { WorkspaceSvg } from "blockly";
 
@@ -43,10 +47,10 @@ interface BlocklyEditorProps {
 }
 
 // ---------------------------------------------------------------------------
-// Workspace configuration -- kid-friendly, large blocks, zoom, scroll
+// Workspace configurations -- desktop vs touch-optimized
 // ---------------------------------------------------------------------------
 
-const WORKSPACE_CONFIG = {
+const DESKTOP_WORKSPACE_CONFIG = {
   grid: {
     spacing: 24,
     length: 3,
@@ -71,6 +75,32 @@ const WORKSPACE_CONFIG = {
   renderer: "zelos", // rounded, kid-friendly block renderer
 } as const;
 
+const TOUCH_WORKSPACE_CONFIG = {
+  grid: {
+    spacing: 32, // more room between blocks for finger targeting
+    length: 3,
+    colour: "#E0E0E0",
+    snap: true,
+  },
+  zoom: {
+    controls: true,
+    wheel: false, // no scroll wheel on tablets
+    pinch: true, // enable pinch-to-zoom
+    startScale: 1.35, // bigger blocks for touch
+    maxScale: 2.5,
+    minScale: 0.4,
+    scaleSpeed: 1.15,
+  },
+  trashcan: true,
+  move: {
+    scrollbars: true,
+    drag: true,
+    wheel: false,
+  },
+  sounds: true,
+  renderer: "zelos",
+} as const;
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -80,6 +110,9 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const workspaceRef = useRef<WorkspaceSvg | null>(null);
     const [isReady, setIsReady] = useState(false);
+
+    const deviceMode = useDeviceMode();
+    const isTouch = isTouchDevice(deviceMode);
 
     // Cache the Blockly module after dynamic import so we can use it
     // synchronously in imperative callbacks (no require() needed).
@@ -112,9 +145,14 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
 
         blocklyModuleRef.current = Blockly;
 
+        // Pick workspace config based on input mode
+        const config = isTouch
+          ? TOUCH_WORKSPACE_CONFIG
+          : DESKTOP_WORKSPACE_CONFIG;
+
         // Inject the workspace into the DOM container
         const workspace = Blockly.inject(containerRef.current, {
-          ...WORKSPACE_CONFIG,
+          ...config,
           toolbox: m5stickToolbox,
         });
 
@@ -168,7 +206,8 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
         }
         blocklyModuleRef.current = null;
       };
-      // initialXml is intentionally omitted -- we only restore once at mount
+      // initialXml and isTouch are intentionally omitted -- we only
+      // restore/configure once at mount
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -214,7 +253,7 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
         <CardContent className="h-full p-0">
           <div
             ref={containerRef}
-            className="h-full w-full"
+            className="h-full w-full touch-none"
           />
         </CardContent>
       </Card>

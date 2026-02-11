@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import confetti from "canvas-confetti";
-import { Star, Trophy, Clock, Lightbulb, Sparkles, ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
+import { Star, Trophy, Clock, Lightbulb, Sparkles, ArrowLeft, ArrowRight, RotateCcw, Heart, X } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,86 @@ function StarRating({ score }: { score: number }) {
 }
 
 // ---------------------------------------------------------------------------
+// SupporterNudge - subtle parent-facing nudge at milestone completions
+// ---------------------------------------------------------------------------
+
+const NUDGE_DISMISSED_KEY = "tinkerschool:supporter-nudge-dismissed";
+
+interface SupporterNudgeProps {
+  kidName: string;
+  totalCompleted: number;
+}
+
+function SupporterNudge({ kidName, totalCompleted }: SupporterNudgeProps) {
+  const [visible, setVisible] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
+
+  // Check localStorage and delay appearance
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(NUDGE_DISMISSED_KEY) === "true") return;
+    } catch {
+      // localStorage unavailable — skip nudge
+      return;
+    }
+
+    // Delay 2s so the celebration happens first
+    const timer = setTimeout(() => setVisible(true), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const dismiss = useCallback(() => {
+    setVisible(false);
+    try {
+      localStorage.setItem(NUDGE_DISMISSED_KEY, "true");
+    } catch {
+      // Silently ignore localStorage errors
+    }
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 4 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="relative flex items-start gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3"
+        >
+          <Heart className="mt-0.5 size-4 shrink-0 text-rose-400" />
+
+          <div className="min-w-0 flex-1">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{kidName}</span>{" "}
+              has completed{" "}
+              <span className="font-medium text-foreground">{totalCompleted} lessons</span>!
+              TinkerSchool is free and open source.
+            </p>
+            <Link
+              href="/dashboard/billing"
+              onClick={dismiss}
+              className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Support the mission
+              <ArrowRight className="size-3" />
+            </Link>
+          </div>
+
+          <button
+            onClick={dismiss}
+            className="shrink-0 rounded-md p-1 text-muted-foreground/60 transition-colors hover:text-muted-foreground"
+            aria-label="Dismiss"
+          >
+            <X className="size-3.5" />
+          </button>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // ActivityComplete - celebration screen shown when all questions are done
 // ---------------------------------------------------------------------------
 
@@ -77,7 +157,7 @@ interface ActivityCompleteProps {
 }
 
 export function ActivityComplete({ onRetry }: ActivityCompleteProps) {
-  const { state, totalQuestions, subjectColor, lessonId, nextLessonId, nextLessonTitle } = useActivity();
+  const { state, totalQuestions, subjectColor, lessonId, nextLessonId, nextLessonTitle, milestoneNudge } = useActivity();
   const prefersReducedMotion = useReducedMotion();
   const confettiFired = useRef(false);
   const { play } = useSound();
@@ -272,6 +352,14 @@ export function ActivityComplete({ onRetry }: ActivityCompleteProps) {
           </Button>
         )}
       </div>
+
+      {/* Supporter nudge — parent-facing, shown at milestone completions */}
+      {milestoneNudge && (
+        <SupporterNudge
+          kidName={milestoneNudge.kidName}
+          totalCompleted={milestoneNudge.totalCompleted}
+        />
+      )}
     </motion.div>
   );
 }

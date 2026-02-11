@@ -151,7 +151,7 @@ export function MatchingPairs() {
                   onClick={() => handleLeftSelect(pair.left.id)}
                   disabled={isMatched || allMatched}
                   className={cn(
-                    "flex min-h-[52px] w-full items-center gap-2 rounded-2xl border-2 p-3 text-left transition-all duration-200",
+                    "flex min-h-[56px] w-full items-center gap-2.5 rounded-2xl border-2 p-3.5 text-left transition-all duration-200 touch-manipulation",
                     isMatched &&
                       "opacity-80",
                     isSelected &&
@@ -227,7 +227,7 @@ export function MatchingPairs() {
                   onClick={() => handleRightSelect(right.id)}
                   disabled={isMatched || !selectedLeftId || allMatched}
                   className={cn(
-                    "flex min-h-[52px] w-full items-center gap-2 rounded-2xl border-2 p-3 text-left transition-all duration-200",
+                    "flex min-h-[56px] w-full items-center gap-2.5 rounded-2xl border-2 p-3.5 text-left transition-all duration-200 touch-manipulation",
                     isMatched && "opacity-80",
                     !isMatched &&
                       selectedLeftId &&

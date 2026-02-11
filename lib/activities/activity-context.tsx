@@ -22,6 +22,12 @@ import type {
 // Context shape
 // ---------------------------------------------------------------------------
 
+/** Milestone data for the post-completion supporter nudge. */
+export interface MilestoneNudgeData {
+  totalCompleted: number;
+  kidName: string;
+}
+
 interface ActivityContextValue {
   /** The full activity config for this lesson */
   config: LessonActivityConfig;
@@ -50,6 +56,8 @@ interface ActivityContextValue {
   /** Next lesson in sequence (for navigation after completion) */
   nextLessonId?: string;
   nextLessonTitle?: string;
+  /** Milestone nudge data (set after server action returns) */
+  milestoneNudge?: MilestoneNudgeData;
 }
 
 const ActivityContext = createContext<ActivityContextValue | null>(null);
@@ -163,6 +171,8 @@ interface ActivityProviderProps {
   /** Next lesson in sequence (for navigation after completion) */
   nextLessonId?: string;
   nextLessonTitle?: string;
+  /** Milestone nudge data (parent-facing supporter nudge) */
+  milestoneNudge?: MilestoneNudgeData;
 }
 
 export function ActivityProvider({
@@ -174,6 +184,7 @@ export function ActivityProvider({
   onComplete,
   nextLessonId,
   nextLessonTitle,
+  milestoneNudge,
 }: ActivityProviderProps) {
   const [state, setState] = useState<ActivityState>(createInitialState);
 
@@ -383,6 +394,7 @@ export function ActivityProvider({
       profileId,
       nextLessonId,
       nextLessonTitle,
+      milestoneNudge,
     }),
     [
       config,
@@ -399,6 +411,7 @@ export function ActivityProvider({
       profileId,
       nextLessonId,
       nextLessonTitle,
+      milestoneNudge,
     ],
   );
 

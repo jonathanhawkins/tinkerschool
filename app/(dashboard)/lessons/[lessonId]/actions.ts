@@ -95,10 +95,21 @@ interface CompleteActivityInput {
   activityData: unknown[];
 }
 
+/** Milestone data for the supporter nudge (parent-facing). */
+export interface MilestoneInfo {
+  /** Total number of completed lessons across all subjects */
+  totalCompleted: number;
+  /** The kid's display name */
+  kidName: string;
+  /** Whether the family is on the free tier */
+  isFree: boolean;
+}
+
 interface CompleteActivityResult {
   success: boolean;
   newBadges?: EarnedBadgeInfo[];
   xpAwarded?: number;
+  milestone?: MilestoneInfo;
   error?: string;
 }
 
@@ -190,6 +201,47 @@ export async function completeActivity(
     await updateStreak(supabase, profile.id);
     const newBadges = await evaluateBadges(supabase, profile.id);
 
+    // Compute milestone data for supporter nudge (non-blocking)
+    let milestone: MilestoneInfo | undefined;
+    try {
+      const [completedResult, profileResult] = await Promise.all([
+        supabase
+          .from("progress")
+          .select("*", { count: "exact", head: true })
+          .eq("profile_id", profile.id)
+          .eq("status", "completed"),
+        supabase
+          .from("profiles")
+          .select("display_name, family_id")
+          .eq("id", profile.id)
+          .single() as unknown as Promise<{ data: { display_name: string; family_id: string } | null }>,
+      ]);
+
+      const totalCompleted = completedResult.count ?? 0;
+      const MILESTONES = [5, 10, 25, 50, 100];
+
+      if (MILESTONES.includes(totalCompleted) && profileResult.data) {
+        const { data: family } = (await supabase
+          .from("families")
+          .select("subscription_tier")
+          .eq("id", profileResult.data.family_id)
+          .single()) as { data: { subscription_tier: string } | null };
+
+        const isFree = family?.subscription_tier !== "supporter";
+
+        if (isFree) {
+          milestone = {
+            totalCompleted,
+            kidName: profileResult.data.display_name,
+            isFree: true,
+          };
+        }
+      }
+    } catch (err) {
+      // Non-critical — don't fail activity completion
+      console.error("[completeActivity] Milestone check failed:", err);
+    }
+
     revalidatePath("/home");
     revalidatePath("/achievements");
     revalidatePath(`/lessons/${input.lessonId}`);
@@ -198,6 +250,7 @@ export async function completeActivity(
       success: true,
       newBadges,
       xpAwarded: xpResult.xpAwarded,
+      milestone,
     };
   }
 

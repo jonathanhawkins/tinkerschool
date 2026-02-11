@@ -10,6 +10,7 @@ import type {
   LessonActivityConfig,
   ActivitySessionMetrics,
 } from "@/lib/activities/types";
+import type { MilestoneNudgeData } from "@/lib/activities/activity-context";
 import type { DifficultyLevel } from "@/lib/activities/adaptive-difficulty";
 import { completeActivity, startLesson } from "./actions";
 
@@ -43,6 +44,7 @@ export function InteractiveLesson({
   nextLessonTitle,
 }: InteractiveLessonProps) {
   const [earnedBadges, setEarnedBadges] = useState<EarnedBadge[]>([]);
+  const [milestoneNudge, setMilestoneNudge] = useState<MilestoneNudgeData | undefined>(undefined);
   const lessonStarted = useRef(false);
 
   // Record that the lesson was started (creates in_progress record if none exists)
@@ -77,6 +79,14 @@ export function InteractiveLesson({
               description: b.description,
             })),
           );
+        }
+
+        // Set milestone nudge if server returned one
+        if (result.milestone) {
+          setMilestoneNudge({
+            totalCompleted: result.milestone.totalCompleted,
+            kidName: result.milestone.kidName,
+          });
         }
       } catch (err) {
         console.error("[InteractiveLesson] Failed to submit results:", err);
@@ -124,6 +134,7 @@ export function InteractiveLesson({
         onComplete={handleComplete}
         nextLessonId={nextLessonId ?? undefined}
         nextLessonTitle={nextLessonTitle ?? undefined}
+        milestoneNudge={milestoneNudge}
       />
 
       {/* Badge celebration overlay */}

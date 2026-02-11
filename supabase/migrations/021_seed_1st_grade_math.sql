@@ -102,17 +102,17 @@ INSERT INTO public.lessons (
             "id": "c20-2",
             "prompt": "Count the apples!",
             "emoji": "\ud83c\udf4e",
-            "correctCount": 8,
-            "displayCount": 8,
-            "hint": "Count slowly. There are 8 apples!"
+            "correctCount": 10,
+            "displayCount": 10,
+            "hint": "Count slowly. There are 10 apples!"
           },
           {
             "id": "c20-3",
             "prompt": "How many butterflies do you see?",
             "emoji": "\ud83e\udd8b",
-            "correctCount": 12,
-            "displayCount": 12,
-            "hint": "Count past 10! 10, 11, 12. There are 12!"
+            "correctCount": 15,
+            "displayCount": 15,
+            "hint": "Count past 10! 11, 12, 13, 14, 15. There are 15!"
           },
           {
             "id": "c20-4",
@@ -126,9 +126,9 @@ INSERT INTO public.lessons (
             "id": "c20-5",
             "prompt": "Can you count all the flowers?",
             "emoji": "\ud83c\udf3b",
-            "correctCount": 18,
-            "displayCount": 18,
-            "hint": "Almost to 20! Count carefully: 15, 16, 17, 18."
+            "correctCount": 20,
+            "displayCount": 20,
+            "hint": "Almost there! Count carefully all the way to 20!"
           },
           {
             "id": "c20-6",
@@ -183,9 +183,9 @@ INSERT INTO public.lessons (
             "id": "c50-1",
             "prompt": "Count the ladybugs!",
             "emoji": "\ud83d\udc1e",
-            "correctCount": 22,
-            "displayCount": 22,
-            "hint": "Count past 20! 20, 21, 22."
+            "correctCount": 25,
+            "displayCount": 25,
+            "hint": "Count past 20! 21, 22, 23, 24, 25."
           },
           {
             "id": "c50-2",

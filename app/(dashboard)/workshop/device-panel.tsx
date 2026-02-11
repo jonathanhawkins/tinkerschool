@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, Usb, Wifi, WifiOff } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,10 +16,31 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import type { DeviceTransport, TransportType } from "@/lib/serial/device-transport";
+import { isTransportAvailable } from "@/lib/serial/device-transport";
 import type { ConnectionStatus } from "@/lib/serial/types";
 import { MicroPythonREPL } from "@/lib/serial/micropython-repl";
 import { WebSerialManager } from "@/lib/serial/web-serial";
+import { WebREPLManager } from "@/lib/serial/webrepl-client";
 import { recordDeviceFlash } from "./actions";
+
+// ---------------------------------------------------------------------------
+// Storage key for persisting WiFi IP address
+// ---------------------------------------------------------------------------
+
+const WIFI_IP_KEY = "tinkerschool-wifi-ip";
+
+function getSavedIP(): string {
+  if (typeof localStorage === "undefined") return "";
+  return localStorage.getItem(WIFI_IP_KEY) ?? "";
+}
+
+function saveIP(ip: string): void {
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(WIFI_IP_KEY, ip);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Kid-friendly error messages
@@ -29,7 +51,7 @@ function friendlyError(error: unknown): string {
 
   switch (message) {
     case "WEB_SERIAL_NOT_SUPPORTED":
-      return "This browser can't talk to your M5Stick. Try using Chrome!";
+      return "This browser can't use USB. Try connecting over WiFi instead!";
     case "NO_DEVICE_SELECTED":
       return "You didn't pick a device. Click Connect and choose your M5Stick from the list!";
     case "PORT_ALREADY_IN_USE":
@@ -43,9 +65,23 @@ function friendlyError(error: unknown): string {
       break;
   }
 
-  // Catch-all heuristics for common browser-level messages
+  // WiFi-specific errors
+  if (/WEBREPL_CONNECT_TIMEOUT/i.test(message)) {
+    return "Could not reach your M5Stick over WiFi. Make sure it's turned on and on the same WiFi network!";
+  }
+  if (/WEBREPL_CONNECTION_FAILED/i.test(message)) {
+    return "WiFi connection failed. Check the IP address and make sure WebREPL is enabled on your M5Stick!";
+  }
+  if (/WEBREPL_AUTH_FAILED/i.test(message)) {
+    return "Wrong WiFi password! The default password is 'tinkerschool'.";
+  }
+  if (/WEBREPL_AUTH_TIMEOUT/i.test(message)) {
+    return "WiFi connected but authentication timed out. Is WebREPL running on your M5Stick?";
+  }
+
+  // Catch-all heuristics
   if (/no.*device/i.test(message) || /not found/i.test(message)) {
-    return "Hmm, I can't find your M5Stick! Make sure it's plugged in with the USB cable.";
+    return "Hmm, I can't find your M5Stick! Make sure it's plugged in or connected to WiFi.";
   }
 
   if (/already.*open/i.test(message) || /in use/i.test(message)) {
@@ -98,8 +134,8 @@ interface DevicePanelProps {
 // ---------------------------------------------------------------------------
 
 export default function DevicePanel({ code = "" }: DevicePanelProps) {
-  // Refs keep the manager/repl alive across renders without causing re-renders
-  const serialRef = useRef<WebSerialManager | null>(null);
+  // Refs keep the transport/repl alive across renders
+  const transportRef = useRef<DeviceTransport | null>(null);
   const replRef = useRef<MicroPythonREPL | null>(null);
 
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
@@ -108,46 +144,81 @@ export default function DevicePanel({ code = "" }: DevicePanelProps) {
   const [isFlashing, setIsFlashing] = useState(false);
   const [earnedBadges, setEarnedBadges] = useState<EarnedBadge[]>([]);
 
-  // Lazily create the serial manager so it only exists on the client
-  const getSerial = useCallback(() => {
-    if (!serialRef.current) {
-      serialRef.current = new WebSerialManager();
+  // Connection mode: USB or WiFi
+  const hasUSB = isTransportAvailable("usb-serial");
+  const hasWiFi = isTransportAvailable("wifi-webrepl");
+  const [connectionMode, setConnectionMode] = useState<TransportType>(
+    hasUSB ? "usb-serial" : "wifi-webrepl",
+  );
 
-      serialRef.current.onConnect = () => {
-        setStatus("connected");
-        setError(null);
-      };
+  // WiFi IP address input
+  const [wifiIP, setWifiIP] = useState(getSavedIP);
+  const [showWifiHelp, setShowWifiHelp] = useState(false);
 
-      serialRef.current.onDisconnect = () => {
-        setStatus("disconnected");
-      };
+  // ------------------------------------------------------------------
+  // Transport factory
+  // ------------------------------------------------------------------
 
-      serialRef.current.onError = (err) => {
-        setError(friendlyError(err));
-      };
+  const createTransport = useCallback(
+    (mode: TransportType): DeviceTransport => {
+      if (mode === "usb-serial") {
+        return new WebSerialManager();
+      }
+      return new WebREPLManager({ host: wifiIP });
+    },
+    [wifiIP],
+  );
 
-      serialRef.current.onData = (data) => {
-        setOutput((prev) => {
-          // Keep buffer from growing unbounded (last 4 000 chars)
-          const next = prev + data;
-          return next.length > 4_000 ? next.slice(-4_000) : next;
-        });
-      };
-    }
-    return serialRef.current;
+  const wireCallbacks = useCallback((transport: DeviceTransport) => {
+    transport.onConnect = () => {
+      setStatus("connected");
+      setError(null);
+    };
+    transport.onDisconnect = () => {
+      setStatus("disconnected");
+    };
+    transport.onError = (err) => {
+      setError(friendlyError(err));
+    };
+    transport.onData = (data) => {
+      setOutput((prev) => {
+        const next = prev + data;
+        return next.length > 4_000 ? next.slice(-4_000) : next;
+      });
+    };
   }, []);
 
-  const getRepl = useCallback(() => {
+  const getTransport = useCallback((): DeviceTransport => {
+    if (!transportRef.current) {
+      transportRef.current = createTransport(connectionMode);
+      wireCallbacks(transportRef.current);
+    }
+    return transportRef.current;
+  }, [connectionMode, createTransport, wireCallbacks]);
+
+  const getRepl = useCallback((): MicroPythonREPL => {
     if (!replRef.current) {
-      replRef.current = new MicroPythonREPL(getSerial());
+      replRef.current = new MicroPythonREPL(getTransport());
     }
     return replRef.current;
-  }, [getSerial]);
+  }, [getTransport]);
+
+  // Reset transport when connection mode changes
+  useEffect(() => {
+    if (transportRef.current?.connected) {
+      transportRef.current.disconnect();
+    }
+    transportRef.current = null;
+    replRef.current = null;
+    setStatus("disconnected");
+    setError(null);
+    setOutput("");
+  }, [connectionMode]);
 
   // Clean up on unmount
   useEffect(() => {
     return () => {
-      serialRef.current?.disconnect();
+      transportRef.current?.disconnect();
     };
   }, []);
 
@@ -159,22 +230,42 @@ export default function DevicePanel({ code = "" }: DevicePanelProps) {
     setError(null);
     setStatus("connecting");
 
+    // For WiFi, validate and save the IP for next time
+    if (connectionMode === "wifi-webrepl") {
+      const ip = wifiIP.trim();
+      if (!ip) {
+        setError("Enter your M5Stick's IP address first!");
+        setStatus("disconnected");
+        return;
+      }
+      if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
+        setError("That doesn't look like an IP address. It should be numbers and dots, like 192.168.1.42");
+        setStatus("disconnected");
+        return;
+      }
+      saveIP(ip);
+    }
+
     try {
-      await getSerial().connect();
-      // Status is set to "connected" by the onConnect callback
+      // Create fresh transport with latest settings
+      transportRef.current = createTransport(connectionMode);
+      wireCallbacks(transportRef.current);
+      replRef.current = new MicroPythonREPL(transportRef.current);
+
+      await transportRef.current.connect();
     } catch (err) {
       setStatus("disconnected");
       setError(friendlyError(err));
     }
-  }, [getSerial]);
+  }, [connectionMode, wifiIP, createTransport, wireCallbacks]);
 
   const handleDisconnect = useCallback(async () => {
     try {
-      await getSerial().disconnect();
+      await transportRef.current?.disconnect();
     } catch (err) {
       setError(friendlyError(err));
     }
-  }, [getSerial]);
+  }, []);
 
   const handleFlash = useCallback(async () => {
     if (!code.trim()) {
@@ -192,7 +283,7 @@ export default function DevicePanel({ code = "" }: DevicePanelProps) {
 
       // Record the successful flash server-side for badge tracking
       try {
-        const flashResult = await recordDeviceFlash("usb-serial");
+        const flashResult = await recordDeviceFlash(connectionMode);
         if (flashResult.newBadges && flashResult.newBadges.length > 0) {
           setEarnedBadges(flashResult.newBadges);
         }
@@ -204,7 +295,7 @@ export default function DevicePanel({ code = "" }: DevicePanelProps) {
     } finally {
       setIsFlashing(false);
     }
-  }, [code, getRepl]);
+  }, [code, connectionMode, getRepl]);
 
   const handleStop = useCallback(async () => {
     setError(null);
@@ -224,7 +315,6 @@ export default function DevicePanel({ code = "" }: DevicePanelProps) {
   const isConnected = status === "connected";
   const isConnecting = status === "connecting";
   const statusConfig = STATUS_CONFIG[status];
-  const browserSupported = WebSerialManager.isSupported();
 
   // ------------------------------------------------------------------
   // Render
@@ -242,58 +332,149 @@ export default function DevicePanel({ code = "" }: DevicePanelProps) {
         </div>
         <CardDescription className="text-xs">
           {isConnected
-            ? "Ready to go!"
-            : "Plug in your M5Stick and click Connect."}
+            ? `Connected via ${connectionMode === "usb-serial" ? "USB" : "WiFi"}!`
+            : "Connect your M5Stick to send code."}
         </CardDescription>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-3 px-4 pb-3">
 
-        {/* Browser support warning */}
-        {!browserSupported && (
-          <p className="text-sm text-destructive">
-            This browser can&apos;t talk to your M5Stick. Try using Chrome!
-          </p>
+        {/* Connection mode picker -- only shown when both are available */}
+        {hasUSB && hasWiFi && !isConnected && (
+          <div className="flex gap-1.5">
+            <Button
+              variant={connectionMode === "usb-serial" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setConnectionMode("usb-serial")}
+              className="flex-1 gap-1.5 rounded-xl"
+            >
+              <Usb className="size-4" />
+              USB
+            </Button>
+            <Button
+              variant={connectionMode === "wifi-webrepl" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setConnectionMode("wifi-webrepl")}
+              className="flex-1 gap-1.5 rounded-xl"
+            >
+              <Wifi className="size-4" />
+              WiFi
+            </Button>
+          </div>
+        )}
+
+        {/* WiFi-only badge for tablets */}
+        {!hasUSB && hasWiFi && !isConnected && (
+          <div className="flex items-center gap-2 rounded-xl bg-accent px-3 py-2 text-xs text-muted-foreground">
+            <Wifi className="size-4 shrink-0" />
+            <span>
+              On this device, connect over WiFi. Make sure your M5Stick has WebREPL enabled!
+            </span>
+          </div>
+        )}
+
+        {/* WiFi IP input + help guide */}
+        {connectionMode === "wifi-webrepl" && !isConnected && (
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                placeholder="M5Stick IP (e.g. 192.168.1.42)"
+                value={wifiIP}
+                onChange={(e) => setWifiIP(e.target.value)}
+                className="flex-1 rounded-xl text-sm"
+                inputMode="decimal"
+                autoComplete="off"
+              />
+            </div>
+
+            {/* Expandable WiFi help */}
+            <button
+              onClick={() => setShowWifiHelp((v) => !v)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              {showWifiHelp ? (
+                <ChevronUp className="size-3" />
+              ) : (
+                <ChevronDown className="size-3" />
+              )}
+              How do I find my M5Stick&apos;s IP?
+            </button>
+
+            {showWifiHelp && (
+              <div className="rounded-xl bg-muted/50 px-3 py-2.5 text-xs text-muted-foreground">
+                <ol className="list-inside list-decimal space-y-1.5">
+                  <li>Turn on your M5Stick -- the IP shows on screen at startup</li>
+                  <li>Both devices must be on the <span className="font-semibold">same WiFi network</span></li>
+                  <li>Type the IP address above (numbers and dots only)</li>
+                  <li>Default WebREPL password: <span className="font-mono font-semibold">tinkerschool</span></li>
+                </ol>
+                <p className="mt-2 text-muted-foreground/80">
+                  Tip: You can also find the IP in your router&apos;s connected devices list.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* No connection available */}
+        {!hasUSB && !hasWiFi && (
+          <div className="flex items-center gap-2 rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
+            <WifiOff className="size-4 shrink-0" />
+            <span>
+              This browser can't connect to devices. Use the simulator to test your code!
+            </span>
+          </div>
         )}
 
         {/* Action buttons */}
-        <div className="flex flex-wrap items-center gap-2">
-          {!isConnected ? (
-            <Button
-              onClick={handleConnect}
-              disabled={!browserSupported || isConnecting}
-              size="sm"
-            >
-              {isConnecting ? "Connecting..." : "Connect Device"}
-            </Button>
-          ) : (
-            <>
+        {(hasUSB || hasWiFi) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {!isConnected ? (
               <Button
-                onClick={handleDisconnect}
-                variant="outline"
+                onClick={handleConnect}
+                disabled={isConnecting}
                 size="sm"
+                className="touch-manipulation rounded-xl"
               >
-                Disconnect
+                {isConnecting
+                  ? "Connecting..."
+                  : connectionMode === "wifi-webrepl"
+                    ? "Connect WiFi"
+                    : "Connect USB"}
               </Button>
+            ) : (
+              <>
+                <Button
+                  onClick={handleDisconnect}
+                  variant="outline"
+                  size="sm"
+                  className="touch-manipulation rounded-xl"
+                >
+                  Disconnect
+                </Button>
 
-              <Button
-                onClick={handleFlash}
-                disabled={isFlashing || !code.trim()}
-                size="sm"
-              >
-                {isFlashing ? "Sending..." : "Flash Code"}
-              </Button>
+                <Button
+                  onClick={handleFlash}
+                  disabled={isFlashing || !code.trim()}
+                  size="sm"
+                  className="touch-manipulation rounded-xl"
+                >
+                  {isFlashing ? "Sending..." : "Flash Code"}
+                </Button>
 
-              <Button
-                onClick={handleStop}
-                variant="destructive"
-                size="sm"
-              >
-                Stop
-              </Button>
-            </>
-          )}
-        </div>
+                <Button
+                  onClick={handleStop}
+                  variant="destructive"
+                  size="sm"
+                  className="touch-manipulation rounded-xl"
+                >
+                  Stop
+                </Button>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Error message */}
         {error && (

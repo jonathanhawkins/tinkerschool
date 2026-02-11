@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
@@ -5,6 +6,7 @@ import Image from "next/image";
 import {
   LayoutDashboard,
   BarChart3,
+  TrendingUp,
   MessageSquare,
   Heart,
   ArrowLeft,
@@ -13,7 +15,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ParentNav } from "@/components/parent-nav";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { KidSelector } from "@/components/kid-selector";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import type { Profile } from "@/lib/supabase/types";
 
 interface ParentNavItem {
   href: string;
@@ -31,6 +35,11 @@ const parentNavItems: ParentNavItem[] = [
     href: "/dashboard/progress",
     label: "Progress",
     icon: <BarChart3 className="size-4" />,
+  },
+  {
+    href: "/dashboard/reports",
+    label: "Reports",
+    icon: <TrendingUp className="size-4" />,
   },
   {
     href: "/dashboard/ai-history",
@@ -55,17 +64,34 @@ export default async function ParentDashboardLayout({
     redirect("/sign-in");
   }
 
-  // Verify the user is a parent — kids should not access parent dashboard
-  const supabase = await createServerSupabaseClient();
+  // Verify the user is a parent — kids should not access parent dashboard.
+  // Uses admin client since this is a server-side guard (no RLS needed for role check).
+  const supabase = createAdminSupabaseClient();
   const { data: profile } = (await supabase
     .from("profiles")
-    .select("role")
+    .select("role, family_id")
     .eq("clerk_id", userId)
-    .single()) as { data: { role: string } | null };
+    .single()) as { data: { role: string; family_id: string } | null };
 
   if (!profile || profile.role !== "parent") {
     redirect("/home");
   }
+
+  // Fetch kid profiles in this family for the KidSelector
+  const { data: kidProfiles } = await supabase
+    .from("profiles")
+    .select("id, display_name, avatar_id")
+    .eq("family_id", profile.family_id)
+    .eq("role", "kid")
+    .order("created_at");
+
+  const kids = (kidProfiles ?? []) as Pick<Profile, "id" | "display_name" | "avatar_id">[];
+
+  const kidOptions = kids.map((k) => ({
+    id: k.id,
+    displayName: k.display_name,
+    avatarId: k.avatar_id,
+  }));
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -92,7 +118,9 @@ export default async function ParentDashboardLayout({
           </div>
 
           {/* Center: navigation */}
-          <ParentNav items={parentNavItems} />
+          <Suspense>
+            <ParentNav items={parentNavItems} />
+          </Suspense>
 
           {/* Right: back to kid view */}
           <Button asChild variant="outline" size="sm" className="gap-2 rounded-xl">
@@ -108,6 +136,14 @@ export default async function ParentDashboardLayout({
 
       {/* Main content */}
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        {/* Kid selector -- only shown when family has 2+ kids */}
+        {kidOptions.length >= 2 && (
+          <div className="mb-6">
+            <Suspense>
+              <KidSelector kids={kidOptions} />
+            </Suspense>
+          </div>
+        )}
         {children}
       </main>
     </div>

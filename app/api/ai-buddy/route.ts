@@ -340,8 +340,13 @@ export async function POST(request: Request) {
     });
   }
 
-  // 2. Rate limit (distributed via Upstash Redis)
-  const { limited, remaining } = await checkAiBuddyRateLimit(userId);
+  // 2. Fetch personalization data (includes tier) before rate limiting
+  //    so we can apply the correct tier-based limit.
+  const personalization = await fetchPersonalizationData(userId);
+  const tier = (personalization.subscriptionTier === "supporter" ? "supporter" : "free") as import("@/lib/stripe/config").SubscriptionTier;
+
+  // 3. Rate limit (distributed via Upstash Redis, tier-aware)
+  const { limited, remaining } = await checkAiBuddyRateLimit(userId, tier);
   if (limited) {
     return new Response(
       JSON.stringify({
@@ -358,7 +363,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // 3. Parse & validate body
+  // 4. Parse & validate body
   let body: unknown;
   try {
     body = await request.json();
@@ -389,11 +394,9 @@ export async function POST(request: Request) {
     chatSessionId,
   } = parsed;
 
-  // 4. Fetch personalization data AND verified profile fields from DB.
+  // 4. Use personalization data fetched above (step 2) for verified profile fields.
   // SECURITY: kidName, age, band are fetched server-side from the
   // authenticated user's profile — never trust client-supplied values.
-  // Also fetch family tier for model selection (supporter vs free).
-  const personalization = await fetchPersonalizationData(userId);
 
   // Use server-verified values, falling back to safe defaults
   const verifiedName = personalization.displayName ?? "Friend";
@@ -434,10 +437,9 @@ export async function POST(request: Request) {
       .map((p: { type: string; text?: string }) => p.text)
       .join("") ?? "";
 
-  // 8. Select model based on family tier
+  // 8. Select model based on family tier (uses `tier` from step 2)
   // TODO: When fine-tuned Chip model is ready, free tier uses it instead of Sonnet.
   // For now, both tiers use Claude Sonnet — the tier check is scaffolded for the switch.
-  const _tier = personalization.subscriptionTier ?? "free";
   const modelId = "claude-sonnet-4-5-20250929";
 
   // 9. Convert UI messages to model messages and stream

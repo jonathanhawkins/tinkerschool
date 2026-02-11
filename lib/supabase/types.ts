@@ -41,7 +41,7 @@ export type SubjectSlug =
   | "problem_solving"
   | "coding";
 
-export type DeviceMode = "usb" | "simulator" | "none";
+export type DeviceMode = "usb" | "wifi" | "simulator" | "none";
 
 // ---------------------------------------------------------------------------
 // Row types (what you get back from a SELECT)

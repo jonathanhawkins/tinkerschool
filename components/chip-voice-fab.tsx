@@ -2,21 +2,24 @@
 
 import { useVoice, VoiceProvider, VoiceReadyState } from "@humeai/voice-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Mic, MicOff, PhoneOff, X } from "lucide-react";
-import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { Clock, Mic, MicOff, PhoneOff, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { refreshHumeAccessToken } from "@/lib/hume/actions";
+import { Card } from "@/components/ui/card";
+import {
+  checkVoiceBudget,
+  logVoiceSession,
+  refreshHumeAccessToken,
+  type VoiceBudgetResult,
+} from "@/lib/hume/actions";
 import { createChipToolCallHandler } from "@/lib/hume/tools";
 import type {
   ChipVoiceProps,
@@ -24,8 +27,38 @@ import type {
   VoiceAction,
   VoicePageContext,
 } from "@/lib/hume/types";
+import { voiceBridge } from "@/lib/hume/voice-bridge";
 import { buildVoiceSystemPrompt } from "@/lib/hume/voice-prompt";
 import { cn } from "@/lib/utils";
+
+// ---------------------------------------------------------------------------
+// Hook: subscribe to voiceBridge pathname (replaces usePathname from Next.js)
+//
+// This component renders in an independent React root that is NOT inside
+// Next.js's Router context. We use useSyncExternalStore to subscribe to
+// pathname changes relayed through voiceBridge.
+//
+// All three functions are stable module-level references so React never
+// re-subscribes unnecessarily.
+// ---------------------------------------------------------------------------
+
+function subscribeToBridgePathname(onStoreChange: () => void): () => void {
+  return voiceBridge.subscribe(onStoreChange);
+}
+function getBridgePathname(): string {
+  return voiceBridge.pathname;
+}
+function getServerPathname(): string {
+  return "/";
+}
+
+function useVoiceBridgePathname(): string {
+  return useSyncExternalStore(
+    subscribeToBridgePathname,
+    getBridgePathname,
+    getServerPathname,
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Kid-friendly emotion labels (subset of Hume's 48 emotions)
@@ -97,9 +130,13 @@ interface FabUIProps {
   accessToken: string;
   configId?: string;
   pageContext?: VoicePageContext;
+  providerError?: string | null;
+  onClearProviderError?: () => void;
+  /** Route prefixes where the FAB should be hidden (VoiceProvider stays mounted). */
+  hideOnRoutes?: string[];
 }
 
-function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
+function FabUI({ accessToken, configId, pageContext, providerError, onClearProviderError, hideOnRoutes }: FabUIProps) {
   const {
     connect,
     disconnect,
@@ -113,20 +150,39 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
     isPlaying,
     isError,
     isMicrophoneError,
-    isSocketError,
-    isAudioError,
     sendSessionSettings,
     chatMetadata,
   } = useVoice();
 
-  const pathname = usePathname();
+  // Use voiceBridge instead of usePathname (we are outside Next.js Router)
+  const pathname = useVoiceBridgePathname();
+
+  // Hide FAB on public routes but keep VoiceProvider mounted so the
+  // WebSocket connection survives navigation to/from these routes.
+  const isHiddenRoute =
+    pathname === "/" ||
+    (hideOnRoutes?.some((route) => pathname.startsWith(route)) ?? false);
+
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
   const fabRef = useRef<HTMLButtonElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [isAttemptingConnect, setIsAttemptingConnect] = useState(false);
   const prefersReducedMotion = useReducedMotion();
+
+  // ── Voice budget & session timer ──
+  const [voiceBudget, setVoiceBudget] = useState<VoiceBudgetResult | null>(null);
+  const [sessionSeconds, setSessionSeconds] = useState(0);
+  const sessionTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sessionStartRef = useRef<number | null>(null);
+  const [budgetWarning, setBudgetWarning] = useState<string | null>(null);
+  const hasWarned2MinRef = useRef(false);
+
+  // Refs for values used inside setInterval to avoid stale closures
+  const voiceBudgetRef = useRef<VoiceBudgetResult | null>(null);
+  const disconnectRef = useRef(disconnect);
+  useEffect(() => { disconnectRef.current = disconnect; }, [disconnect]);
+  useEffect(() => { voiceBudgetRef.current = voiceBudget; }, [voiceBudget]);
 
   // Persist the chat group ID across reconnects so Chip remembers the
   // conversation when the user disconnects and reconnects (or if the
@@ -186,29 +242,6 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
     scrollAnchorRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Click outside to close
-  useEffect(() => {
-    if (!isOpen) return;
-
-    function handleClickOutside(e: MouseEvent) {
-      const target = e.target as Node;
-      if (
-        panelRef.current &&
-        !panelRef.current.contains(target) &&
-        fabRef.current &&
-        !fabRef.current.contains(target)
-      ) {
-        if (readyState === VoiceReadyState.OPEN) {
-          disconnect();
-        }
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen, readyState, disconnect]);
-
   // Escape key to close
   useEffect(() => {
     if (!isOpen) return;
@@ -225,6 +258,77 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, readyState, disconnect]);
+
+  // ── Session timer: count seconds while connected ──
+  useEffect(() => {
+    if (status === "connected" && !sessionTimerRef.current) {
+      sessionStartRef.current = Date.now();
+      setSessionSeconds(0);
+      setBudgetWarning(null);
+      hasWarned2MinRef.current = false;
+
+      sessionTimerRef.current = setInterval(() => {
+        if (!sessionStartRef.current) return;
+        const elapsed = Math.floor((Date.now() - sessionStartRef.current) / 1000);
+        setSessionSeconds(elapsed);
+
+        // Check remaining budget (read from ref to avoid stale closure)
+        const budget = voiceBudgetRef.current;
+        if (budget) {
+          const remaining = budget.remainingSeconds - elapsed;
+          if (remaining <= 0) {
+            // Auto-disconnect — out of time
+            setBudgetWarning(
+              "Chip needs to rest! You\u2019ve used all your voice time for today."
+            );
+            disconnectRef.current();
+          } else if (remaining <= 120 && !hasWarned2MinRef.current) {
+            // Warn once when 2 minutes or fewer remain
+            hasWarned2MinRef.current = true;
+            setBudgetWarning("Chip needs to rest soon \u2014 2 minutes left!");
+          }
+        }
+      }, 1000);
+    }
+
+    if (status !== "connected" && sessionTimerRef.current) {
+      clearInterval(sessionTimerRef.current);
+      sessionTimerRef.current = null;
+
+      // Log the session duration (always prefer wall-clock over state)
+      const duration = sessionStartRef.current
+        ? Math.floor((Date.now() - sessionStartRef.current) / 1000)
+        : 0;
+      if (duration > 0) {
+        logVoiceSession(chatGroupIdRef.current, duration).catch(() => {
+          // Fire and forget — don't block the UI
+        });
+      }
+      sessionStartRef.current = null;
+    }
+
+    return () => {
+      if (sessionTimerRef.current) {
+        clearInterval(sessionTimerRef.current);
+        sessionTimerRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  // Format seconds as "M:SS"
+  const formatTime = useCallback((secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  }, []);
+
+  // Remaining time display
+  const remainingDisplay = useMemo(() => {
+    if (!voiceBudget || status !== "connected") return null;
+    const remaining = Math.max(0, voiceBudget.remainingSeconds - sessionSeconds);
+    return formatTime(remaining);
+  }, [voiceBudget, sessionSeconds, status, formatTime]);
 
   // Build system prompt from page context + current pathname
   const systemPrompt = useMemo(() => {
@@ -243,14 +347,28 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
     sendSessionSettings({ systemPrompt });
   }, [pathname, status, systemPrompt, sendSessionSettings]);
 
-  // Connect handler — fetches a fresh token, then connects with page-aware prompt.
+  // Connect handler -- checks voice budget, fetches a fresh token, then connects.
   // If we have a previous `chatGroupId`, pass it as `resumedChatGroupId` so Hume
   // continues from the prior conversation context instead of starting fresh.
   const tokenRef = useRef(accessToken);
   const handleConnect = useCallback(async () => {
     setConnectError(null);
+    setBudgetWarning(null);
+    onClearProviderError?.();
     setIsAttemptingConnect(true);
     try {
+      // Check voice budget before connecting
+      const budget = await checkVoiceBudget();
+      setVoiceBudget(budget);
+
+      if (!budget.allowed) {
+        setBudgetWarning(
+          budget.reason ?? "Chip needs to rest! Try again later."
+        );
+        setIsAttemptingConnect(false);
+        return;
+      }
+
       // Fetch a fresh token to avoid expired-token failures on long sessions
       const freshToken = await refreshHumeAccessToken();
       if (freshToken) {
@@ -258,7 +376,7 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
       }
 
       await connect({
-        auth: { type: "accessToken", value: tokenRef.current },
+        auth: { type: "accessToken" as const, value: tokenRef.current },
         configId,
         resumedChatGroupId: chatGroupIdRef.current ?? undefined,
         sessionSettings: systemPrompt
@@ -267,11 +385,12 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      console.error("[ChipVoice] Connect failed:", msg);
       setConnectError(msg);
     } finally {
       setIsAttemptingConnect(false);
     }
-  }, [connect, accessToken, configId, systemPrompt]);
+  }, [connect, accessToken, configId, systemPrompt, onClearProviderError]);
 
   // Toggle mic mute
   const handleToggleMic = useCallback(() => {
@@ -336,13 +455,16 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
     });
   }, [readyState, disconnect]);
 
+  // Return null for hidden routes -- VoiceProvider (parent) stays alive.
+  // Placed after all hooks to satisfy React's Rules of Hooks.
+  if (isHiddenRoute) return null;
+
   return (
     <>
       {/* Expanded panel */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            ref={panelRef}
             initial={
               prefersReducedMotion
                 ? { opacity: 0 }
@@ -359,45 +481,52 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
                 : { opacity: 0, y: 20, scale: 0.95 }
             }
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="fixed right-6 bottom-24 z-50 w-80 max-w-[calc(100vw-3rem)] sm:w-96"
+            className="fixed right-6 bottom-24 z-50 w-80 max-w-[calc(100vw-3rem)] sm:w-96 lg:bottom-24 max-lg:bottom-[calc(56px+5.5rem)]"
           >
-            <Card className="flex max-h-[min(60vh,420px)] flex-col gap-0 overflow-hidden rounded-2xl border-primary/20 py-0 shadow-lg">
-              <CardContent className="flex min-h-0 flex-1 flex-col gap-3 p-4">
-                {/* Header: avatar + status + close */}
-                <div className="flex items-center gap-3">
+            <Card className="flex max-h-[min(50vh,360px)] flex-col gap-0 overflow-hidden rounded-2xl border-primary/20 py-0 shadow-lg">
+              {/* ── Header (pinned top) ── */}
+              <div className="shrink-0 border-b border-border/50 px-3.5 pt-3.5 pb-2.5">
+                <div className="flex items-center gap-2.5">
                   <div className="relative">
                     <div
                       className={cn(
-                        "flex size-10 items-center justify-center overflow-hidden rounded-full",
+                        "flex size-8 items-center justify-center overflow-hidden rounded-full",
                         status === "connected" &&
-                          "ring-[3px] ring-primary/50 ring-offset-2",
+                          "ring-2 ring-primary/50 ring-offset-1",
                       )}
                     >
-                      <Image
+                      <img
                         src="/images/chip.png"
                         alt="Chip"
-                        width={40}
-                        height={40}
-                        className="size-10 rounded-full object-cover"
+                        width={32}
+                        height={32}
+                        className="size-8 rounded-full object-cover"
                       />
                     </div>
                     {status === "connected" && (
-                      <span className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-background bg-emerald-500" />
+                      <span className="absolute -right-0.5 -bottom-0.5 size-2 rounded-full border-[1.5px] border-background bg-emerald-500" />
                     )}
                   </div>
 
                   <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-sm font-semibold text-foreground">
+                    <span className="text-sm font-semibold leading-tight text-foreground">
                       Chip
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-[11px] leading-tight text-muted-foreground">
                       {statusText}
                     </span>
                   </div>
 
-                  {/* Emotion badge */}
+                  {/* Remaining time badge (when connected) */}
+                  {remainingDisplay && status === "connected" && (
+                    <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
+                      <Clock className="size-3" />
+                      {remainingDisplay}
+                    </span>
+                  )}
+
                   {topEmotion && status === "connected" && (
-                    <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
                       {topEmotion}
                     </span>
                   )}
@@ -406,17 +535,17 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
                     variant="ghost"
                     size="icon"
                     onClick={toggleOpen}
-                    className="size-7 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                    className="size-6 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
                     aria-label="Close Chip voice panel"
                   >
-                    <X className="size-3.5" />
+                    <X className="size-3" />
                   </Button>
                 </div>
 
                 {/* Audio visualizer */}
                 {status === "connected" && (
                   <div
-                    className="flex h-8 items-end justify-center gap-[2px]"
+                    className="mt-2 flex h-6 items-end justify-center gap-[2px]"
                     aria-hidden="true"
                   >
                     <AudioBars
@@ -425,117 +554,146 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
                     />
                   </div>
                 )}
+              </div>
 
+              {/* ── Body (scrollable transcript) ── */}
+              <div className="min-h-0 flex-1 overflow-y-auto px-3.5 py-2.5">
                 {/* Welcome bubble (visible until voice messages arrive) */}
                 {status !== "connected" && chatMessages.length === 0 && (
-                  <div className="flex flex-col gap-2">
-                    <div className="max-w-[85%] self-start rounded-2xl rounded-tl-sm bg-primary/10 px-3 py-2 text-sm leading-relaxed text-foreground">
-                      <span className="mb-0.5 block text-xs font-semibold opacity-70">
-                        Chip
-                      </span>
-                      {isNewUser
-                        ? `Hey${pageContext?.childName ? ` ${pageContext.childName}` : ""}! I'm Chip, your learning buddy! Tap the mic and let's get started!`
-                        : `Hey${pageContext?.childName ? ` ${pageContext.childName}` : ""}! Tap the mic to talk to me!`}
-                    </div>
+                  <div className="max-w-[90%] rounded-xl rounded-tl-sm bg-primary/10 px-2.5 py-2 text-[13px] leading-snug text-foreground">
+                    <span className="mb-0.5 block text-[11px] font-semibold opacity-60">
+                      Chip
+                    </span>
+                    {isNewUser
+                      ? `Hey${pageContext?.childName ? ` ${pageContext.childName}` : ""}! I'm Chip, your learning buddy! Tap the mic and let's get started!`
+                      : `Hey${pageContext?.childName ? ` ${pageContext.childName}` : ""}! Tap the mic to talk to me!`}
                   </div>
                 )}
 
-                {/* Transcript */}
+                {/* Transcript messages */}
                 {chatMessages.length > 0 && (
-                  <ScrollArea className="max-h-48 min-h-0 flex-1">
-                    <div className="flex flex-col gap-2 pr-3">
-                      {chatMessages.map((msg, i) => {
-                        const isChip = msg.type === "assistant_message";
-                        const content = msg.message?.content ?? "";
-                        if (!content) return null;
+                  <div className="flex flex-col gap-1.5">
+                    {chatMessages.map((msg, i) => {
+                      const isChip = msg.type === "assistant_message";
+                      const content = msg.message?.content ?? "";
+                      if (!content) return null;
 
-                        return (
-                          <div
-                            key={i}
-                            className={cn(
-                              "max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed",
-                              isChip
-                                ? "self-start rounded-tl-sm bg-primary/10 text-foreground"
-                                : "self-end rounded-tr-sm bg-secondary/20 text-foreground",
-                            )}
-                          >
-                            <span className="mb-0.5 block text-xs font-semibold opacity-70">
-                              {isChip ? "Chip" : "You"}
-                            </span>
-                            {content}
-                          </div>
-                        );
-                      })}
-                      <div ref={scrollAnchorRef} className="h-px" />
-                    </div>
-                  </ScrollArea>
+                      return (
+                        <div
+                          key={i}
+                          className={cn(
+                            "max-w-[88%] rounded-xl px-2.5 py-1.5 text-[13px] leading-snug",
+                            isChip
+                              ? "self-start rounded-tl-sm bg-primary/10 text-foreground"
+                              : "self-end rounded-tr-sm bg-secondary/20 text-foreground",
+                          )}
+                        >
+                          <span className="mb-0.5 block text-[10px] font-semibold opacity-50">
+                            {isChip ? "Chip" : "You"}
+                          </span>
+                          {content}
+                        </div>
+                      );
+                    })}
+                    <div ref={scrollAnchorRef} className="h-px" />
+                  </div>
+                )}
+
+                {/* Budget warning */}
+                {budgetWarning && (
+                  <div className="mt-1 rounded-xl bg-amber-50 px-3 py-2.5 text-center text-[13px] text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                    <p>{budgetWarning}</p>
+                    {voiceBudget && !voiceBudget.allowed && voiceBudget.tier === "free" && (
+                      <p className="mt-1 text-[11px] text-amber-600/80 dark:text-amber-500/80">
+                        Supporters get 30 min/day!{" "}
+                        <a
+                          href="/dashboard/billing"
+                          className="font-medium underline underline-offset-2"
+                        >
+                          Learn more
+                        </a>
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 {/* Error state */}
-                {(isError || connectError) && (
-                  <div className="rounded-xl bg-destructive/10 px-4 py-3 text-center text-sm text-destructive">
-                    {isMicrophoneError
-                      ? "Chip needs your microphone! Please allow mic access and try again."
-                      : isSocketError
-                        ? "Chip can't connect right now. Check your internet and try again!"
-                        : isAudioError
-                          ? "Chip can't play audio right now. Try again!"
-                          : connectError
-                            ? `Connection error: ${connectError}`
-                            : "Chip can't hear you right now. Try the text chat instead!"}
+                {(isError || connectError || providerError) && (
+                  <div className="mt-1 rounded-xl bg-destructive/10 px-3 py-2.5 text-center text-[13px] text-destructive">
+                    {isMicrophoneError ? (
+                      "Chip needs your microphone! Please allow mic access and try again."
+                    ) : (
+                      <>
+                        <p>
+                          Oops! Chip can&apos;t talk right now. Please try
+                          again later!
+                        </p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          If this keeps happening, let us know at{" "}
+                          <a
+                            href="mailto:hello@tinkerschool.ai"
+                            className="font-medium text-primary underline underline-offset-2"
+                          >
+                            hello@tinkerschool.ai
+                          </a>
+                        </p>
+                      </>
+                    )}
                   </div>
                 )}
+              </div>
 
-                {/* Controls */}
+              {/* ── Footer controls (pinned bottom) ── */}
+              <div className="shrink-0 border-t border-border/50 px-3.5 py-2.5">
                 <div className="flex items-center justify-center gap-2.5">
                   {status === "idle" ? (
                     <Button
-                      className="size-11 rounded-full"
+                      className="size-10 rounded-full"
                       onClick={handleConnect}
                       aria-label="Start voice chat with Chip"
                     >
-                      <Mic className="size-5" />
+                      <Mic className="size-4.5" />
                     </Button>
                   ) : status === "connecting" ? (
                     <Button
-                      className="size-11 rounded-full bg-primary/80"
+                      className="size-10 rounded-full bg-primary/80"
                       onClick={() => {
                         disconnect();
                         setIsAttemptingConnect(false);
                       }}
                       aria-label="Cancel connecting"
                     >
-                      <Mic className="size-5 animate-pulse motion-reduce:animate-none" />
+                      <Mic className="size-4.5 animate-pulse motion-reduce:animate-none" />
                     </Button>
                   ) : (
                     <>
                       <Button
                         variant={isMuted ? "outline" : "default"}
-                        className="size-11 rounded-full"
+                        className="size-10 rounded-full"
                         onClick={handleToggleMic}
                         aria-label={
                           isMuted ? "Unmute microphone" : "Mute microphone"
                         }
                       >
                         {isMuted ? (
-                          <MicOff className="size-5" />
+                          <MicOff className="size-4.5" />
                         ) : (
-                          <Mic className="size-5" />
+                          <Mic className="size-4.5" />
                         )}
                       </Button>
 
                       <Button
                         variant="destructive"
-                        className="size-11 rounded-full"
+                        className="size-10 rounded-full"
                         onClick={disconnect}
                         aria-label="End voice chat"
                       >
-                        <PhoneOff className="size-4" />
+                        <PhoneOff className="size-3.5" />
                       </Button>
                     </>
                   )}
                 </div>
-              </CardContent>
+              </div>
             </Card>
           </motion.div>
         )}
@@ -548,7 +706,8 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
         whileHover={prefersReducedMotion ? undefined : { scale: 1.08 }}
         whileTap={prefersReducedMotion ? undefined : { scale: 0.95 }}
         className={cn(
-          "fixed right-6 bottom-6 z-50 flex size-14 items-center justify-center rounded-full shadow-lg transition-colors focus-visible:ring-[3px] focus-visible:ring-primary/50 focus-visible:outline-none",
+          "fixed right-6 z-50 flex size-14 items-center justify-center rounded-full shadow-lg transition-colors focus-visible:ring-[3px] focus-visible:ring-primary/50 focus-visible:outline-none",
+          "bottom-6 lg:bottom-6 max-lg:bottom-[calc(56px+0.75rem)]",
           isOpen
             ? "bg-muted text-muted-foreground"
             : "bg-primary text-primary-foreground",
@@ -564,16 +723,25 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
           <X className="size-6" />
         ) : (
           <div className="relative">
-            <Image
+            {/* Plain <img> instead of next/image since we are
+                outside the Next.js component tree */}
+            <img
               src="/images/chip.png"
               alt="Chip"
               width={40}
               height={40}
               className="size-10 rounded-full object-cover"
             />
-            {/* Green dot when connected */}
+            {/* Green dot + time badge when connected */}
             {status === "connected" && (
-              <span className="absolute -right-0.5 -top-0.5 size-3 rounded-full border-2 border-primary bg-emerald-500" />
+              <>
+                <span className="absolute -right-0.5 -top-0.5 size-3 rounded-full border-2 border-primary bg-emerald-500" />
+                {remainingDisplay && (
+                  <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-background/90 px-1.5 py-px text-[9px] font-semibold tabular-nums text-muted-foreground shadow-sm backdrop-blur">
+                    {remainingDisplay}
+                  </span>
+                )}
+              </>
             )}
           </div>
         )}
@@ -583,7 +751,33 @@ function FabUI({ accessToken, configId, pageContext }: FabUIProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Main export — wraps FabUI with VoiceProvider + navigation handler
+// Routes where the FAB should be hidden (checked inside FabUI so that
+// VoiceProvider stays mounted and the WebSocket connection survives).
+// ---------------------------------------------------------------------------
+
+const HIDE_ON_ROUTES = [
+  "/sign-in",
+  "/sign-up",
+  "/onboarding",
+  "/demo",
+  "/privacy",
+  "/terms",
+  "/support",
+];
+
+// ---------------------------------------------------------------------------
+// Main export -- wraps FabUI with VoiceProvider + action handler
+//
+// This component renders inside an INDEPENDENT React root (created by
+// voice-root.tsx), NOT inside Next.js's component tree. This means:
+//
+// - VoiceProvider NEVER unmounts during navigation (the root is permanent)
+// - Next.js hooks (usePathname, useRouter) are NOT available here
+// - Navigation state comes through voiceBridge instead
+// - next/image is replaced with plain <img> tags
+//
+// Every callback passed to VoiceProvider is stabilized via refs so that
+// the provider always receives the same function references.
 // ---------------------------------------------------------------------------
 
 export default function ChipVoiceFab({
@@ -591,44 +785,61 @@ export default function ChipVoiceFab({
   configId,
   pageContext,
 }: ChipVoiceProps) {
-  const router = useRouter();
-  const prefersReducedMotionOuter = useReducedMotion();
+  const reducedMotionRef = useRef(false);
+  reducedMotionRef.current = !!useReducedMotion();
 
-  // Handle voice actions dispatched by Chip's tool calls
-  const handleAction = useCallback(
-    (action: VoiceAction) => {
-      switch (action.type) {
-        case "navigate":
-          if (action.path) {
-            router.push(action.path);
-          }
-          break;
-        case "celebrate":
-          if (!prefersReducedMotionOuter) {
-            import("canvas-confetti").then((mod) => {
-              const fire = mod.default;
-              fire({
-                particleCount: 120,
-                spread: 80,
-                origin: { x: 0.9, y: 0.85 },
-                colors: ["#F97316", "#facc15", "#22c55e", "#ec4899"],
-              });
+  // Stable action handler -- uses voiceBridge.navigate instead of
+  // useRouter (which is not available outside Next.js tree).
+  const stableHandleAction = useRef((action: VoiceAction) => {
+    switch (action.type) {
+      case "navigate":
+        if (action.path) {
+          voiceBridge.navigate(action.path);
+        }
+        break;
+      case "celebrate":
+        if (!reducedMotionRef.current) {
+          import("canvas-confetti").then((mod) => {
+            const fire = mod.default;
+            fire({
+              particleCount: 120,
+              spread: 80,
+              origin: { x: 0.9, y: 0.85 },
+              colors: ["#F97316", "#facc15", "#22c55e", "#ec4899"],
             });
-          }
-          break;
+          });
+        }
+        break;
+    }
+  }).current;
+
+  // Stable tool call handler -- same function reference for the lifetime
+  // of the component so VoiceProvider's onToolCall prop never changes.
+  const stableToolCallHandler = useMemo(
+    () => createChipToolCallHandler(stableHandleAction),
+    [stableHandleAction],
+  );
+
+  // Surface WebSocket close reasons (e.g. "Exhausted credit balance") as
+  // user-visible errors so the UI doesn't silently fail.
+  const [providerError, setProviderError] = useState<string | null>(null);
+
+  // Stable close handler -- same function reference forever.
+  const stableCloseHandler = useRef(
+    (ev: { code: number; reason: string }) => {
+      if (ev.reason && ev.code !== 1000) {
+        setProviderError(ev.reason);
       }
     },
-    [router, prefersReducedMotionOuter],
-  );
+  ).current;
 
-  const handleToolCall = useMemo(
-    () => createChipToolCallHandler(handleAction),
-    [handleAction],
-  );
+  // Stable clear callback for FabUI
+  const clearProviderError = useRef(() => setProviderError(null)).current;
 
   return (
     <VoiceProvider
-      onToolCall={handleToolCall}
+      onToolCall={stableToolCallHandler}
+      onClose={stableCloseHandler}
       clearMessagesOnDisconnect={false}
       messageHistoryLimit={50}
     >
@@ -636,6 +847,9 @@ export default function ChipVoiceFab({
         accessToken={accessToken}
         configId={configId}
         pageContext={pageContext}
+        providerError={providerError}
+        onClearProviderError={clearProviderError}
+        hideOnRoutes={HIDE_ON_ROUTES}
       />
     </VoiceProvider>
   );

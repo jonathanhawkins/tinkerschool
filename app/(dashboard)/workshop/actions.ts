@@ -26,6 +26,36 @@ async function getSupabase() {
   }
 }
 
+/**
+ * Resolve the active kid profile for the authenticated user.
+ * If the authenticated user is a parent, returns the first kid in the family.
+ * Falls back to the parent profile if no kids exist.
+ */
+async function resolveKidProfile(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  userId: string,
+): Promise<{ id: string; family_id: string; role: string } | null> {
+  const { data: profile } = (await supabase
+    .from("profiles")
+    .select("id, family_id, role")
+    .eq("clerk_id", userId)
+    .single()) as { data: { id: string; family_id: string; role: string } | null };
+
+  if (!profile) return null;
+  if (profile.role === "kid") return profile;
+
+  // Parent -- find the first kid in the family
+  const { data: kids } = (await supabase
+    .from("profiles")
+    .select("id, family_id, role")
+    .eq("family_id", profile.family_id)
+    .eq("role", "kid")
+    .order("created_at")
+    .limit(1)) as { data: { id: string; family_id: string; role: string }[] | null };
+
+  return kids?.[0] ?? profile;
+}
+
 // ---------------------------------------------------------------------------
 // Save project
 // ---------------------------------------------------------------------------
@@ -46,14 +76,8 @@ export async function saveProject(
 
   const supabase = await getSupabase();
 
-  // Fetch the profile for this Clerk user.
-  // The hand-written Database type resolves Row to `never`, so we cast the
-  // query result to the shape we actually need.
-  const { data: profile } = (await supabase
-    .from("profiles")
-    .select("id, family_id")
-    .eq("clerk_id", userId)
-    .single()) as { data: { id: string; family_id: string } | null };
+  // Resolve the active kid profile (projects belong to the kid, not the parent)
+  const profile = await resolveKidProfile(supabase, userId);
 
   if (!profile) {
     return { success: false, error: "Profile not found" };
@@ -126,12 +150,8 @@ export async function updateProgress(
 
   const supabase = await getSupabase();
 
-  // Fetch profile for this Clerk user
-  const { data: profile } = (await supabase
-    .from("profiles")
-    .select("id")
-    .eq("clerk_id", userId)
-    .single()) as { data: { id: string } | null };
+  // Resolve the active kid profile for progress tracking
+  const profile = await resolveKidProfile(supabase, userId);
 
   if (!profile) {
     return { success: false, error: "Profile not found" };
@@ -402,11 +422,8 @@ export async function recordDeviceFlash(
 
   const supabase = await getSupabase();
 
-  const { data: profile } = (await supabase
-    .from("profiles")
-    .select("id")
-    .eq("clerk_id", userId)
-    .single()) as { data: { id: string } | null };
+  // Resolve the active kid profile for device session tracking
+  const profile = await resolveKidProfile(supabase, userId);
 
   if (!profile) {
     return { success: false, error: "Profile not found" };

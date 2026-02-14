@@ -55,3 +55,32 @@ export async function requireAuth(): Promise<AuthResult> {
 
   return { userId, profile, supabase };
 }
+
+/**
+ * Given a parent profile, resolves the first kid profile in the same family.
+ * If the profile is already a kid, returns it as-is. Returns null if no kid
+ * profiles exist in the family.
+ *
+ * Used by kid-facing dashboard pages (Mission Control, Subjects, etc.) that
+ * need the kid's display_name, current_band, and profile.id for progress
+ * queries instead of the parent's.
+ */
+export async function getActiveKidProfile(
+  profile: Profile,
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+): Promise<Profile | null> {
+  if (profile.role === "kid") {
+    return profile;
+  }
+
+  const { data: kids } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("family_id", profile.family_id)
+    .eq("role", "kid")
+    .order("created_at")
+    .limit(1);
+
+  const firstKid = (kids as Profile[] | null)?.[0] ?? null;
+  return firstKid;
+}

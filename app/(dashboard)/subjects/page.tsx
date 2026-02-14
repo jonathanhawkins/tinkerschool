@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 import { SubjectIcon } from "@/components/subject-icon";
-import { requireAuth } from "@/lib/auth/require-auth";
+import { requireAuth, getActiveKidProfile } from "@/lib/auth/require-auth";
 import { FadeIn, Stagger, StaggerItem, HoverLift } from "@/components/motion";
 import type { Subject, Skill, SkillProficiency } from "@/lib/supabase/types";
 import { safeColor } from "@/lib/utils";
@@ -85,6 +85,10 @@ function SubjectCard({ subject, skillsStarted, skillsTotal }: SubjectCardProps) 
 export default async function SubjectsPage() {
   const { profile, supabase } = await requireAuth();
 
+  // Resolve the active kid profile for progress queries
+  const kidProfile = await getActiveKidProfile(profile, supabase);
+  const activeProfile = kidProfile ?? profile;
+
   // Fetch all subjects
   const { data: subjects } = await supabase
     .from("subjects")
@@ -100,7 +104,7 @@ export default async function SubjectsPage() {
   const { data: proficiencyRows } = await supabase
     .from("skill_proficiencies")
     .select("*, skills(*)")
-    .eq("profile_id", profile.id);
+    .eq("profile_id", activeProfile.id);
 
   interface ProficiencyWithSkill extends SkillProficiency {
     skills: Skill;

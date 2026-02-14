@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { requireAuth } from "@/lib/auth/require-auth";
+import { requireAuth, getActiveKidProfile } from "@/lib/auth/require-auth";
 
 export const metadata: Metadata = { title: "Achievements" };
 import { BadgeIcon } from "@/lib/badge-icons";
@@ -69,6 +69,10 @@ function getProgressForBadge(
 export default async function AchievementsPage() {
   const { profile, supabase } = await requireAuth();
 
+  // Resolve the active kid profile for progress queries
+  const kidProfile = await getActiveKidProfile(profile, supabase);
+  const activeProfile = kidProfile ?? profile;
+
   // Fetch all badges, user's earned badges, and stats in parallel
   const [
     badgesResult,
@@ -85,46 +89,46 @@ export default async function AchievementsPage() {
     supabase
       .from("user_badges")
       .select("*, badges(*)")
-      .eq("profile_id", profile.id),
+      .eq("profile_id", activeProfile.id),
     // Count completed lessons
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase.from("progress") as any)
       .select("id", { count: "exact", head: true })
-      .eq("profile_id", profile.id)
+      .eq("profile_id", activeProfile.id)
       .eq("status", "completed"),
     // Count simulator runs
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase.from("device_sessions") as any)
       .select("id", { count: "exact", head: true })
-      .eq("profile_id", profile.id)
+      .eq("profile_id", activeProfile.id)
       .eq("device_type", "simulator"),
     // Count chat sessions
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase.from("chat_sessions") as any)
       .select("id", { count: "exact", head: true })
-      .eq("profile_id", profile.id),
+      .eq("profile_id", activeProfile.id),
     // Count device flashes
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase.from("device_sessions") as any)
       .select("id", { count: "exact", head: true })
-      .eq("profile_id", profile.id),
+      .eq("profile_id", activeProfile.id),
     // Count projects
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase.from("projects") as any)
       .select("id", { count: "exact", head: true })
-      .eq("profile_id", profile.id),
+      .eq("profile_id", activeProfile.id),
     // Fetch completion dates for unique days
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase.from("progress") as any)
       .select("completed_at")
-      .eq("profile_id", profile.id)
+      .eq("profile_id", activeProfile.id)
       .eq("status", "completed")
       .not("completed_at", "is", null),
     // Fetch completed lessons with subjects for unique subject count
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase.from("progress") as any)
       .select("lesson_id, lessons(subject_id)")
-      .eq("profile_id", profile.id)
+      .eq("profile_id", activeProfile.id)
       .eq("status", "completed"),
   ]);
 

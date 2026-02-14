@@ -16,7 +16,7 @@ import {
   Clock,
 } from "lucide-react";
 
-import { requireAuth } from "@/lib/auth/require-auth";
+import { requireAuth, getActiveKidProfile } from "@/lib/auth/require-auth";
 import { FadeIn } from "@/components/motion";
 import type { Lesson, Module, Progress, Subject } from "@/lib/supabase/types";
 import { cn, safeColor } from "@/lib/utils";
@@ -36,6 +36,7 @@ import {
 } from "@/lib/activities/types";
 import { computeDifficulty } from "@/lib/activities/adaptive-difficulty";
 import { DeviceEnhancementCard } from "@/components/device-enhancement-card";
+import { FullscreenToggle } from "@/components/fullscreen-toggle";
 import { InteractiveLesson } from "./interactive-lesson";
 
 // ---------------------------------------------------------------------------
@@ -49,6 +50,10 @@ export default async function LessonPage({
 }) {
   const { lessonId } = await params;
   const { profile, supabase } = await requireAuth();
+
+  // Resolve the active kid profile for progress queries
+  const kidProfile = await getActiveKidProfile(profile, supabase);
+  const activeProfile = kidProfile ?? profile;
 
   // Fetch the lesson
   const { data: lesson } = await supabase
@@ -88,7 +93,7 @@ export default async function LessonPage({
   const { data: progressRows } = await supabase
     .from("progress")
     .select("*")
-    .eq("profile_id", profile.id)
+    .eq("profile_id", activeProfile.id)
     .eq("lesson_id", lessonId);
 
   const progress: Progress | null =
@@ -101,7 +106,7 @@ export default async function LessonPage({
   const { count: completedCount } = await supabase
     .from("progress")
     .select("*", { count: "exact", head: true })
-    .eq("profile_id", profile.id)
+    .eq("profile_id", activeProfile.id)
     .eq("status", "completed");
   const isFirstLesson = (completedCount ?? 0) === 0;
 
@@ -116,7 +121,7 @@ export default async function LessonPage({
 
   // Compute adaptive difficulty for interactive lessons
   const difficulty = isInteractive
-    ? await computeDifficulty(supabase, profile.id, safeLesson.subject_id)
+    ? await computeDifficulty(supabase, activeProfile.id, safeLesson.subject_id)
     : null;
 
   // Apply difficulty adjustments to config
@@ -180,7 +185,7 @@ export default async function LessonPage({
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      {/* ----- Breadcrumb / back ----- */}
+      {/* ----- Breadcrumb / back + Fullscreen toggle ----- */}
       <FadeIn>
         <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <Button
@@ -200,6 +205,11 @@ export default async function LessonPage({
               <span className="truncate font-medium">{safeModule.title}</span>
             </>
           )}
+
+          {/* Push fullscreen toggle to the right */}
+          <div className="ml-auto">
+            <FullscreenToggle />
+          </div>
         </nav>
       </FadeIn>
 
@@ -313,7 +323,7 @@ export default async function LessonPage({
               <InteractiveLesson
                 config={activityConfig}
                 lessonId={lessonId}
-                profileId={profile.id}
+                profileId={activeProfile.id}
                 subjectColor={subjectColor}
                 lessonTitle={safeLesson.title}
                 difficultyLevel={difficulty?.level ?? "standard"}

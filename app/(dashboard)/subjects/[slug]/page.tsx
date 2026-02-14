@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 import { SubjectIcon } from "@/components/subject-icon";
-import { requireAuth } from "@/lib/auth/require-auth";
+import { requireAuth, getActiveKidProfile } from "@/lib/auth/require-auth";
 import { FadeIn } from "@/components/motion";
 import type {
   Subject,
@@ -318,6 +318,10 @@ export default async function SubjectDetailPage({
   const { slug } = await params;
   const { profile, supabase } = await requireAuth();
 
+  // Resolve the active kid profile for progress queries
+  const kidProfile = await getActiveKidProfile(profile, supabase);
+  const activeProfile = kidProfile ?? profile;
+
   // Fetch the subject by slug
   const { data: subject } = await supabase
     .from("subjects")
@@ -345,7 +349,7 @@ export default async function SubjectDetailPage({
   const { data: proficiency } = await supabase
     .from("skill_proficiencies")
     .select("*")
-    .eq("profile_id", profile.id)
+    .eq("profile_id", activeProfile.id)
     .in("skill_id", skillIds.length > 0 ? skillIds : ["__none__"]);
 
   const safeProficiency: SkillProficiency[] =
@@ -361,7 +365,7 @@ export default async function SubjectDetailPage({
   const { data: modules } = await supabase
     .from("modules")
     .select("*")
-    .lte("band", profile.current_band)
+    .lte("band", activeProfile.current_band)
     .eq("subject_id", safeSubject.id)
     .order("band")
     .order("order_num");
@@ -382,7 +386,7 @@ export default async function SubjectDetailPage({
   const { data: progressRows } = await supabase
     .from("progress")
     .select("*")
-    .eq("profile_id", profile.id);
+    .eq("profile_id", activeProfile.id);
 
   const safeProgress: Progress[] = (progressRows as Progress[] | null) ?? [];
 

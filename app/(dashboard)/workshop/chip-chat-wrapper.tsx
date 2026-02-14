@@ -2,7 +2,7 @@ import { Suspense } from "react";
 
 import ChipChat from "@/components/chip-chat";
 import { Skeleton } from "@/components/ui/skeleton";
-import { requireAuth } from "@/lib/auth/require-auth";
+import { requireAuth, getActiveKidProfile } from "@/lib/auth/require-auth";
 
 // ---------------------------------------------------------------------------
 // Approximate age from grade level (grade 0 = ~5 yrs, grade 1 = ~6 yrs, etc.)
@@ -22,12 +22,16 @@ async function getKidProfile(): Promise<{
   age: number;
   band: number;
 }> {
-  const { profile } = await requireAuth();
+  const { profile, supabase } = await requireAuth();
+
+  // Resolve the active kid profile for chat personalization
+  const kidProfile = await getActiveKidProfile(profile, supabase);
+  const activeProfile = kidProfile ?? profile;
 
   return {
-    kidName: profile.display_name,
-    age: gradeToAge(profile.grade_level),
-    band: profile.current_band,
+    kidName: activeProfile.display_name,
+    age: gradeToAge(activeProfile.grade_level),
+    band: activeProfile.current_band,
   };
 }
 

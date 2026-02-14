@@ -241,6 +241,53 @@
   stroke: #e2e8f0;
 }
 
+/* ---- Fullscreen mode for lesson focus ---- */
+
+/*
+ * When the browser enters fullscreen (via the Fullscreen API), hide all
+ * dashboard chrome so the lesson content fills the entire screen. This is
+ * especially valuable on tablets where screen real estate is limited.
+ *
+ * We use the :fullscreen pseudo-class which the browser applies automatically
+ * when document.documentElement.requestFullscreen() is called. No React
+ * state or context is needed -- pure CSS handles the visibility.
+ */
+
+:fullscreen [data-dashboard-sidebar],
+:fullscreen [data-mobile-nav],
+:fullscreen [data-tablet-bottom-nav] {
+  display: none !important;
+}
+
+/* Remove padding and let content fill the viewport in fullscreen */
+:fullscreen [data-dashboard-main] {
+  padding: 1rem !important;
+  padding-bottom: 1rem !important;
+}
+
+/* Ensure the layout goes full-width without sidebar gap */
+:fullscreen [data-dashboard-root] {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Background color for the fullscreen state */
+:fullscreen {
+  background-color: var(--background);
+}
+
+/* Webkit prefix for older browsers */
+:-webkit-full-screen [data-dashboard-sidebar],
+:-webkit-full-screen [data-mobile-nav],
+:-webkit-full-screen [data-tablet-bottom-nav] {
+  display: none !important;
+}
+
+:-webkit-full-screen [data-dashboard-main] {
+  padding: 1rem !important;
+  padding-bottom: 1rem !important;
+}
+
 /* ---- Print styles for progress reports ---- */
 
 @media print {

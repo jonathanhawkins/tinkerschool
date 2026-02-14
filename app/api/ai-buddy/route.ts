@@ -99,14 +99,29 @@ async function persistChat(
   try {
     const supabase = createAdminSupabaseClient();
 
-    // Look up the profile_id for this Clerk user
-    const { data: profile } = (await supabase
+    // Resolve the kid profile for chat session storage.
+    // Chat sessions belong to the kid, not the parent.
+    const { data: authProfile } = (await supabase
       .from("profiles")
-      .select("id")
+      .select("id, family_id, role")
       .eq("clerk_id", clerkId)
-      .single()) as { data: { id: string } | null };
+      .single()) as { data: { id: string; family_id: string; role: string } | null };
 
-    if (!profile) return null;
+    if (!authProfile) return null;
+
+    let profile = authProfile;
+    if (authProfile.role === "parent") {
+      const { data: kids } = (await supabase
+        .from("profiles")
+        .select("id, family_id, role")
+        .eq("family_id", authProfile.family_id)
+        .eq("role", "kid")
+        .order("created_at")
+        .limit(1)) as { data: typeof authProfile[] | null };
+      if (kids?.[0]) {
+        profile = kids[0];
+      }
+    }
 
     const now = new Date().toISOString();
     const newMessages: StoredMessage[] = [
@@ -208,14 +223,30 @@ async function fetchPersonalizationData(clerkId: string): Promise<{
   try {
     const supabase = createAdminSupabaseClient();
 
-    // Look up profile (including name/grade/band — never trust client values)
-    const { data: profile } = (await supabase
+    // Look up the authenticated user's profile
+    const { data: authProfile } = (await supabase
       .from("profiles")
-      .select("id, display_name, grade_level, current_band, family_id")
+      .select("id, display_name, grade_level, current_band, family_id, role")
       .eq("clerk_id", clerkId)
-      .single()) as { data: { id: string; display_name: string; grade_level: number | null; current_band: number; family_id: string } | null };
+      .single()) as { data: { id: string; display_name: string; grade_level: number | null; current_band: number; family_id: string; role: string } | null };
 
-    if (!profile) return {};
+    if (!authProfile) return {};
+
+    // If the authenticated user is a parent, resolve to the first kid profile
+    // so Chip addresses the kid by name with correct grade/band info.
+    let profile = authProfile;
+    if (authProfile.role === "parent") {
+      const { data: kids } = (await supabase
+        .from("profiles")
+        .select("id, display_name, grade_level, current_band, family_id, role")
+        .eq("family_id", authProfile.family_id)
+        .eq("role", "kid")
+        .order("created_at")
+        .limit(1)) as { data: typeof authProfile[] | null };
+      if (kids?.[0]) {
+        profile = kids[0];
+      }
+    }
 
     // Fetch family subscription tier
     const { data: family } = (await supabase

@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 
 import { SubjectIcon } from "@/components/subject-icon";
-import { requireAuth } from "@/lib/auth/require-auth";
+import { requireAuth, getActiveKidProfile } from "@/lib/auth/require-auth";
 import { FadeIn } from "@/components/motion";
 import type { Subject } from "@/lib/supabase/types";
 import { safeColor } from "@/lib/utils";
@@ -43,6 +43,10 @@ export default async function FreeplayChatPage({
   }
 
   const { profile, supabase } = await requireAuth();
+
+  // Resolve the active kid profile for chat personalization
+  const kidProfile = await getActiveKidProfile(profile, supabase);
+  const activeProfile = kidProfile ?? profile;
 
   // Fetch the subject by slug
   const { data: subject } = await supabase
@@ -106,9 +110,9 @@ export default async function FreeplayChatPage({
       {/* ----- Chat ----- */}
       <FadeIn delay={0.1} className="min-h-0 flex-1">
         <ChipChat
-          kidName={profile.display_name}
-          age={profile.grade_level ? profile.grade_level + 5 : 7}
-          band={profile.current_band}
+          kidName={activeProfile.display_name}
+          age={activeProfile.grade_level ? activeProfile.grade_level + 5 : 7}
+          band={activeProfile.current_band}
           currentSubject={safeSubject.slug}
         />
       </FadeIn>

@@ -35,6 +35,38 @@ async function getSupabase() {
   }
 }
 
+/**
+ * Resolve the active kid profile for the authenticated user.
+ * If the authenticated user is a parent, returns the first kid in the family.
+ * Falls back to the parent's profile ID if no kids exist.
+ */
+async function resolveKidProfileId(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  userId: string,
+): Promise<string | null> {
+  const { data: profile } = (await supabase
+    .from("profiles")
+    .select("id, role, family_id")
+    .eq("clerk_id", userId)
+    .single()) as { data: { id: string; role: string; family_id: string } | null };
+
+  if (!profile) return null;
+
+  // If already a kid, return directly
+  if (profile.role === "kid") return profile.id;
+
+  // Parent -- find the first kid in the family
+  const { data: kids } = (await supabase
+    .from("profiles")
+    .select("id")
+    .eq("family_id", profile.family_id)
+    .eq("role", "kid")
+    .order("created_at")
+    .limit(1)) as { data: { id: string }[] | null };
+
+  return kids?.[0]?.id ?? profile.id;
+}
+
 // ---------------------------------------------------------------------------
 // Start a lesson (create in_progress record if none exists)
 // ---------------------------------------------------------------------------
@@ -51,13 +83,8 @@ export async function startLesson(lessonId: string): Promise<{ success: boolean 
 
   const supabase = await getSupabase();
 
-  const { data: profile } = (await supabase
-    .from("profiles")
-    .select("id")
-    .eq("clerk_id", userId)
-    .single()) as { data: { id: string } | null };
-
-  if (!profile) {
+  const profileId = await resolveKidProfileId(supabase, userId);
+  if (!profileId) {
     return { success: false };
   }
 
@@ -65,7 +92,7 @@ export async function startLesson(lessonId: string): Promise<{ success: boolean 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase.from("progress") as any).upsert(
     {
-      profile_id: profile.id,
+      profile_id: profileId,
       lesson_id: lessonId,
       status: "in_progress",
       started_at: new Date().toISOString(),
@@ -134,21 +161,16 @@ export async function completeActivity(
 
   const supabase = await getSupabase();
 
-  // Fetch profile
-  const { data: profile } = (await supabase
-    .from("profiles")
-    .select("id")
-    .eq("clerk_id", userId)
-    .single()) as { data: { id: string } | null };
-
-  if (!profile) {
+  // Resolve the active kid profile
+  const profileId = await resolveKidProfileId(supabase, userId);
+  if (!profileId) {
     return { success: false, error: "Profile not found" };
   }
 
   // Save activity session
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: sessionError } = await (supabase.from("activity_sessions") as any).insert({
-    profile_id: profile.id,
+    profile_id: profileId,
     lesson_id: input.lessonId,
     score: input.score,
     total_questions: input.totalQuestions,
@@ -176,7 +198,7 @@ export async function completeActivity(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: progressError } = await (supabase.from("progress") as any).upsert(
       {
-        profile_id: profile.id,
+        profile_id: profileId,
         lesson_id: input.lessonId,
         status: "completed",
         started_at: now,
@@ -197,9 +219,9 @@ export async function completeActivity(
     }
 
     // Award XP, update streak, check badges
-    const xpResult = await awardXP(supabase, profile.id, "lesson_completed");
-    await updateStreak(supabase, profile.id);
-    const newBadges = await evaluateBadges(supabase, profile.id);
+    const xpResult = await awardXP(supabase, profileId, "lesson_completed");
+    await updateStreak(supabase, profileId);
+    const newBadges = await evaluateBadges(supabase, profileId);
 
     // Compute milestone data for supporter nudge (non-blocking)
     let milestone: MilestoneInfo | undefined;
@@ -208,12 +230,12 @@ export async function completeActivity(
         supabase
           .from("progress")
           .select("*", { count: "exact", head: true })
-          .eq("profile_id", profile.id)
+          .eq("profile_id", profileId)
           .eq("status", "completed"),
         supabase
           .from("profiles")
           .select("display_name, family_id")
-          .eq("id", profile.id)
+          .eq("id", profileId)
           .single() as unknown as Promise<{ data: { display_name: string; family_id: string } | null }>,
       ]);
 
@@ -259,7 +281,7 @@ export async function completeActivity(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase.from("progress") as any).upsert(
     {
-      profile_id: profile.id,
+      profile_id: profileId,
       lesson_id: input.lessonId,
       status: "in_progress",
       started_at: now,

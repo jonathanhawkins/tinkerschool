@@ -19,6 +19,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { DevResetButton } from "./dev-reset-button";
+import { EditKidName } from "./edit-kid-name";
 import { FamilySection } from "./invite-co-parent";
 import { listFamilyParents, listPendingInvitations } from "./invite-actions";
 
@@ -185,9 +186,15 @@ export default async function SettingsPage() {
                           {kid.display_name.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium text-foreground">
-                            {kid.display_name}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium text-foreground">
+                              {kid.display_name}
+                            </p>
+                            <EditKidName
+                              kidId={kid.id}
+                              currentName={kid.display_name}
+                            />
+                          </div>
                           <p className="text-xs text-muted-foreground">
                             {avatarLabel} avatar
                           </p>

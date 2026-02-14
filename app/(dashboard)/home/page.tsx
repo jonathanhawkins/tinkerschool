@@ -40,7 +40,7 @@ import {
 } from "lucide-react";
 
 import { SubjectIcon } from "@/components/subject-icon";
-import { requireAuth } from "@/lib/auth/require-auth";
+import { requireAuth, getActiveKidProfile } from "@/lib/auth/require-auth";
 import type {
   Module,
   Lesson,
@@ -569,11 +569,16 @@ function EarnedBadge({ badge }: { badge: Badge }) {
 export default async function MissionControlPage() {
   const { profile, supabase } = await requireAuth();
 
+  // Resolve the active kid profile -- the dashboard should show the kid's
+  // name and progress, not the parent's.
+  const kidProfile = await getActiveKidProfile(profile, supabase);
+  const activeProfile = kidProfile ?? profile;
+
   // ---- Data Fetching (all queries in parallel) ----
   const modulesPromise = supabase
     .from("modules")
     .select("*")
-    .lte("band", profile.current_band)
+    .lte("band", activeProfile.current_band)
     .order("band")
     .order("order_num");
 
@@ -585,18 +590,18 @@ export default async function MissionControlPage() {
   const progressPromise = supabase
     .from("progress")
     .select("*")
-    .eq("profile_id", profile.id);
+    .eq("profile_id", activeProfile.id);
 
   const badgesPromise = supabase
     .from("user_badges")
     .select("*, badges(*)")
-    .eq("profile_id", profile.id)
+    .eq("profile_id", activeProfile.id)
     .order("earned_at", { ascending: false });
 
   const skillProficiencyPromise = supabase
     .from("skill_proficiencies")
     .select("*, skills(*)")
-    .eq("profile_id", profile.id);
+    .eq("profile_id", activeProfile.id);
 
   const [
     { data: modules },
@@ -765,7 +770,7 @@ export default async function MissionControlPage() {
           />
           <div className="space-y-1">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Welcome back to TinkerSchool, {profile.display_name}!
+              Welcome back to TinkerSchool, {activeProfile.display_name}!
             </h1>
             <p className="text-sm text-muted-foreground">
               {totalCompleted > 0
@@ -783,15 +788,15 @@ export default async function MissionControlPage() {
           <div className="flex items-center gap-2 rounded-xl bg-orange-500/10 px-3 py-2">
             <Flame className="size-4 text-orange-500" />
             <span className="text-sm font-semibold text-orange-700">
-              {profile.current_streak > 0
-                ? `${profile.current_streak} day streak!`
+              {activeProfile.current_streak > 0
+                ? `${activeProfile.current_streak} day streak!`
                 : "Start a streak today!"}
             </span>
           </div>
 
           {/* XP + Level */}
           {(() => {
-            const xp = profile.xp ?? 0;
+            const xp = activeProfile.xp ?? 0;
             const levelInfo = getLevelForXP(xp);
             const nextXP = getNextLevelXP(xp);
             const progressPct = nextXP

@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Nunito, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+
 import ChipVoiceGlobal from "@/components/chip-voice-global";
 import "./globals.css";
 
@@ -67,6 +70,8 @@ export default function RootLayout({
         >
           {children}
           <ChipVoiceGlobal />
+          <Analytics />
+          <SpeedInsights />
         </body>
       </html>
     </ClerkProvider>

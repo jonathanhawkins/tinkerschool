@@ -747,13 +747,25 @@ export default async function MissionControlPage() {
     (p) => p.status === "completed",
   ).length;
 
-  // Find "getting started" lesson for brand-new users (0 lessons completed)
-  const codingSubject = safeSubjects.find((s) => s.slug === "coding");
-  const firstCodingModule = codingSubject
-    ? (modulesBySubject.get(codingSubject.id) ?? [])[0] ?? null
+  // Find "getting started" lesson for brand-new users (0 lessons completed).
+  // Prefer an interactive lesson (works in any browser, no hardware needed).
+  // Try the "Count to 20" math lesson first -- it's the ideal first experience.
+  // Fall back to any interactive lesson, then to the first lesson of any kind.
+  const PREFERRED_FIRST_LESSON_ID = "b1010001-0001-4000-8000-000000000001";
+  const firstInteractiveLesson =
+    safeLessons.find((l) => l.id === PREFERRED_FIRST_LESSON_ID) ??
+    safeLessons.find(
+      (l) => l.lesson_type === "interactive" && !l.device_required,
+    ) ??
+    safeLessons[0] ??
+    null;
+
+  const firstStarterModule = firstInteractiveLesson
+    ? safeModules.find((m) => m.id === firstInteractiveLesson.module_id) ?? null
     : null;
-  const firstCodingLesson = firstCodingModule
-    ? (lessonsByModule.get(firstCodingModule.id) ?? [])[0] ?? null
+
+  const firstStarterSubject = firstStarterModule?.subject_id
+    ? subjectMap.get(firstStarterModule.subject_id) ?? null
     : null;
 
   return (
@@ -833,24 +845,39 @@ export default async function MissionControlPage() {
       {/* ----- Getting Started hero for brand-new users ----- */}
       {totalCompleted === 0 &&
         !continueLesson &&
-        firstCodingLesson &&
-        firstCodingModule && (
+        firstInteractiveLesson &&
+        firstStarterModule && (
           <FadeIn>
             <Card className="rounded-2xl border-2 border-primary/30 bg-gradient-to-r from-primary/5 to-[#EA580C]/5">
               <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:gap-6">
-                <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
-                  <Rocket className="size-8 text-primary" />
+                <div
+                  className="flex size-16 shrink-0 items-center justify-center rounded-2xl"
+                  style={{
+                    backgroundColor: firstStarterSubject
+                      ? `${firstStarterSubject.color}1F`
+                      : undefined,
+                  }}
+                >
+                  {firstStarterSubject ? (
+                    <SubjectIcon
+                      icon={firstStarterSubject.icon}
+                      className="size-8"
+                      style={{ color: firstStarterSubject.color }}
+                    />
+                  ) : (
+                    <Rocket className="size-8 text-primary" />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1 space-y-1.5">
                   <p className="text-xs font-semibold uppercase tracking-wider text-primary">
                     New here? Start your adventure!
                   </p>
                   <h2 className="text-xl font-bold text-foreground">
-                    {firstCodingModule.title}
+                    {firstInteractiveLesson.title}
                   </h2>
                   <p className="text-sm leading-relaxed text-muted-foreground">
-                    Meet your M5StickC Plus 2 and write your very first program.
-                    Learn to light up the display, draw shapes, and make sounds!
+                    {firstInteractiveLesson.description ??
+                      `Jump into your first ${firstStarterSubject?.display_name ?? "interactive"} lesson -- no hardware needed!`}
                   </p>
                 </div>
                 <Button
@@ -858,7 +885,7 @@ export default async function MissionControlPage() {
                   size="lg"
                   className="shrink-0 rounded-xl bg-gradient-to-r from-primary to-[#EA580C] text-white"
                 >
-                  <Link href={`/lessons/${firstCodingLesson.id}`}>
+                  <Link href={`/lessons/${firstInteractiveLesson.id}`}>
                     <Play className="size-4" />
                     Start First Lesson
                   </Link>

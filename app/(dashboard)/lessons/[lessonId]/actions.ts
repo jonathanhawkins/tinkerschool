@@ -9,6 +9,7 @@ import {
 } from "@/lib/badges/evaluate-badges";
 import { updateStreak } from "@/lib/gamification/streaks";
 import { awardXP } from "@/lib/gamification/xp";
+import { sendLessonCompletionNotification } from "@/lib/notifications/send-parent-notification";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { isValidUUID } from "@/lib/utils";
@@ -263,6 +264,16 @@ export async function completeActivity(
       // Non-critical — don't fail activity completion
       console.error("[completeActivity] Milestone check failed:", err);
     }
+
+    // Notify parent(s) about lesson completion (fire-and-forget)
+    sendLessonCompletionNotification(
+      supabase,
+      profileId,
+      input.lessonId,
+      input.score,
+    ).catch((err) => {
+      console.error("[completeActivity] Parent notification failed:", err);
+    });
 
     revalidatePath("/home");
     revalidatePath("/achievements");

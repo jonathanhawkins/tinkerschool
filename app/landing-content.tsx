@@ -367,12 +367,12 @@ export function LandingContent() {
 
           {/* Desktop nav links */}
           <div className="hidden items-center gap-6 md:flex">
-            <a
-              href="#try-chip"
+            <Link
+              href="/demo"
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
-              Try Chip
-            </a>
+              Try Demo
+            </Link>
             <a
               href="#subjects"
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -434,13 +434,13 @@ export function LandingContent() {
         {mobileMenuOpen && (
           <div className="border-t border-border bg-background px-6 pb-4 pt-2 md:hidden">
             <div className="flex flex-col gap-3">
-              <a
-                href="#try-chip"
+              <Link
+                href="/demo"
                 onClick={() => setMobileMenuOpen(false)}
                 className="rounded-xl px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
               >
-                Try Chip
-              </a>
+                Try Demo
+              </Link>
               <a
                 href="#subjects"
                 onClick={() => setMobileMenuOpen(false)}
@@ -551,10 +551,10 @@ export function LandingContent() {
                 size="lg"
                 className="rounded-full px-8 text-base shadow-md shadow-primary/25 sm:text-lg"
               >
-                <a href="#try-chip">
-                  Try Chip Now
+                <Link href="/demo">
+                  Try a Free Lesson
                   <ArrowRight className="ml-2 size-5" />
-                </a>
+                </Link>
               </Button>
             </motion.div>
             <motion.div

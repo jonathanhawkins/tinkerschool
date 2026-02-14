@@ -43,6 +43,13 @@ export type SubjectSlug =
 
 export type DeviceMode = "usb" | "wifi" | "simulator" | "none";
 
+export type NotificationType =
+  | "lesson_completed"
+  | "badge_earned"
+  | "streak_milestone"
+  | "level_up"
+  | "system";
+
 // ---------------------------------------------------------------------------
 // Row types (what you get back from a SELECT)
 // ---------------------------------------------------------------------------
@@ -281,6 +288,21 @@ export interface ActivitySession {
   created_at: string;
 }
 
+export interface Notification {
+  id: string;
+  family_id: string;
+  recipient_profile_id: string;
+  kid_profile_id: string | null;
+  type: NotificationType;
+  title: string;
+  body: string;
+  metadata: Record<string, unknown>;
+  read: boolean;
+  email_sent: boolean;
+  email_sent_at: string | null;
+  created_at: string;
+}
+
 // ---------------------------------------------------------------------------
 // Insert types (what you pass to INSERT — omit server-generated fields)
 // ---------------------------------------------------------------------------
@@ -500,6 +522,21 @@ export interface ActivitySessionInsert {
   created_at?: string;
 }
 
+export interface NotificationInsert {
+  id?: string;
+  family_id: string;
+  recipient_profile_id: string;
+  kid_profile_id?: string | null;
+  type: NotificationType;
+  title: string;
+  body: string;
+  metadata?: Record<string, unknown>;
+  read?: boolean;
+  email_sent?: boolean;
+  email_sent_at?: string | null;
+  created_at?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Update types (all fields optional except id)
 // ---------------------------------------------------------------------------
@@ -677,6 +714,12 @@ export interface ActivitySessionUpdate {
   completed_at?: string | null;
 }
 
+export interface NotificationUpdate {
+  read?: boolean;
+  email_sent?: boolean;
+  email_sent_at?: string | null;
+}
+
 // ---------------------------------------------------------------------------
 // Table definition helper — maps table name to Row / Insert / Update shapes
 // ---------------------------------------------------------------------------
@@ -739,6 +782,11 @@ export interface Database {
         ActivitySessionInsert,
         ActivitySessionUpdate
       >;
+      notifications: TableDefinition<
+        Notification,
+        NotificationInsert,
+        NotificationUpdate
+      >;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -750,6 +798,7 @@ export interface Database {
       artifact_type: ArtifactType;
       difficulty_level: DifficultyLevel;
       subject_slug: SubjectSlug;
+      notification_type: NotificationType;
     };
   };
 }

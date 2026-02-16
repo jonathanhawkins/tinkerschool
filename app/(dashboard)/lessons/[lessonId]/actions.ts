@@ -241,7 +241,7 @@ export async function completeActivity(
       ]);
 
       const totalCompleted = completedResult.count ?? 0;
-      const MILESTONES = [5, 10, 25, 50, 100];
+      const MILESTONES = [3, 5, 10, 25, 50, 100];
 
       if (MILESTONES.includes(totalCompleted) && profileResult.data) {
         const { data: family } = (await supabase

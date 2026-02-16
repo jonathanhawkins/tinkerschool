@@ -17,6 +17,8 @@
  *   back through Next.js's router.
  */
 
+import type { VoiceLessonContext } from "./types";
+
 type PathListener = (pathname: string) => void;
 type NavigateHandler = (path: string) => void;
 
@@ -24,6 +26,10 @@ class VoiceBridge {
   private _pathname = "/";
   private _listeners: Set<PathListener> = new Set();
   private _navigateHandler: NavigateHandler | null = null;
+
+  // Lesson context channel — structured data about the current lesson
+  private _lessonContext: VoiceLessonContext | null = null;
+  private _lessonListeners: Set<() => void> = new Set();
 
   /** Current pathname as reported by the Next.js router. */
   get pathname(): string {
@@ -57,6 +63,35 @@ class VoiceBridge {
    */
   setNavigateHandler(handler: NavigateHandler): void {
     this._navigateHandler = handler;
+  }
+
+  // ── Lesson context channel ──
+
+  /** Current lesson context (null when not on a lesson page). */
+  get lessonContext(): VoiceLessonContext | null {
+    return this._lessonContext;
+  }
+
+  /**
+   * Called by LessonVoiceSync (Next.js side) when a lesson page mounts/unmounts.
+   */
+  setLessonContext(ctx: VoiceLessonContext | null): void {
+    this._lessonContext = ctx;
+    for (const listener of this._lessonListeners) {
+      listener();
+    }
+  }
+
+  /**
+   * Subscribe to lesson context changes. The callback receives no arguments —
+   * consumers read the value via the getter (useSyncExternalStore pattern).
+   * Returns an unsubscribe function.
+   */
+  subscribeLessonContext(listener: () => void): () => void {
+    this._lessonListeners.add(listener);
+    return () => {
+      this._lessonListeners.delete(listener);
+    };
   }
 
   /**

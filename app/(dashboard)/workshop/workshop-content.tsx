@@ -12,7 +12,7 @@ import {
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Blocks, BookOpen, CheckCircle, ChevronDown, ChevronUp, Eye, Info, Lightbulb, Monitor, PartyPopper, Play, Save, Target, X, Sparkles } from "lucide-react";
+import { Blocks, BookOpen, CheckCircle, ChevronDown, Eye, Info, Lightbulb, PartyPopper, Save, Target, Sparkles } from "lucide-react";
 
 import { useWorkshopBanners } from "@/hooks/use-workshop-banners";
 
@@ -20,6 +20,8 @@ import {
   BadgeCelebration,
   type EarnedBadge,
 } from "@/components/badge-celebration";
+import { BlocklyTutorial } from "@/components/blockly-tutorial";
+import { WorkshopHints, useWorkshopActivity } from "@/components/workshop-hints";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,6 +39,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { WorkshopWelcome, type WelcomeData } from "@/components/workshop-welcome";
 import { wrapM5StickCode } from "@/lib/codegen/wrap-m5stick";
 import type { SimulatorOutput } from "@/lib/simulator/types";
 import {
@@ -113,6 +116,8 @@ interface WorkshopContentProps {
   lesson: LessonData | null;
   /** Pre-rendered server component for the AI chat panel */
   chatPanel: ReactNode;
+  /** Welcome screen data when no lesson is loaded */
+  welcomeData?: WelcomeData | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -123,13 +128,6 @@ const fadeInUp = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.3, ease: "easeOut" as const },
-};
-
-const storyCardVariants = {
-  initial: { opacity: 0, scale: 0.97, y: 12 },
-  animate: { opacity: 1, scale: 1, y: 0 },
-  exit: { opacity: 0, scale: 0.97, y: -8 },
-  transition: { duration: 0.25, ease: "easeOut" as const },
 };
 
 // ---------------------------------------------------------------------------
@@ -203,109 +201,8 @@ function PythonPreview({
 }
 
 // ---------------------------------------------------------------------------
-// Simulator encouragement banner (dismissible)
 // ---------------------------------------------------------------------------
-
-const simulatorBannerVariants = {
-  initial: { opacity: 0, scale: 0.97, y: -8 },
-  animate: { opacity: 1, scale: 1, y: 0 },
-  exit: { opacity: 0, scale: 0.97, y: -8 },
-  transition: { duration: 0.25, ease: "easeOut" as const },
-};
-
-function SimulatorBanner({ onDismiss }: { onDismiss: () => void }) {
-  return (
-    <motion.div {...simulatorBannerVariants}>
-      <Card className="relative overflow-hidden rounded-2xl border-2 border-emerald-300/50 bg-gradient-to-r from-emerald-50 to-teal-50">
-        <CardContent className="flex items-start gap-3 p-4">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
-            <Monitor className="size-5 text-emerald-600" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-base font-semibold text-emerald-800">
-              No device connected? No worries!
-            </p>
-            <p className="mt-0.5 text-base leading-relaxed text-emerald-700/80">
-              Click <Play className="mb-0.5 inline size-3.5" /> <strong>Run</strong> to
-              try your code in the simulator. You can test most lessons without
-              plugging in your M5Stick!
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onDismiss}
-            className="shrink-0 rounded-full text-emerald-600 hover:bg-emerald-100 hover:text-emerald-800"
-            aria-label="Dismiss simulator tip"
-          >
-            <X className="size-4" />
-          </Button>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Lesson story card -- collapsible, never fully dismissed
-// ---------------------------------------------------------------------------
-
-function LessonStoryCard({
-  title,
-  storyText,
-}: {
-  title: string;
-  storyText: string;
-}) {
-  const [collapsed, setCollapsed] = useState(false);
-
-  return (
-    <motion.div {...storyCardVariants}>
-      <Card className="relative overflow-hidden rounded-2xl border-2 border-primary/30 bg-gradient-to-r from-primary/5 to-secondary/5">
-        {/* Collapsed bar -- always visible */}
-        <button
-          type="button"
-          onClick={() => setCollapsed((v) => !v)}
-          className="flex w-full items-center gap-3 p-3 text-left"
-        >
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <Sparkles className="size-4 text-primary" />
-          </div>
-          <p className="flex-1 truncate text-sm font-semibold text-foreground">
-            {title}
-          </p>
-          {collapsed ? (
-            <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-          ) : (
-            <ChevronUp className="size-4 shrink-0 text-muted-foreground" />
-          )}
-        </button>
-
-        {/* Expandable story text */}
-        <AnimatePresence initial={false}>
-          {!collapsed && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="overflow-hidden"
-            >
-              <CardContent className="px-4 pb-3 pt-0">
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  {storyText}
-                </p>
-              </CardContent>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </Card>
-    </motion.div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Lesson Goal Panel -- shows what kids should build
+// Lesson Goal Panel -- starts collapsed so Blockly editor is visible
 // ---------------------------------------------------------------------------
 
 function LessonGoalPanel({
@@ -317,8 +214,11 @@ function LessonGoalPanel({
   solutionCode: string | null;
   hints: LessonHintData[];
 }) {
-  const [expanded, setExpanded] = useState(true);
-  const [hintsExpanded, setHintsExpanded] = useState(false);
+  // Start expanded when the lesson has step-by-step hints so the child
+  // immediately sees what to do instead of staring at an empty workspace.
+  const hasSteps = hints.length > 0;
+  const [expanded, setExpanded] = useState(hasSteps);
+  const [hintsExpanded, setHintsExpanded] = useState(hasSteps);
 
   const expectedTexts = solutionCode ? parseExpectedOutput(solutionCode) : [];
   const hasBuzzer = solutionCode ? usesBuzzer(solutionCode) : false;
@@ -330,12 +230,12 @@ function LessonGoalPanel({
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-2 px-4 py-3 text-left"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left"
       >
-        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-          <Target className="size-4 text-primary" />
+        <div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10">
+          <Target className="size-3.5 text-primary" />
         </div>
-        <span className="flex-1 text-sm font-bold text-foreground">
+        <span className="flex-1 text-xs font-bold text-foreground">
           Your Goal
         </span>
         <ChevronDown
@@ -448,8 +348,9 @@ function LessonGoalPanel({
 // WorkshopContent -- main orchestrator component
 // ---------------------------------------------------------------------------
 
-export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
+export function WorkshopContent({ lesson, chatPanel, welcomeData }: WorkshopContentProps) {
   // ---- State ---------------------------------------------------------------
+  const [showWelcome, setShowWelcome] = useState(!lesson && !!welcomeData);
   const [code, setCode] = useState("");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [lessonCompleted, setLessonCompleted] = useState(false);
@@ -471,6 +372,14 @@ export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
   // Show the "Show tips" affordance when the sim banner has been dismissed
   const canShowTips = simBannerDismissed;
 
+  // Workshop activity tracking for contextual hints
+  const {
+    hasBlocks: activityHasBlocks,
+    hasRunSim: activityHasRunSim,
+    recordBlockChange,
+    recordSimRun,
+  } = useWorkshopActivity();
+
   const editorRef = useRef<BlocklyEditorHandle>(null);
 
   // Mark the lesson as in-progress on mount (moved out of server render)
@@ -487,7 +396,9 @@ export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
 
   const handleCodeChange = useCallback((python: string) => {
     setCode(python);
-  }, []);
+    // Track whether blocks exist (non-empty code means blocks present)
+    recordBlockChange(python.trim().length > 0 ? 1 : 0);
+  }, [recordBlockChange]);
 
   const handleDismissSimBanner = useCallback(() => {
     dismissSimBanner();
@@ -527,7 +438,8 @@ export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
   const handleSimRunComplete = useCallback((output: SimulatorOutput) => {
     setLastSimOutput(output);
     setValidationFeedback(null); // Clear previous feedback on new run
-  }, []);
+    recordSimRun();
+  }, [recordSimRun]);
 
   const handleCompleteLesson = useCallback(() => {
     if (!lesson) return;
@@ -560,7 +472,28 @@ export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
     });
   }, [lesson, lastSimOutput]);
 
+  // Build lesson hint context for the contextual hints system
+  const lessonHintContext = useMemo(() => {
+    if (!lesson) return null;
+    return {
+      lessonTitle: lesson.title,
+      hints: lesson.hints,
+      hasStarterBlocks: Boolean(lesson.starterBlocksXml),
+      description: lesson.description,
+    };
+  }, [lesson]);
+
   // ---- Render --------------------------------------------------------------
+
+  // Welcome screen when no lesson is loaded
+  if (showWelcome && welcomeData) {
+    return (
+      <WorkshopWelcome
+        data={welcomeData}
+        onFreePlay={() => setShowWelcome(false)}
+      />
+    );
+  }
 
   return (
     <motion.div
@@ -569,6 +502,9 @@ export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
       transition={{ duration: 0.3 }}
       className="flex h-[calc(100vh-6rem)] flex-col gap-3 md:h-[calc(100vh-7rem)] lg:h-[calc(100vh-4rem)]"
     >
+      {/* Blockly Tutorial overlay for first-time users */}
+      <BlocklyTutorial />
+
       <Tabs defaultValue="blocks" className="flex min-h-0 flex-1 flex-col gap-3">
       {/* Header row */}
       <div className="flex flex-wrap items-center gap-3">
@@ -779,27 +715,12 @@ export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
         )}
       </AnimatePresence>
 
-      {/* Lesson story (collapsible, always present when lesson has story) */}
-      {lesson?.storyText && (
-        <LessonStoryCard
-          title={lesson.title}
-          storyText={lesson.storyText}
-        />
-      )}
-
-      {/* Simulator encouragement banner (dismissible) */}
-      <AnimatePresence>
-        {showSimBanner && (
-          <SimulatorBanner onDismiss={handleDismissSimBanner} />
-        )}
-      </AnimatePresence>
-
-      {/* Main 2-column grid -- fits in one viewport */}
+      {/* Main 2-column grid -- fills the viewport immediately */}
       <div
         className={cn(
-          "grid min-h-0 flex-1 gap-3",
+          "grid min-h-0 flex-1 gap-2",
           // Desktop: 2 columns (editor+chat | sim+device)
-          "lg:grid-cols-[1fr_340px]",
+          "lg:grid-cols-[1fr_300px]",
           // Mobile/tablet: single column stack
           "grid-cols-1",
         )}
@@ -807,10 +728,10 @@ export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
         {/* ---- Left column: Editor + Chat stacked ---- */}
         <motion.div
           {...fadeInUp}
-          className="flex min-h-0 flex-col gap-3"
+          className="flex min-h-0 flex-col gap-2"
         >
-          {/* Editor -- takes remaining space */}
-          <div className="flex min-h-0 flex-1 flex-col">
+          {/* Editor -- takes remaining space, with floating hints overlay */}
+          <div className="relative flex min-h-0 flex-1 flex-col">
             <TabsContent value="blocks" forceMount className="min-h-0 flex-1 data-[state=inactive]:hidden">
               <BlocklyEditor
                 ref={editorRef}
@@ -822,20 +743,33 @@ export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
             <TabsContent value="python" className="min-h-0 flex-1">
               <PythonPreview code={code} />
             </TabsContent>
+
           </div>
 
+          {/* Contextual workshop hints -- compact bar below editor */}
+          {lesson && (
+            <div className="shrink-0">
+              <WorkshopHints
+                lessonContext={lessonHintContext}
+                hasBlocks={activityHasBlocks}
+                hasRunSim={activityHasRunSim}
+              />
+            </div>
+          )}
+
           {/* Chat -- fixed height below editor */}
-          <div className="h-[200px] shrink-0 lg:h-[180px]">
+          <div className="h-[160px] shrink-0 lg:h-[140px]">
             {chatPanel}
           </div>
         </motion.div>
 
-        {/* ---- Right column: Goal + Simulator + Device ---- */}
+        {/* ---- Right column: Goal + Sim tip + Simulator + Device ---- */}
         <motion.div
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.05 }}
-          className="flex flex-col gap-3 overflow-y-auto"
+          className="flex flex-col gap-2 overflow-y-auto"
         >
+          {/* Goal panel -- starts collapsed so simulator is visible */}
           {lesson && lesson.description && (
             <LessonGoalPanel
               description={lesson.description}
@@ -843,7 +777,13 @@ export function WorkshopContent({ lesson, chatPanel }: WorkshopContentProps) {
               hints={lesson.hints}
             />
           )}
-          <SimulatorPanel code={wrappedCode} onRunComplete={handleSimRunComplete} />
+
+          <SimulatorPanel
+            code={wrappedCode}
+            onRunComplete={handleSimRunComplete}
+            showNoDeviceTip={showSimBanner}
+            onDismissNoDeviceTip={handleDismissSimBanner}
+          />
           <DevicePanel code={wrappedCode} />
         </motion.div>
       </div>

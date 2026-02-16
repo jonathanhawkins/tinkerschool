@@ -25,6 +25,8 @@ interface DeviceEnhancementCardProps {
   subjectColor: string;
   /** Lesson title for context */
   lessonTitle: string;
+  /** Optional lesson ID to link directly to workshop with lesson context */
+  lessonId?: string;
 }
 
 /** Subject-specific M5Stick project suggestions */
@@ -79,6 +81,7 @@ export function DeviceEnhancementCard({
   subjectSlug,
   subjectColor,
   lessonTitle,
+  lessonId,
 }: DeviceEnhancementCardProps) {
   const suggestion =
     (subjectSlug ? DEVICE_SUGGESTIONS[subjectSlug] : null) ??
@@ -119,7 +122,7 @@ export function DeviceEnhancementCard({
           size="sm"
           className="gap-1.5 rounded-xl"
         >
-          <Link href="/workshop">
+          <Link href={lessonId ? `/workshop?lessonId=${lessonId}` : "/workshop"}>
             Open Workshop
             <ArrowRight className="size-3.5" />
           </Link>

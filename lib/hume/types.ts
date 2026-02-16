@@ -33,6 +33,45 @@ export interface VoicePageContext {
   completedLessonCount: number;
 }
 
+// ---------------------------------------------------------------------------
+// Voice lesson context — structured data about the current lesson so Chip
+// can act as a real teacher (knows questions, answers, hints, etc.)
+// ---------------------------------------------------------------------------
+
+/** A single question summarized for Chip's reference during voice tutoring. */
+export interface VoiceQuestionSummary {
+  prompt: string;
+  /** For Chip's reference — NEVER revealed to the child. */
+  correctAnswer: string;
+  hint?: string;
+  /** Multiple-choice option texts (if applicable). */
+  options?: string[];
+}
+
+/** Summary of a single activity widget within a lesson. */
+export interface VoiceActivitySummary {
+  widgetType: string;
+  questionCount: number;
+  questions: VoiceQuestionSummary[];
+}
+
+/** Full lesson context pushed into the voice bridge for Chip's awareness. */
+export interface VoiceLessonContext {
+  lessonId: string;
+  title: string;
+  description: string;
+  storyText: string | null;
+  subjectName: string;
+  subjectSlug: string;
+  subjectColor: string;
+  lessonType: string;
+  estimatedMinutes: number;
+  skillsCovered: string[];
+  activities: VoiceActivitySummary[];
+  codingHints: string[];
+  isInteractive: boolean;
+}
+
 /**
  * Props for the ChipVoice client component.
  */

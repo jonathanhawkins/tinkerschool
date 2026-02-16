@@ -9,6 +9,7 @@ import {
   TrendingUp,
   MessageSquare,
   Heart,
+  Settings,
   ArrowLeft,
 } from "lucide-react";
 
@@ -50,6 +51,11 @@ const parentNavItems: ParentNavItem[] = [
     href: "/dashboard/billing",
     label: "Support",
     icon: <Heart className="size-4" />,
+  },
+  {
+    href: "/dashboard/settings",
+    label: "Settings",
+    icon: <Settings className="size-4" />,
   },
 ];
 

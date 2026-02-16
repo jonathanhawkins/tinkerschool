@@ -9,7 +9,7 @@
  * For brand-new users (0 lessons completed), the prompt includes a guided
  * onboarding flow so Chip walks them through TinkerSchool step by step.
  */
-import type { VoicePageContext } from "./types";
+import type { VoiceLessonContext, VoicePageContext } from "./types";
 
 /** Human-readable page names keyed by pathname prefix. */
 const PAGE_NAMES: Record<string, { name: string; description: string }> = {
@@ -73,8 +73,6 @@ function buildOnboardingSection(
   ctx: VoicePageContext,
   pathname: string,
 ): string {
-  const subjectNames = ctx.subjects.map((s) => s.name).join(", ");
-
   // Page-specific guidance tells Chip what to say after navigating the user
   const pageGuidance = buildPageSpecificGuidance(ctx, pathname);
 
@@ -368,15 +366,139 @@ Greet them warmly: "Hey ${ctx.childName}!" and ask what they'd like to work on t
 }
 
 // ---------------------------------------------------------------------------
+// Lesson teaching section — replaces generic lesson page guidance when
+// structured lesson context is available
+// ---------------------------------------------------------------------------
+
+/** Condensed subject-specific Socratic voice guidance (3-4 lines each). */
+const VOICE_SUBJECT_GUIDANCE: Record<string, string> = {
+  math: `Guide with concrete examples: "Imagine you have 3 apples..." Use counting, grouping, and patterns. Ask "How many?" and "What do you get when you put those together?" Never state answers like "3+4=7".`,
+  reading: `Sound out words together one sound at a time. Celebrate every word read. Ask "What sound does that letter make?" and "What do you think happens next?" Never read passages for them or tell them the word.`,
+  science: `Start with observation: "What do you notice?" Then predict: "What do you think will happen?" Connect to things they know. Never explain "why" before they observe "what".`,
+  music: `Be playful with sounds. Connect rhythm to counting: "Clap 1-2-3-4!" Ask "Was that high or low?" and "What note would sound good next?" Let them experiment and listen.`,
+  art: `Celebrate creativity — there's no wrong answer. Guide with shapes and colors: "What if we added a triangle?" Ask "What colors make you think of this?" Never tell them what to draw.`,
+  problem_solving: `Ask "What's the first step?" and "Do you see a pattern?" Break big problems into small ones. Celebrate the process of trying. Never give the solution — ask what approach THEY would try.`,
+  coding: `Guide with hints: "What do you think this line does?" Celebrate debugging: "A bug is just a puzzle!" Point to the right area when stuck. Never write code for them.`,
+};
+
+function buildLessonTeachingSection(
+  ctx: VoicePageContext,
+  lessonCtx: VoiceLessonContext,
+): string {
+  const parts: string[] = [];
+
+  parts.push(`## Lesson Teaching Mode`);
+  parts.push(
+    `You are teaching ${ctx.childName} the lesson **"${lessonCtx.title}"** (${lessonCtx.subjectName}).`,
+  );
+  parts.push(`${lessonCtx.description}`);
+
+  // Story text (truncated for prompt size)
+  if (lessonCtx.storyText) {
+    const truncated =
+      lessonCtx.storyText.length > 400
+        ? lessonCtx.storyText.slice(0, 400) + "..."
+        : lessonCtx.storyText;
+    parts.push("");
+    parts.push(`### Story`);
+    parts.push(
+      `Read this aloud if ${ctx.childName} asks or seems confused about the lesson intro:`,
+    );
+    parts.push(`"${truncated}"`);
+  }
+
+  // Subject-specific voice guidance
+  const subjectGuide =
+    VOICE_SUBJECT_GUIDANCE[lessonCtx.subjectSlug] ??
+    VOICE_SUBJECT_GUIDANCE["problem_solving"];
+  parts.push("");
+  parts.push(`### ${lessonCtx.subjectName} Voice Teaching Guide`);
+  parts.push(subjectGuide);
+
+  // Activity teaching guide
+  if (lessonCtx.activities.length > 0) {
+    parts.push("");
+    parts.push(`### Activity Guide`);
+    parts.push(
+      `This lesson has ${lessonCtx.activities.length} activit${lessonCtx.activities.length === 1 ? "y" : "ies"}:`,
+    );
+
+    for (const activity of lessonCtx.activities) {
+      parts.push("");
+      parts.push(
+        `**${formatWidgetType(activity.widgetType)}** (${activity.questionCount} question${activity.questionCount !== 1 ? "s" : ""}):`,
+      );
+
+      for (let i = 0; i < activity.questions.length; i++) {
+        const q = activity.questions[i];
+        let line = `${i + 1}. "${q.prompt}" → Answer: ${q.correctAnswer}`;
+        if (q.hint) line += ` | Hint: "${q.hint}"`;
+        if (q.options && q.options.length > 0) {
+          line += ` | Options: ${q.options.join(", ")}`;
+        }
+        parts.push(line);
+      }
+    }
+  }
+
+  // Coding hints for non-interactive lessons
+  if (lessonCtx.codingHints.length > 0) {
+    parts.push("");
+    parts.push(`### Coding Hints (for guiding, not revealing)`);
+    for (let i = 0; i < lessonCtx.codingHints.length; i++) {
+      parts.push(`${i + 1}. ${lessonCtx.codingHints[i]}`);
+    }
+  }
+
+  // Teaching rules
+  parts.push("");
+  parts.push(`### Teaching Rules`);
+  parts.push(`- You KNOW all the answers above but you NEVER reveal them directly.`);
+  parts.push(
+    `- Guide ${ctx.childName} to discover answers through questions (Socratic method).`,
+  );
+  parts.push(
+    `- If they're stuck, give the hint first. If still stuck, narrow it down: "Is it bigger or smaller than 5?"`,
+  );
+  parts.push(
+    `- When they get it right, celebrate: "Circuit high-five! You got it!"`,
+  );
+  parts.push(
+    `- When they get it wrong, be encouraging: "Good try! Let's think about it another way."`,
+  );
+  parts.push(
+    `- Reference the activity on screen: "Look at the question on your screen — what do you think?"`,
+  );
+  parts.push(
+    `- Keep responses to 1-2 sentences. This is voice, not text.`,
+  );
+
+  return parts.join("\n");
+}
+
+/** Format widget type for display (e.g. "multiple_choice" → "Multiple Choice"). */
+function formatWidgetType(type: string): string {
+  return type
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+// ---------------------------------------------------------------------------
 // Main prompt builder
 // ---------------------------------------------------------------------------
 
 /**
  * Builds the voice session system prompt with page context.
+ *
+ * When `lessonContext` is provided and the user is on a lesson page,
+ * the generic lesson guidance is replaced with a full teaching section
+ * that gives Chip knowledge of the lesson's content, questions, and answers.
  */
 export function buildVoiceSystemPrompt(
   ctx: VoicePageContext,
   pathname: string,
+  lessonContext?: VoiceLessonContext | null,
 ): string {
   const page = getPageInfo(pathname);
   const isNewUser = ctx.completedLessonCount === 0 && !ctx.inProgressLesson;
@@ -399,9 +521,20 @@ export function buildVoiceSystemPrompt(
     );
   }
 
-  const userSection = isNewUser
-    ? buildOnboardingSection(ctx, pathname)
-    : buildReturningSection(ctx, pathname);
+  // When on a lesson page with lesson context, use the teaching section
+  // instead of generic page guidance (for both new and returning users).
+  const isOnLessonPage = pathname.startsWith("/lessons/");
+  const hasLessonContext = isOnLessonPage && lessonContext;
+
+  let userSection: string;
+  if (hasLessonContext) {
+    // Use lesson teaching mode — replaces generic onboarding/returning guidance
+    userSection = buildLessonTeachingSection(ctx, lessonContext);
+  } else if (isNewUser) {
+    userSection = buildOnboardingSection(ctx, pathname);
+  } else {
+    userSection = buildReturningSection(ctx, pathname);
+  }
 
   return `You are Chip, a friendly robot learning buddy for kids on TinkerSchool. You are talking to ${ctx.childName} (age ${ctx.age}, grade ${ctx.gradeLevel}).
 

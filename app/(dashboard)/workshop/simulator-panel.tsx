@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { Play, Square, RotateCcw, Volume2, VolumeX } from "lucide-react";
+import { Monitor, Play, Square, RotateCcw, Volume2, VolumeX, X } from "lucide-react";
 import { Simulator, type SimulatorHandle } from "@/components/simulator";
 import { SimulatorCodeRunner } from "@/lib/simulator/code-runner";
 import type { SimulatorOutput } from "@/lib/simulator/types";
@@ -34,6 +34,10 @@ interface SimulatorPanelProps {
   className?: string;
   /** Called after a successful run with the output snapshot for lesson validation */
   onRunComplete?: (output: SimulatorOutput) => void;
+  /** Show the "no device" tip inside the simulator card */
+  showNoDeviceTip?: boolean;
+  /** Called when the user dismisses the no-device tip */
+  onDismissNoDeviceTip?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -65,6 +69,8 @@ export default function SimulatorPanel({
   code,
   className,
   onRunComplete,
+  showNoDeviceTip,
+  onDismissNoDeviceTip,
 }: SimulatorPanelProps) {
   const simulatorRef = useRef<SimulatorHandle>(null);
   const runnerRef = useRef<SimulatorCodeRunner | null>(null);
@@ -122,8 +128,9 @@ export default function SimulatorPanel({
     const runner = ensureRunner();
     if (!runner) return;
 
-    // Resume AudioContext on user gesture (browser autoplay policy)
-    buzzerRef.current?.resume();
+    // Eagerly create + resume AudioContext on user gesture (browser autoplay
+    // policy requires AudioContext creation within a click handler call stack)
+    ensureBuzzer().resume();
 
     // Stop any previous run
     if (runner.isRunning) {
@@ -158,7 +165,7 @@ export default function SimulatorPanel({
     } catch {
       setStatus("error");
     }
-  }, [code, ensureRunner, onRunComplete]);
+  }, [code, ensureBuzzer, ensureRunner, onRunComplete]);
 
   // -------------------------------------------------------------------------
   // Stop code
@@ -245,16 +252,16 @@ export default function SimulatorPanel({
   // -------------------------------------------------------------------------
   return (
     <Card className={cn("rounded-2xl", className)}>
-      <CardHeader className="flex-row items-center justify-between px-4 py-3">
-        <CardTitle className="text-base font-bold">Simulator</CardTitle>
+      <CardHeader className="flex-row items-center justify-between px-3 py-2">
+        <CardTitle className="text-sm font-bold">Simulator</CardTitle>
         <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
       </CardHeader>
 
-      <CardContent className="flex flex-col items-center gap-2 px-4 pb-3">
+      <CardContent className="flex flex-col items-center gap-1.5 px-3 pb-2">
         {/* Device simulator */}
         <Simulator
           ref={simulatorRef}
-          scale={1}
+          scale={0.85}
           toneActive={toneActive}
           ledBrightness={ledBrightness}
           onButtonA={handleButtonA}
@@ -264,31 +271,34 @@ export default function SimulatorPanel({
         />
 
         {/* Controls */}
-        <div className="flex w-full items-center justify-center gap-2">
+        <div className="flex w-full items-center justify-center gap-1.5">
           <Button
+            size="sm"
             onClick={handleRun}
             disabled={status === "running"}
-            className="gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700"
+            className="h-8 gap-1 rounded-lg bg-emerald-600 px-3 text-xs hover:bg-emerald-700"
           >
-            <Play className="size-3.5" />
+            <Play className="size-3" />
             Run
           </Button>
 
           <Button
+            size="sm"
             onClick={handleStop}
             disabled={status !== "running"}
-            className="gap-1.5 rounded-xl bg-red-600 hover:bg-red-700"
+            className="h-8 gap-1 rounded-lg bg-red-600 px-3 text-xs hover:bg-red-700"
           >
-            <Square className="size-3.5" />
+            <Square className="size-3" />
             Stop
           </Button>
 
           <Button
+            size="sm"
             variant="outline"
             onClick={handleClear}
-            className="gap-1.5 rounded-xl"
+            className="h-8 gap-1 rounded-lg px-3 text-xs"
           >
-            <RotateCcw className="size-3.5" />
+            <RotateCcw className="size-3" />
             Clear
           </Button>
 
@@ -299,11 +309,29 @@ export default function SimulatorPanel({
             onClick={handleToggleMute}
             aria-label={audioMuted ? "Unmute buzzer" : "Mute buzzer"}
             title={audioMuted ? "Unmute buzzer" : "Mute buzzer"}
-            className="ml-auto rounded-xl"
+            className="ml-auto size-8 rounded-lg"
           >
-            {audioMuted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+            {audioMuted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
           </Button>
         </div>
+
+        {/* No-device tip -- right below the Run button */}
+        {showNoDeviceTip && (
+          <div className="flex w-full items-center gap-1.5 rounded-lg bg-emerald-50/70 px-2.5 py-1 dark:bg-emerald-950/30">
+            <Monitor className="size-3 shrink-0 text-emerald-500" />
+            <p className="min-w-0 flex-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+              No device? Click <strong>Run</strong> to test here!
+            </p>
+            <button
+              type="button"
+              onClick={onDismissNoDeviceTip}
+              className="shrink-0 rounded p-0.5 text-emerald-400 hover:text-emerald-600"
+              aria-label="Dismiss tip"
+            >
+              <X className="size-3" />
+            </button>
+          </div>
+        )}
       </CardContent>
 
       {/* Badge celebration toast */}

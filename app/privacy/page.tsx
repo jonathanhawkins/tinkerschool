@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     "TinkerSchool's privacy policy explains how we protect your child's data. COPPA-compliant, family-scoped, and designed with children's safety first.",
 };
 
-const LAST_UPDATED = "February 8, 2026";
+const LAST_UPDATED = "February 15, 2026";
 
 export default function PrivacyPolicyPage() {
   return (
@@ -246,7 +246,12 @@ export default function PrivacyPolicyPage() {
               <ServiceRow
                 name="Anthropic (Claude)"
                 purpose="AI tutoring"
-                data="Conversations are sent to generate Chip's responses. Only the child's first name and learning context are included -- no email, address, or identifying information."
+                data="Each conversation sends the child's first name, current subject, lesson context, and the chat message to generate Chip's responses. No email, address, photo, or other identifying information is included. Conversations are not used to train AI models."
+              />
+              <ServiceRow
+                name="Hume AI"
+                purpose="Voice tutoring"
+                data="Voice audio is processed in real-time for Chip's voice responses. TinkerSchool does not store audio recordings. Hume AI may process voice data per their privacy policy. Only session duration and timestamps are stored locally."
               />
               <ServiceRow
                 name="Vercel"
@@ -312,6 +317,19 @@ export default function PrivacyPolicyPage() {
                 </strong>{" "}
                 -- withdraw permission for data collection, which will
                 deactivate your child's profile
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary/60" />
+                <strong className="font-medium text-foreground">
+                  Export your child's data
+                </strong>{" "}
+                -- download all collected information as a JSON file from the{" "}
+                <a
+                  href="/dashboard/settings"
+                  className="font-medium text-primary hover:underline"
+                >
+                  parent dashboard settings
+                </a>
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary/60" />

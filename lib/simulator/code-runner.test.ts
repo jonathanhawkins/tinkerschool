@@ -898,4 +898,187 @@ Lcd.drawString(str(num), 0, 0)`);
       expect(num).toBeLessThanOrEqual(100);
     });
   });
+
+  // =========================================================================
+  // Compound assignment operators (+=, -=, *=)
+  // =========================================================================
+
+  describe("compound assignment", () => {
+    it("handles += operator", async () => {
+      await runner.run(`count = 0
+count += 5
+Lcd.drawString(str(count), 0, 0)`);
+
+      expect(mockSim.drawString).toHaveBeenCalledWith("5", 0, 0, undefined);
+    });
+
+    it("handles -= operator", async () => {
+      await runner.run(`count = 10
+count -= 3
+Lcd.drawString(str(count), 0, 0)`);
+
+      expect(mockSim.drawString).toHaveBeenCalledWith("7", 0, 0, undefined);
+    });
+
+    it("handles *= operator", async () => {
+      await runner.run(`count = 4
+count *= 3
+Lcd.drawString(str(count), 0, 0)`);
+
+      expect(mockSim.drawString).toHaveBeenCalledWith("12", 0, 0, undefined);
+    });
+
+    it("handles += with uninitialized variable (defaults to 0)", async () => {
+      await runner.run(`count += 1
+Lcd.drawString(str(count), 0, 0)`);
+
+      expect(mockSim.drawString).toHaveBeenCalledWith("1", 0, 0, undefined);
+    });
+  });
+
+  // =========================================================================
+  // While loop with condition (not just True)
+  // =========================================================================
+
+  describe("while loop with condition", () => {
+    it("executes while count < N", async () => {
+      await runner.run(`count = 0
+while count < 4:
+  Lcd.drawString(str(count), 0, 0)
+  count += 1`);
+
+      expect(mockSim.drawString).toHaveBeenCalledTimes(4);
+      expect(mockSim.drawString).toHaveBeenNthCalledWith(1, "0", 0, 0, undefined);
+      expect(mockSim.drawString).toHaveBeenNthCalledWith(2, "1", 0, 0, undefined);
+      expect(mockSim.drawString).toHaveBeenNthCalledWith(3, "2", 0, 0, undefined);
+      expect(mockSim.drawString).toHaveBeenNthCalledWith(4, "3", 0, 0, undefined);
+    });
+
+    it("skips while loop when condition starts false", async () => {
+      await runner.run(`count = 10
+while count < 4:
+  Lcd.drawString("inside", 0, 0)
+  count += 1`);
+
+      expect(mockSim.drawString).not.toHaveBeenCalled();
+    });
+
+    it("handles while False: (never enters loop)", async () => {
+      await runner.run(`while False:
+  Lcd.drawString("never", 0, 0)
+Lcd.drawString("after", 0, 0)`);
+
+      expect(mockSim.drawString).toHaveBeenCalledTimes(1);
+      expect(mockSim.drawString).toHaveBeenCalledWith("after", 0, 0, undefined);
+    });
+
+    it("handles while with uninitialized variable (defaults to 0)", async () => {
+      // When count is not initialized, it defaults to 0 from variable lookup
+      await runner.run(`while count < 3:
+  Lcd.drawString(str(count), 0, 0)
+  count += 1`);
+
+      expect(mockSim.drawString).toHaveBeenCalledTimes(3);
+    });
+
+    it("re-evaluates condition each iteration", async () => {
+      const onTone = vi.fn();
+      runner.onTone = onTone;
+
+      await runner.run(`count = 0
+while count < 4:
+  Speaker.tone(440, 200)
+  count += 1`);
+
+      expect(onTone).toHaveBeenCalledTimes(4);
+    });
+  });
+
+  // =========================================================================
+  // Blockly math_change preprocessor
+  // =========================================================================
+
+  describe("Blockly math_change preprocessor", () => {
+    it("normalizes isinstance pattern to compound assignment", async () => {
+      // This is the exact output of Blockly's math_change block
+      await runner.run(`from numbers import Number
+count = 0
+count = (count if isinstance(count, Number) else 0) + 1
+Lcd.drawString(str(count), 0, 0)`);
+
+      expect(mockSim.drawString).toHaveBeenCalledWith("1", 0, 0, undefined);
+    });
+
+    it("normalizes indented isinstance pattern inside loop", async () => {
+      // Blockly math_change inside a for loop
+      await runner.run(`from numbers import Number
+count = 0
+for i in range(3):
+  count = (count if isinstance(count, Number) else 0) + 1
+Lcd.drawString(str(count), 0, 0)`);
+
+      expect(mockSim.drawString).toHaveBeenCalledWith("3", 0, 0, undefined);
+    });
+
+    it("handles math_change inside while loop (the full Blockly pattern)", async () => {
+      const onTone = vi.fn();
+      runner.onTone = onTone;
+
+      // This is the EXACT code Blockly generates for:
+      // while count < 4: play tone, change count by 1
+      await runner.run(`from numbers import Number
+
+while count < 4:
+  Speaker.tone(440, 200)
+  count = (count if isinstance(count, Number) else 0) + 1`);
+
+      expect(onTone).toHaveBeenCalledTimes(4);
+    });
+
+    it("handles math_change inside while loop with M5 wrapper", async () => {
+      const onTone = vi.fn();
+      runner.onTone = onTone;
+
+      // Full realistic code: wrapped Blockly output
+      await runner.run(`import os, sys, io
+import M5
+from M5 import *
+import time
+import random
+
+M5.begin()
+
+_last_accel = (0, 0, 0)
+def shake_detected():
+    global _last_accel
+    a = Imu.getAccel()
+    diff = abs(a[0] - _last_accel[0]) + abs(a[1] - _last_accel[1]) + abs(a[2] - _last_accel[2])
+    _last_accel = a
+    return diff > 1.5
+
+# --- Your Code ---
+from numbers import Number
+
+while count < 4:
+  Speaker.tone(440, 200)
+  time.sleep_ms(50)
+  count = (count if isinstance(count, Number) else 0) + 1
+
+# --- End Your Code ---
+while True:
+    M5.update()`);
+
+      // The tone should play exactly 4 times (count: 0, 1, 2, 3)
+      expect(onTone).toHaveBeenCalledTimes(4);
+      expect(onTone).toHaveBeenCalledWith(440, 200);
+    });
+
+    it("normalizes type() pattern variant", async () => {
+      await runner.run(`count = 0
+count = (count if type(count) == int else 0) + 5
+Lcd.drawString(str(count), 0, 0)`);
+
+      expect(mockSim.drawString).toHaveBeenCalledWith("5", 0, 0, undefined);
+    });
+  });
 });

@@ -91,7 +91,7 @@ export class SimulatorCodeRunner {
     this.variables.clear();
 
     try {
-      const lines = code.split("\n");
+      const lines = this.preprocessCode(code).split("\n");
       await this.executeLines(lines, 0, lines.length);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
@@ -104,6 +104,32 @@ export class SimulatorCodeRunner {
       this._running = false;
       this.abortController = null;
     }
+  }
+
+  /**
+   * Normalize Blockly-generated Python into patterns the code runner supports.
+   *
+   * Blockly's `math_change` block generates:
+   *   count = (count if isinstance(count, Number) else 0) + 1
+   * which we simplify to:
+   *   count += 1
+   *
+   * Blockly also adds `from numbers import Number` which we strip.
+   */
+  private preprocessCode(code: string): string {
+    return code
+      // Strip Blockly's Number import (not needed in simulator)
+      .replace(/^from numbers import Number\n?/gm, "")
+      // Normalize math_change pattern: var = (var if isinstance(var, ...) else 0) + N
+      .replace(
+        /^(\s*)(\w+) = \(\2 if isinstance\(\2,\s*Number\) else 0\) \+ (.+)$/gm,
+        "$1$2 += $3"
+      )
+      // Also handle the older Blockly pattern: var = (var if type(var) == int else 0) + N
+      .replace(
+        /^(\s*)(\w+) = \(\2 if type\(\2\) == int else 0\) \+ (.+)$/gm,
+        "$1$2 += $3"
+      );
   }
 
   /**
@@ -195,10 +221,13 @@ export class SimulatorCodeRunner {
         continue;
       }
 
-      // Detect while True: loop
-      if (this.isWhileTrueLoop(trimmed)) {
+      // Detect while <condition>: loop
+      const whileCondExpr = this.parseWhileCondition(trimmed);
+      if (whileCondExpr !== null) {
         const bodyRange = this.getIndentedBlock(lines, i + 1, end);
-        await this.executeWhileLoop(lines, bodyRange.start, bodyRange.end);
+        await this.executeWhileCondLoop(
+          lines, bodyRange.start, bodyRange.end, whileCondExpr
+        );
         i = bodyRange.end;
         continue;
       }
@@ -227,7 +256,21 @@ export class SimulatorCodeRunner {
         continue;
       }
 
-      // Detect variable assignment: varname = expression (but not == or +=)
+      // Detect compound assignment: varname += expr, varname -= expr
+      const compoundMatch = trimmed.match(/^([a-zA-Z_]\w*)\s*(\+=|-=|\*=)\s*(.+)$/);
+      if (compoundMatch) {
+        const varName = compoundMatch[1];
+        const op = compoundMatch[2];
+        const rhs = this.evaluateNumeric(compoundMatch[3].trim());
+        const current = Number(this.variables.get(varName) ?? 0);
+        if (op === "+=") this.variables.set(varName, current + rhs);
+        else if (op === "-=") this.variables.set(varName, current - rhs);
+        else if (op === "*=") this.variables.set(varName, current * rhs);
+        i++;
+        continue;
+      }
+
+      // Detect variable assignment: varname = expression (but not ==)
       const assignMatch = trimmed.match(/^([a-zA-Z_]\w*)\s*=(?!=)\s*(.+)$/);
       if (assignMatch) {
         const varName = assignMatch[1];
@@ -248,15 +291,19 @@ export class SimulatorCodeRunner {
   }
 
   /**
-   * Execute a while True: loop body, up to MAX_LOOP_ITERATIONS.
+   * Execute a while <condition>: loop, re-evaluating the condition
+   * each iteration. Capped at MAX_LOOP_ITERATIONS.
    */
-  private async executeWhileLoop(
+  private async executeWhileCondLoop(
     lines: string[],
     bodyStart: number,
-    bodyEnd: number
+    bodyEnd: number,
+    conditionExpr: string
   ): Promise<void> {
     for (let iter = 0; iter < SimulatorCodeRunner.MAX_LOOP_ITERATIONS; iter++) {
       this.checkAbort();
+      // Re-evaluate condition each iteration
+      if (!this.isTruthyValue(this.evaluate(conditionExpr))) break;
       await this.executeLines(lines, bodyStart, bodyEnd);
     }
   }
@@ -281,10 +328,12 @@ export class SimulatorCodeRunner {
   }
 
   /**
-   * Check if the line is a `while True:` statement.
+   * Parse a `while <condition>:` statement. Returns the condition
+   * expression string, or null if the line is not a while loop.
    */
-  private isWhileTrueLoop(line: string): boolean {
-    return /^while\s+True\s*:/.test(line);
+  private parseWhileCondition(line: string): string | null {
+    const match = line.match(/^while\s+(.+?)\s*:$/);
+    return match ? match[1].trim() : null;
   }
 
   /**

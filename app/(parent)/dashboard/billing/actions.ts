@@ -69,18 +69,39 @@ export async function createCheckoutSession(
       .eq("id", family.id);
   }
 
-  // Create the Checkout Session
+  // Guard: reject if the family already has an active subscription
+  const { data: existingFamily } = (await adminSupabase
+    .from("families")
+    .select("stripe_subscription_status")
+    .eq("id", family.id)
+    .single()) as { data: { stripe_subscription_status: string | null } | null };
+
+  if (
+    existingFamily?.stripe_subscription_status === "active" ||
+    existingFamily?.stripe_subscription_status === "trialing"
+  ) {
+    return { error: "You already have an active subscription" };
+  }
+
+  // Create the Checkout Session with a stable idempotency key.
+  // Using family_id + priceId ensures double-clicks reuse the same session
+  // instead of creating duplicates.
   const priceId = getPriceId(interval);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3020";
 
-  const session = await stripe.checkout.sessions.create({
-    customer: customerId,
-    mode: "subscription",
-    line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${appUrl}/dashboard/billing?success=true`,
-    cancel_url: `${appUrl}/dashboard/billing?canceled=true`,
-    metadata: { family_id: family.id },
-  });
+  const session = await stripe.checkout.sessions.create(
+    {
+      customer: customerId,
+      mode: "subscription",
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${appUrl}/dashboard/billing?success=true`,
+      cancel_url: `${appUrl}/dashboard/billing?canceled=true`,
+      metadata: { family_id: family.id },
+    },
+    {
+      idempotencyKey: `checkout_${family.id}_${priceId}_${Math.floor(Date.now() / 60000)}`,
+    },
+  );
 
   return { url: session.url ?? undefined };
 }

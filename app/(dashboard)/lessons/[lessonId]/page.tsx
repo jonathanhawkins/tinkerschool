@@ -37,7 +37,12 @@ import {
 import { computeDifficulty } from "@/lib/activities/adaptive-difficulty";
 import { DeviceEnhancementCard } from "@/components/device-enhancement-card";
 import { FullscreenToggle } from "@/components/fullscreen-toggle";
+import { LessonVoiceSync } from "@/components/lesson-voice-sync";
+import { buildVoiceLessonContext } from "@/lib/hume/lesson-context-builder";
 import { InteractiveLesson } from "./interactive-lesson";
+import { ConceptIntro } from "@/components/concept-intro";
+import { CodingLessonIntro } from "@/components/coding-lesson-intro";
+import { detectConceptsForLesson } from "@/lib/tutorials/detect-concepts";
 
 // ---------------------------------------------------------------------------
 // Page
@@ -183,8 +188,28 @@ export default async function LessonPage({
 
   const hasStarterBlocks = Boolean(safeLesson.starter_blocks_xml);
 
+  // Detect programming concepts for this lesson (used by ConceptIntro)
+  const conceptIds = !isInteractive
+    ? detectConceptsForLesson(
+        hints,
+        safeLesson.starter_blocks_xml,
+        safeLesson.solution_code,
+      )
+    : [];
+
+  // Build voice lesson context so Chip can act as a real teacher
+  const voiceLessonContext = buildVoiceLessonContext(
+    safeLesson,
+    safeSubject,
+    activityConfig,
+    isInteractive,
+  );
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      {/* Push lesson context into voice bridge for Chip awareness */}
+      <LessonVoiceSync lessonContext={voiceLessonContext} />
+
       {/* ----- Breadcrumb / back + Fullscreen toggle ----- */}
       <FadeIn>
         <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -344,6 +369,7 @@ export default async function LessonPage({
             subjectSlug={safeSubject?.slug ?? null}
             subjectColor={subjectColor}
             lessonTitle={safeLesson.title}
+            lessonId={safeLesson.id}
           />
         </FadeIn>
       )}
@@ -353,6 +379,9 @@ export default async function LessonPage({
       {/* ================================================================= */}
       {!isInteractive && (
         <>
+          {/* ----- First-time coding lesson walkthrough ----- */}
+          <CodingLessonIntro />
+
           {/* ----- How It Works ----- */}
           <FadeIn delay={0.15}>
             <Card className="rounded-2xl">
@@ -465,8 +494,15 @@ export default async function LessonPage({
             </FadeIn>
           )}
 
+          {/* ----- Concept Introductions ----- */}
+          {conceptIds.length > 0 && (
+            <FadeIn delay={0.3}>
+              <ConceptIntro conceptIds={conceptIds} />
+            </FadeIn>
+          )}
+
           {/* ----- Start Coding CTA ----- */}
-          <FadeIn delay={0.3}>
+          <FadeIn delay={0.35}>
             <div className="flex items-center gap-3 pt-2">
               <Button asChild size="lg" className="rounded-xl">
                 <Link href={`/workshop?lessonId=${safeLesson.id}`}>

@@ -1,8 +1,10 @@
 "use client";
 
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { useVoice, VoiceProvider, VoiceReadyState } from "@humeai/voice-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Clock, Mic, MicOff, PhoneOff, X } from "lucide-react";
+import { Clock, MessageSquare, Mic, MicOff, PhoneOff, Send, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -14,6 +16,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useChipChatStore } from "@/lib/stores/chip-chat-store";
 import {
   checkVoiceBudget,
   logVoiceSession,
@@ -25,6 +28,7 @@ import type {
   ChipVoiceProps,
   ChipVoiceStatus,
   VoiceAction,
+  VoiceLessonContext,
   VoicePageContext,
 } from "@/lib/hume/types";
 import { voiceBridge } from "@/lib/hume/voice-bridge";
@@ -57,6 +61,28 @@ function useVoiceBridgePathname(): string {
     subscribeToBridgePathname,
     getBridgePathname,
     getServerPathname,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Hook: subscribe to voiceBridge lesson context
+// ---------------------------------------------------------------------------
+
+function subscribeToBridgeLessonContext(onStoreChange: () => void): () => void {
+  return voiceBridge.subscribeLessonContext(onStoreChange);
+}
+function getBridgeLessonContext(): VoiceLessonContext | null {
+  return voiceBridge.lessonContext;
+}
+function getServerLessonContext(): VoiceLessonContext | null {
+  return null;
+}
+
+function useVoiceBridgeLessonContext(): VoiceLessonContext | null {
+  return useSyncExternalStore(
+    subscribeToBridgeLessonContext,
+    getBridgeLessonContext,
+    getServerLessonContext,
   );
 }
 
@@ -123,6 +149,147 @@ function AudioBars({ data, color }: AudioBarsProps) {
 }
 
 // ---------------------------------------------------------------------------
+// Text fallback chat (used when voice budget is exhausted)
+// ---------------------------------------------------------------------------
+
+interface TextFallbackChatProps {
+  pageContext?: VoicePageContext;
+  lessonContext: VoiceLessonContext | null;
+  pathname: string;
+}
+
+function TextFallbackChat({ pageContext, lessonContext, pathname }: TextFallbackChatProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Determine current subject from pathname or lesson context
+  const currentSubject = lessonContext?.subjectSlug ?? undefined;
+  const currentLesson = lessonContext?.title ?? undefined;
+
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/ai-buddy",
+        body: {
+          kidName: pageContext?.childName ?? "",
+          age: pageContext?.age ?? 7,
+          band: 2,
+          currentSubject,
+          currentLesson,
+        },
+      }),
+    [pageContext?.childName, pageContext?.age, currentSubject, currentLesson],
+  );
+
+  const {
+    messages: chatMessages,
+    sendMessage,
+    status: chatStatus,
+  } = useChat({
+    transport,
+    onError() {
+      // Error surfaced via the `error` field
+    },
+  });
+
+  const isSending = chatStatus === "submitted" || chatStatus === "streaming";
+
+  // Auto-scroll when new messages arrive
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages, chatStatus]);
+
+  function getMessageText(
+    parts: Array<{ type: string; text?: string }>,
+  ): string {
+    return parts
+      .filter((p) => p.type === "text" && typeof p.text === "string")
+      .map((p) => p.text)
+      .join("");
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const text = (formData.get("message") as string).trim();
+    if (!text || isSending) return;
+
+    sendMessage({ text });
+    form.reset();
+    inputRef.current?.focus();
+  }
+
+  return (
+    <div className="flex flex-1 flex-col overflow-hidden">
+      {/* Messages */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-3.5 py-2.5">
+        {/* Welcome message */}
+        {chatMessages.length === 0 && (
+          <div className="max-w-[90%] rounded-xl rounded-tl-sm bg-primary/10 px-2.5 py-2 text-[13px] leading-snug text-foreground">
+            <span className="mb-0.5 block text-[11px] font-semibold opacity-60">
+              Chip
+            </span>
+            {`Hey${pageContext?.childName ? ` ${pageContext.childName}` : ""}! My voice is resting, but you can still type to chat with me!`}
+          </div>
+        )}
+
+        {chatMessages.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            {chatMessages.map((msg) => {
+              const isChip = msg.role === "assistant";
+              const text = getMessageText(msg.parts);
+              if (!text) return null;
+
+              return (
+                <div
+                  key={msg.id}
+                  className={cn(
+                    "max-w-[88%] rounded-xl px-2.5 py-1.5 text-[13px] leading-snug",
+                    isChip
+                      ? "self-start rounded-tl-sm bg-primary/10 text-foreground"
+                      : "self-end rounded-tr-sm bg-secondary/20 text-foreground",
+                  )}
+                >
+                  <span className="mb-0.5 block text-[10px] font-semibold opacity-50">
+                    {isChip ? "Chip" : "You"}
+                  </span>
+                  {text}
+                </div>
+              );
+            })}
+            <div ref={scrollRef} className="h-px" />
+          </div>
+        )}
+      </div>
+
+      {/* Text input */}
+      <div className="shrink-0 border-t border-border/50 px-3.5 py-2">
+        <form onSubmit={handleSubmit} className="flex items-center gap-2">
+          <input
+            ref={inputRef}
+            name="message"
+            type="text"
+            placeholder="Type a message to Chip..."
+            autoComplete="off"
+            className="h-9 flex-1 rounded-xl border border-border bg-muted/30 px-3 text-[13px] text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+          />
+          <Button
+            type="submit"
+            size="icon"
+            disabled={isSending}
+            className="size-9 shrink-0 rounded-xl"
+            aria-label="Send message"
+          >
+            <Send className="size-3.5" />
+          </Button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // FAB inner UI (must be inside VoiceProvider)
 // ---------------------------------------------------------------------------
 
@@ -156,6 +323,7 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
 
   // Use voiceBridge instead of usePathname (we are outside Next.js Router)
   const pathname = useVoiceBridgePathname();
+  const lessonContext = useVoiceBridgeLessonContext();
 
   // Hide FAB on public routes but keep VoiceProvider mounted so the
   // WebSocket connection survives navigation to/from these routes.
@@ -202,17 +370,19 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
     ? pageContext.completedLessonCount === 0 && !pageContext.inProgressLesson
     : false;
 
-  // Auto-open panel for new users on first mount.
-  // The FAB lives in the layout so it only mounts once per page load.
+  // Auto-open panel for new users on first mount — but only if the user
+  // hasn't previously dismissed the chat (persisted in Zustand/localStorage).
+  const hasDismissedChat = useChipChatStore((s) => s.hasDismissedChat);
+  const dismissChat = useChipChatStore((s) => s.dismissChat);
   const hasAutoOpened = useRef(false);
   useEffect(() => {
-    if (!isNewUser || hasAutoOpened.current) return;
+    if (!isNewUser || hasAutoOpened.current || hasDismissedChat) return;
     hasAutoOpened.current = true;
 
     // Short delay so the page renders first, then Chip pops up
     const timer = setTimeout(() => setIsOpen(true), 1200);
     return () => clearTimeout(timer);
-  }, [isNewUser]);
+  }, [isNewUser, hasDismissedChat]);
 
   // Derive status
   const status: ChipVoiceStatus = useMemo(() => {
@@ -251,13 +421,14 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
         if (readyState === VoiceReadyState.OPEN) {
           disconnect();
         }
+        dismissChat();
         setIsOpen(false);
       }
     }
 
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [isOpen, readyState, disconnect]);
+  }, [isOpen, readyState, disconnect, dismissChat]);
 
   // ── Session timer: count seconds while connected ──
   useEffect(() => {
@@ -330,22 +501,28 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
     return formatTime(remaining);
   }, [voiceBudget, sessionSeconds, status, formatTime]);
 
-  // Build system prompt from page context + current pathname
+  // Build system prompt from page context + current pathname + lesson context
   const systemPrompt = useMemo(() => {
     if (!pageContext) return undefined;
-    return buildVoiceSystemPrompt(pageContext, pathname);
-  }, [pageContext, pathname]);
+    return buildVoiceSystemPrompt(pageContext, pathname, lessonContext);
+  }, [pageContext, pathname, lessonContext]);
 
-  // Update Chip's context mid-session when the user navigates to a new page
+  // Update Chip's context mid-session when pathname or lesson context changes
   const prevPathnameRef = useRef(pathname);
+  const prevLessonIdRef = useRef(lessonContext?.lessonId ?? null);
   useEffect(() => {
-    if (prevPathnameRef.current === pathname) return;
+    const lessonId = lessonContext?.lessonId ?? null;
+    const pathnameChanged = prevPathnameRef.current !== pathname;
+    const lessonChanged = prevLessonIdRef.current !== lessonId;
+
+    if (!pathnameChanged && !lessonChanged) return;
     prevPathnameRef.current = pathname;
+    prevLessonIdRef.current = lessonId;
 
     if (status !== "connected" || !systemPrompt) return;
 
     sendSessionSettings({ systemPrompt });
-  }, [pathname, status, systemPrompt, sendSessionSettings]);
+  }, [pathname, lessonContext, status, systemPrompt, sendSessionSettings]);
 
   // Connect handler -- checks voice budget, fetches a fresh token, then connects.
   // If we have a previous `chatGroupId`, pass it as `resumedChatGroupId` so Hume
@@ -423,8 +600,13 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
     return KID_EMOTIONS[best] ?? null;
   }, [messages]);
 
+  // Text fallback: active when voice budget is exhausted and not connected
+  const textFallbackActive =
+    voiceBudget != null && !voiceBudget.allowed && status === "idle";
+
   // Status text
   const statusText = useMemo(() => {
+    if (textFallbackActive) return "Type to chat with Chip!";
     if (status === "connecting") {
       return readyState === VoiceReadyState.IDLE
         ? "Allow your microphone to talk to Chip!"
@@ -434,7 +616,7 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
     if (isPlaying) return "Chip is talking...";
     if (isMuted) return "Mic is off";
     return "Chip is listening...";
-  }, [status, readyState, isPlaying, isMuted]);
+  }, [status, readyState, isPlaying, isMuted, textFallbackActive]);
 
   // Filter chat messages for transcript
   const chatMessages = useMemo(
@@ -447,13 +629,16 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
 
   const toggleOpen = useCallback(() => {
     setIsOpen((prev) => {
-      // When closing the panel, disconnect active voice session
-      if (prev && readyState === VoiceReadyState.OPEN) {
-        disconnect();
+      if (prev) {
+        // Closing — disconnect voice and remember the dismissal
+        if (readyState === VoiceReadyState.OPEN) {
+          disconnect();
+        }
+        dismissChat();
       }
       return !prev;
     });
-  }, [readyState, disconnect]);
+  }, [readyState, disconnect, dismissChat]);
 
   // Return null for hidden routes -- VoiceProvider (parent) stays alive.
   // Placed after all hooks to satisfy React's Rules of Hooks.
@@ -556,144 +741,177 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
                 )}
               </div>
 
-              {/* ── Body (scrollable transcript) ── */}
-              <div className="min-h-0 flex-1 overflow-y-auto px-3.5 py-2.5">
-                {/* Welcome bubble (visible until voice messages arrive) */}
-                {status !== "connected" && chatMessages.length === 0 && (
-                  <div className="max-w-[90%] rounded-xl rounded-tl-sm bg-primary/10 px-2.5 py-2 text-[13px] leading-snug text-foreground">
-                    <span className="mb-0.5 block text-[11px] font-semibold opacity-60">
-                      Chip
-                    </span>
-                    {isNewUser
-                      ? `Hey${pageContext?.childName ? ` ${pageContext.childName}` : ""}! I'm Chip, your learning buddy! Tap the mic and let's get started!`
-                      : `Hey${pageContext?.childName ? ` ${pageContext.childName}` : ""}! Tap the mic to talk to me!`}
-                  </div>
-                )}
-
-                {/* Transcript messages */}
-                {chatMessages.length > 0 && (
-                  <div className="flex flex-col gap-1.5">
-                    {chatMessages.map((msg, i) => {
-                      const isChip = msg.type === "assistant_message";
-                      const content = msg.message?.content ?? "";
-                      if (!content) return null;
-
-                      return (
-                        <div
-                          key={i}
-                          className={cn(
-                            "max-w-[88%] rounded-xl px-2.5 py-1.5 text-[13px] leading-snug",
-                            isChip
-                              ? "self-start rounded-tl-sm bg-primary/10 text-foreground"
-                              : "self-end rounded-tr-sm bg-secondary/20 text-foreground",
-                          )}
-                        >
-                          <span className="mb-0.5 block text-[10px] font-semibold opacity-50">
-                            {isChip ? "Chip" : "You"}
-                          </span>
-                          {content}
-                        </div>
-                      );
-                    })}
-                    <div ref={scrollAnchorRef} className="h-px" />
-                  </div>
-                )}
-
-                {/* Budget warning */}
-                {budgetWarning && (
-                  <div className="mt-1 rounded-xl bg-amber-50 px-3 py-2.5 text-center text-[13px] text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
-                    <p>{budgetWarning}</p>
-                    {voiceBudget && !voiceBudget.allowed && voiceBudget.tier === "free" && (
-                      <p className="mt-1 text-[11px] text-amber-600/80 dark:text-amber-500/80">
-                        Supporters get 30 min/day!{" "}
-                        <a
-                          href="/dashboard/billing"
-                          className="font-medium underline underline-offset-2"
-                        >
-                          Learn more
-                        </a>
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Error state */}
-                {(isError || connectError || providerError) && (
-                  <div className="mt-1 rounded-xl bg-destructive/10 px-3 py-2.5 text-center text-[13px] text-destructive">
-                    {isMicrophoneError ? (
-                      "Chip needs your microphone! Please allow mic access and try again."
-                    ) : (
-                      <>
-                        <p>
-                          Oops! Chip can&apos;t talk right now. Please try
-                          again later!
-                        </p>
-                        <p className="mt-1 text-[11px] text-muted-foreground">
-                          If this keeps happening, let us know at{" "}
-                          <a
-                            href="mailto:hello@tinkerschool.ai"
-                            className="font-medium text-primary underline underline-offset-2"
-                          >
-                            hello@tinkerschool.ai
-                          </a>
-                        </p>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* ── Footer controls (pinned bottom) ── */}
-              <div className="shrink-0 border-t border-border/50 px-3.5 py-2.5">
-                <div className="flex items-center justify-center gap-2.5">
-                  {status === "idle" ? (
-                    <Button
-                      className="size-10 rounded-full"
-                      onClick={handleConnect}
-                      aria-label="Start voice chat with Chip"
-                    >
-                      <Mic className="size-4.5" />
-                    </Button>
-                  ) : status === "connecting" ? (
-                    <Button
-                      className="size-10 rounded-full bg-primary/80"
-                      onClick={() => {
-                        disconnect();
-                        setIsAttemptingConnect(false);
-                      }}
-                      aria-label="Cancel connecting"
-                    >
-                      <Mic className="size-4.5 animate-pulse motion-reduce:animate-none" />
-                    </Button>
-                  ) : (
-                    <>
-                      <Button
-                        variant={isMuted ? "outline" : "default"}
-                        className="size-10 rounded-full"
-                        onClick={handleToggleMic}
-                        aria-label={
-                          isMuted ? "Unmute microphone" : "Mute microphone"
-                        }
-                      >
-                        {isMuted ? (
-                          <MicOff className="size-4.5" />
-                        ) : (
-                          <Mic className="size-4.5" />
+              {/* ── Text fallback chat (when voice budget exhausted) ── */}
+              {textFallbackActive ? (
+                <>
+                  {/* Budget notice banner */}
+                  <div className="shrink-0 px-3.5 pt-2">
+                    <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                      <MessageSquare className="size-3.5 shrink-0" />
+                      <span>
+                        Voice is resting — type to chat!
+                        {voiceBudget?.tier === "free" && (
+                          <>
+                            {" "}
+                            <a
+                              href="/dashboard/billing"
+                              className="font-medium underline underline-offset-2"
+                            >
+                              Get more voice time
+                            </a>
+                          </>
                         )}
-                      </Button>
+                      </span>
+                    </div>
+                  </div>
+                  <TextFallbackChat
+                    pageContext={pageContext}
+                    lessonContext={lessonContext}
+                    pathname={pathname}
+                  />
+                </>
+              ) : (
+                <>
+                  {/* ── Body (scrollable transcript) ── */}
+                  <div className="min-h-0 flex-1 overflow-y-auto px-3.5 py-2.5">
+                    {/* Welcome bubble (visible until voice messages arrive) */}
+                    {status !== "connected" && chatMessages.length === 0 && (
+                      <div className="max-w-[90%] rounded-xl rounded-tl-sm bg-primary/10 px-2.5 py-2 text-[13px] leading-snug text-foreground">
+                        <span className="mb-0.5 block text-[11px] font-semibold opacity-60">
+                          Chip
+                        </span>
+                        {isNewUser
+                          ? `Hey${pageContext?.childName ? ` ${pageContext.childName}` : ""}! I'm Chip, your learning buddy! Tap the mic and let's get started!`
+                          : `Hey${pageContext?.childName ? ` ${pageContext.childName}` : ""}! Tap the mic to talk to me!`}
+                      </div>
+                    )}
 
-                      <Button
-                        variant="destructive"
-                        className="size-10 rounded-full"
-                        onClick={disconnect}
-                        aria-label="End voice chat"
-                      >
-                        <PhoneOff className="size-3.5" />
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
+                    {/* Transcript messages */}
+                    {chatMessages.length > 0 && (
+                      <div className="flex flex-col gap-1.5">
+                        {chatMessages.map((msg, i) => {
+                          const isChip = msg.type === "assistant_message";
+                          const content = msg.message?.content ?? "";
+                          if (!content) return null;
+
+                          return (
+                            <div
+                              key={i}
+                              className={cn(
+                                "max-w-[88%] rounded-xl px-2.5 py-1.5 text-[13px] leading-snug",
+                                isChip
+                                  ? "self-start rounded-tl-sm bg-primary/10 text-foreground"
+                                  : "self-end rounded-tr-sm bg-secondary/20 text-foreground",
+                              )}
+                            >
+                              <span className="mb-0.5 block text-[10px] font-semibold opacity-50">
+                                {isChip ? "Chip" : "You"}
+                              </span>
+                              {content}
+                            </div>
+                          );
+                        })}
+                        <div ref={scrollAnchorRef} className="h-px" />
+                      </div>
+                    )}
+
+                    {/* Budget warning */}
+                    {budgetWarning && (
+                      <div className="mt-1 rounded-xl bg-amber-50 px-3 py-2.5 text-center text-[13px] text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                        <p>{budgetWarning}</p>
+                        {voiceBudget && !voiceBudget.allowed && voiceBudget.tier === "free" && (
+                          <p className="mt-1 text-[11px] text-amber-600/80 dark:text-amber-500/80">
+                            Supporters get 30 min/day!{" "}
+                            <a
+                              href="/dashboard/billing"
+                              className="font-medium underline underline-offset-2"
+                            >
+                              Learn more
+                            </a>
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Error state */}
+                    {(isError || connectError || providerError) && (
+                      <div className="mt-1 rounded-xl bg-destructive/10 px-3 py-2.5 text-center text-[13px] text-destructive">
+                        {isMicrophoneError ? (
+                          "Chip needs your microphone! Please allow mic access and try again."
+                        ) : (
+                          <>
+                            <p>
+                              Oops! Chip can&apos;t talk right now. Please try
+                              again later!
+                            </p>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              If this keeps happening, let us know at{" "}
+                              <a
+                                href="mailto:hello@tinkerschool.ai"
+                                className="font-medium text-primary underline underline-offset-2"
+                              >
+                                hello@tinkerschool.ai
+                              </a>
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Footer controls (pinned bottom) ── */}
+                  <div className="shrink-0 border-t border-border/50 px-3.5 py-2.5">
+                    <div className="flex items-center justify-center gap-2.5">
+                      {status === "idle" ? (
+                        <Button
+                          className="size-10 rounded-full"
+                          onClick={handleConnect}
+                          aria-label="Start voice chat with Chip"
+                        >
+                          <Mic className="size-4.5" />
+                        </Button>
+                      ) : status === "connecting" ? (
+                        <Button
+                          className="size-10 rounded-full bg-primary/80"
+                          onClick={() => {
+                            disconnect();
+                            setIsAttemptingConnect(false);
+                          }}
+                          aria-label="Cancel connecting"
+                        >
+                          <Mic className="size-4.5 animate-pulse motion-reduce:animate-none" />
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            variant={isMuted ? "outline" : "default"}
+                            className="size-10 rounded-full"
+                            onClick={handleToggleMic}
+                            aria-label={
+                              isMuted ? "Unmute microphone" : "Mute microphone"
+                            }
+                          >
+                            {isMuted ? (
+                              <MicOff className="size-4.5" />
+                            ) : (
+                              <Mic className="size-4.5" />
+                            )}
+                          </Button>
+
+                          <Button
+                            variant="destructive"
+                            className="size-10 rounded-full"
+                            onClick={disconnect}
+                            aria-label="End voice chat"
+                          >
+                            <PhoneOff className="size-3.5" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </Card>
           </motion.div>
         )}
@@ -742,6 +960,12 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
                   </span>
                 )}
               </>
+            )}
+            {/* Text chat badge when voice budget exhausted */}
+            {textFallbackActive && (
+              <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full border-2 border-primary bg-amber-400">
+                <MessageSquare className="size-2.5 text-amber-900" />
+              </span>
             )}
           </div>
         )}

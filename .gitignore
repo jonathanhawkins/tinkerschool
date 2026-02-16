@@ -51,6 +51,13 @@ next-env.d.ts
 # MCP configuration (local dev, may contain project refs)
 .mcp.json
 
+# Test screenshots (debug artifacts)
+/test-screenshots/
+
+# Claude agent memory (local, session-specific)
+.claude/agent-memory/
+.claude/agents/
+
 # Firmware binaries (large, download separately)
 public/firmware/*.bin
 

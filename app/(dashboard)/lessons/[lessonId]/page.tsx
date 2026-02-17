@@ -219,7 +219,7 @@ export default async function LessonPage({
             size="sm"
             className="gap-1.5 rounded-lg px-2"
           >
-            <Link href="/">
+            <Link href="/home">
               <ArrowLeft className="size-4" />
               Mission Control
             </Link>
@@ -516,7 +516,7 @@ export default async function LessonPage({
                 variant="outline"
                 className="rounded-xl"
               >
-                <Link href="/">
+                <Link href="/home">
                   <ArrowLeft className="size-4" />
                   Back
                 </Link>

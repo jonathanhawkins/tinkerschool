@@ -250,7 +250,7 @@ describe("WebREPLManager", () => {
 
       const data = new Uint8Array([0x01, 0x02, 0x03]);
       await manager.writeBytes(data);
-      expect(ws.send).toHaveBeenCalledWith(data.buffer);
+      expect(ws.send).toHaveBeenCalledWith(data);
     });
 
     it("throws when not connected", async () => {

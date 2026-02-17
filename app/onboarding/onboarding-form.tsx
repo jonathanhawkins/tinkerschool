@@ -176,6 +176,7 @@ function clearSavedState(): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(STORAGE_KEY);
+    _cachedSnapshot = undefined;
   } catch {
     // noop
   }

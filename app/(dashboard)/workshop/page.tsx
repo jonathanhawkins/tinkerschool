@@ -92,7 +92,7 @@ export default async function WorkshopPage({ searchParams }: WorkshopPageProps) 
     const [subjectsRes, modulesRes, progressRes, projectsRes] =
       await Promise.all([
         supabase.from("subjects").select("*").order("sort_order"),
-        supabase.from("modules").select("*").eq("band", band),
+        supabase.from("modules").select("*").lte("band", band),
         supabase
           .from("progress")
           .select("*")

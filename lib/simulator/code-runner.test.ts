@@ -1081,4 +1081,93 @@ Lcd.drawString(str(count), 0, 0)`);
       expect(mockSim.drawString).toHaveBeenCalledWith("5", 0, 0, undefined);
     });
   });
+
+  // =========================================================================
+  // print() support
+  // =========================================================================
+
+  describe("print() support", () => {
+    it("fires onPrint callback for print() with a string", async () => {
+      const onPrint = vi.fn();
+      runner.onPrint = onPrint;
+
+      await runner.run('print("Hello World")');
+
+      expect(onPrint).toHaveBeenCalledWith("Hello World");
+    });
+
+    it("fires onPrint callback for print() with a number", async () => {
+      const onPrint = vi.fn();
+      runner.onPrint = onPrint;
+
+      await runner.run("print(42)");
+
+      expect(onPrint).toHaveBeenCalledWith("42");
+    });
+
+    it("fires onPrint callback for print() with a variable", async () => {
+      const onPrint = vi.fn();
+      runner.onPrint = onPrint;
+
+      await runner.run(`score = 10
+print(score)`);
+
+      expect(onPrint).toHaveBeenCalledWith("10");
+    });
+
+    it("handles print() with multiple arguments joined by spaces", async () => {
+      const onPrint = vi.fn();
+      runner.onPrint = onPrint;
+
+      await runner.run('print("Score:", 42)');
+
+      expect(onPrint).toHaveBeenCalledWith("Score: 42");
+    });
+
+    it("handles print() with no arguments (empty line)", async () => {
+      const onPrint = vi.fn();
+      runner.onPrint = onPrint;
+
+      await runner.run("print()");
+
+      expect(onPrint).toHaveBeenCalledWith("");
+    });
+
+    it("handles print() with expression", async () => {
+      const onPrint = vi.fn();
+      runner.onPrint = onPrint;
+
+      await runner.run("print(3 + 4)");
+
+      expect(onPrint).toHaveBeenCalledWith("7");
+    });
+
+    it("does not error when onPrint is not set", async () => {
+      // onPrint is null by default -- should not throw
+      await expect(runner.run('print("test")')).resolves.not.toThrow();
+    });
+
+    it("handles print() inside a loop", async () => {
+      const onPrint = vi.fn();
+      runner.onPrint = onPrint;
+
+      await runner.run(`for i in range(3):
+    print(i)`);
+
+      expect(onPrint).toHaveBeenCalledTimes(3);
+      expect(onPrint).toHaveBeenNthCalledWith(1, "0");
+      expect(onPrint).toHaveBeenNthCalledWith(2, "1");
+      expect(onPrint).toHaveBeenNthCalledWith(3, "2");
+    });
+
+    it("handles print() with str() conversion", async () => {
+      const onPrint = vi.fn();
+      runner.onPrint = onPrint;
+
+      await runner.run(`x = 5
+print(str(x))`);
+
+      expect(onPrint).toHaveBeenCalledWith("5");
+    });
+  });
 });

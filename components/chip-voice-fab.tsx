@@ -165,6 +165,7 @@ function TextFallbackChat({ pageContext, lessonContext, pathname }: TextFallback
   // Determine current subject from pathname or lesson context
   const currentSubject = lessonContext?.subjectSlug ?? undefined;
   const currentLesson = lessonContext?.title ?? undefined;
+  const currentLessonId = lessonContext?.lessonId ?? undefined;
 
   const transport = useMemo(
     () =>
@@ -176,9 +177,10 @@ function TextFallbackChat({ pageContext, lessonContext, pathname }: TextFallback
           band: 2,
           currentSubject,
           currentLesson,
+          currentLessonId,
         },
       }),
-    [pageContext?.childName, pageContext?.age, currentSubject, currentLesson],
+    [pageContext?.childName, pageContext?.age, currentSubject, currentLesson, currentLessonId],
   );
 
   const {
@@ -628,17 +630,15 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
   );
 
   const toggleOpen = useCallback(() => {
-    setIsOpen((prev) => {
-      if (prev) {
-        // Closing — disconnect voice and remember the dismissal
-        if (readyState === VoiceReadyState.OPEN) {
-          disconnect();
-        }
-        dismissChat();
+    if (isOpen) {
+      // Closing — disconnect voice and remember the dismissal
+      if (readyState === VoiceReadyState.OPEN) {
+        disconnect();
       }
-      return !prev;
-    });
-  }, [readyState, disconnect, dismissChat]);
+      dismissChat();
+    }
+    setIsOpen((prev) => !prev);
+  }, [isOpen, readyState, disconnect, dismissChat]);
 
   // Return null for hidden routes -- VoiceProvider (parent) stays alive.
   // Placed after all hooks to satisfy React's Rules of Hooks.
@@ -754,7 +754,7 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
                           <>
                             {" "}
                             <a
-                              href="/dashboard/billing"
+                              href="/settings"
                               className="font-medium underline underline-offset-2"
                             >
                               Get more voice time
@@ -823,7 +823,7 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
                           <p className="mt-1 text-[11px] text-amber-600/80 dark:text-amber-500/80">
                             Supporters get 30 min/day!{" "}
                             <a
-                              href="/dashboard/billing"
+                              href="/settings"
                               className="font-medium underline underline-offset-2"
                             >
                               Learn more

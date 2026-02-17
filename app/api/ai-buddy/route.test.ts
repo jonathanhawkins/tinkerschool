@@ -442,7 +442,7 @@ describe("POST /api/ai-buddy", () => {
         expect.objectContaining({
           childName: "Friend", // default when no profile
           age: 7, // default
-          gradeLevel: 2, // default band
+          gradeLevel: 1, // default grade level
         })
       );
     });
@@ -508,7 +508,7 @@ describe("POST /api/ai-buddy", () => {
         expect.objectContaining({
           childName: "Cassidy",
           age: 6, // grade_level(1) + 5
-          gradeLevel: 2, // current_band
+          gradeLevel: 1, // actual grade_level from profile
         })
       );
     });

@@ -101,6 +101,18 @@ function countTotalQuestions(activities: ActivityContent[]): number {
       case "fill_in_blank":
         total += activity.questions.length;
         break;
+      case "number_bond":
+        total += activity.questions.length;
+        break;
+      case "ten_frame":
+        total += activity.questions.length;
+        break;
+      case "number_line":
+        total += activity.questions.length;
+        break;
+      case "rekenrek":
+        total += activity.questions.length;
+        break;
     }
   }
   return total;
@@ -259,6 +271,22 @@ export function ActivityProvider({
           questionId =
             activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
           break;
+        case "number_bond":
+          questionId =
+            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
+          break;
+        case "ten_frame":
+          questionId =
+            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
+          break;
+        case "number_line":
+          questionId =
+            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
+          break;
+        case "rekenrek":
+          questionId =
+            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
+          break;
       }
 
       const event: AnswerEvent = {
@@ -277,7 +305,7 @@ export function ActivityProvider({
           (isCorrect && attemptCount.current === 1 ? 1 : 0);
         const newCorrectTotal =
           prev.metrics.correctTotal + (isCorrect ? 1 : 0);
-        const newTotalQuestions = prev.metrics.totalQuestions + (isCorrect ? 1 : 0);
+        const newTotalQuestions = prev.metrics.totalQuestions + 1;
         const newHintsUsed =
           prev.metrics.hintsUsed + (hintUsedForQuestion.current ? 1 : 0);
         const newTotalTimeMs = prev.metrics.totalTimeMs + timeMs;

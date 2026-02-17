@@ -287,8 +287,9 @@ export class MicroPythonREPL {
         await delay(50);
       }
 
-      // Even on timeout, return whatever we collected
-      return this.parseExecutionOutput(this.dataBuffer);
+      // Timeout: throw so callers know execution didn't complete
+      const partial = this.parseExecutionOutput(this.dataBuffer);
+      throw new Error(`EXECUTION_TIMEOUT: Code did not finish within ${timeout}ms. Partial output: ${partial.slice(0, 200)}`);
     } finally {
       this.stopCapture();
     }

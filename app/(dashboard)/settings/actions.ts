@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireAuth } from "@/lib/auth/require-auth";
-import { isValidUUID } from "@/lib/utils";
+import { bandForGrade, GRADE_LABELS, isValidUUID, VALID_GRADES } from "@/lib/utils";
 import type { Profile, ProfileUpdate } from "@/lib/supabase/types";
 
 // ---------------------------------------------------------------------------
@@ -140,6 +140,71 @@ export async function updateKidName(
 
   if (error) {
     return { success: false, error: "Failed to update name." };
+  }
+
+  revalidatePath("/", "layout");
+  return { success: true };
+}
+
+// ---------------------------------------------------------------------------
+// Update a kid's grade level (and recalculate band)
+// ---------------------------------------------------------------------------
+
+interface UpdateKidGradeResult {
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Update a kid's grade level and automatically recalculate their
+ * curriculum band. Only parents in the same family can do this.
+ */
+export async function updateKidGrade(
+  kidProfileId: string,
+  newGrade: number,
+): Promise<UpdateKidGradeResult> {
+  if (!isValidUUID(kidProfileId)) {
+    return { success: false, error: "Invalid profile ID." };
+  }
+
+  if (!(VALID_GRADES as readonly number[]).includes(newGrade)) {
+    return { success: false, error: "Invalid grade level." };
+  }
+
+  const { profile, supabase } = await requireAuth();
+
+  if (profile.role !== "parent") {
+    return { success: false, error: "Only parents can change grade level." };
+  }
+
+  // Verify the kid belongs to the same family
+  const { data: kidProfile } = (await supabase
+    .from("profiles")
+    .select("id, family_id, role")
+    .eq("id", kidProfileId)
+    .single()) as { data: { id: string; family_id: string; role: string } | null };
+
+  if (!kidProfile) {
+    return { success: false, error: "Learner profile not found." };
+  }
+
+  if (kidProfile.family_id !== profile.family_id) {
+    return { success: false, error: "Learner profile not found." };
+  }
+
+  if (kidProfile.role !== "kid") {
+    return { success: false, error: "Can only edit learner profiles." };
+  }
+
+  const newBand = bandForGrade(newGrade);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from("profiles") as any)
+    .update({ grade_level: newGrade, current_band: newBand })
+    .eq("id", kidProfileId);
+
+  if (error) {
+    return { success: false, error: "Failed to update grade level." };
   }
 
   revalidatePath("/", "layout");

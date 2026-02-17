@@ -313,6 +313,7 @@ export function FamilySection({
 }: FamilySectionProps) {
   const [invitations, setInvitations] = useState(initialInvitations);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [, startRefreshTransition] = useTransition();
 
   const handleInviteSent = useCallback(() => {
     // Refresh the invitations list
@@ -321,9 +322,7 @@ export function FamilySection({
       const updated = await listPendingInvitations();
       setInvitations(updated);
     });
-  }, []);
-
-  const [, startRefreshTransition] = useTransition();
+  }, [startRefreshTransition]);
 
   return (
     <div className="space-y-4">

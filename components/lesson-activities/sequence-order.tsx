@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { motion, Reorder, useReducedMotion } from "framer-motion";
 import { GripVertical, Check } from "lucide-react";
 
@@ -14,6 +14,40 @@ import { ActivityFeedback } from "./activity-feedback";
 // ---------------------------------------------------------------------------
 // SequenceOrder - Drag items into the correct order
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Normalize sequence_order data — seed migrations use 2 schemas:
+//   1. items with correctPosition on each item  (curriculum doc standard)
+//   2. items WITHOUT correctPosition + correctOrder array on question
+// ---------------------------------------------------------------------------
+interface RawSequenceItem {
+  id: string;
+  text: string;
+  emoji?: string;
+  correctPosition?: number;
+}
+
+interface RawSequenceQuestion {
+  id: string;
+  prompt: string;
+  items: RawSequenceItem[];
+  correctOrder?: string[];
+  hint?: string;
+}
+
+function normalizeItems(question: RawSequenceQuestion): SequenceItem[] {
+  return question.items.map((item) => {
+    if (item.correctPosition != null) return item as SequenceItem;
+    // Derive correctPosition from correctOrder array
+    if (question.correctOrder) {
+      const pos = question.correctOrder.indexOf(item.id);
+      return { ...item, correctPosition: pos >= 0 ? pos + 1 : 0 };
+    }
+    // Fallback: assume items are already in correct order
+    const idx = question.items.indexOf(item);
+    return { ...item, correctPosition: idx + 1 };
+  });
+}
 
 /** Shuffle array */
 function shuffle<T>(arr: T[]): T[] {
@@ -29,12 +63,13 @@ export function SequenceOrder() {
   const { currentActivity, state, recordAnswer, subjectColor } = useActivity();
   const { play } = useSound();
   const activity = currentActivity as SequenceOrderContent;
-  const question = activity.questions[state.currentQuestionIndex];
+  const rawQuestion = activity.questions[state.currentQuestionIndex] as unknown as RawSequenceQuestion | undefined;
+  const question = rawQuestion ?? null;
   const prefersReducedMotion = useReducedMotion();
 
-  // Shuffled items for ordering
+  // Shuffled items for ordering (normalized to always have correctPosition)
   const [items, setItems] = useState<SequenceItem[]>(() =>
-    shuffle(question?.items ?? []),
+    shuffle(question ? normalizeItems(question) : []),
   );
 
   const questionKey = question?.id ?? state.currentQuestionIndex;

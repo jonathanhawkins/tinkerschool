@@ -45,7 +45,7 @@ export function NumberLine() {
 
   const { min, max, startPosition, correctEndPosition, operation, jumpSize } =
     question;
-  const range = max - min;
+  const range = max - min || 1;
   const showArcs = question.showJumpArcs !== false; // default true
 
   const isCorrectFeedback =

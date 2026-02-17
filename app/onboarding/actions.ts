@@ -10,7 +10,7 @@ import { hashPin } from "@/lib/auth/pin";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { DeviceMode, FamilyInsert, LearningProfileInsert, ProfileInsert } from "@/lib/supabase/types";
-import { isValidUUID } from "@/lib/utils";
+import { bandForGrade, isValidUUID } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Onboarding result type
@@ -46,18 +46,6 @@ const VALID_GRADE_LEVELS = new Set(["0", "1", "2", "3", "4", "5", "6"]);
 const VALID_AVATAR_IDS = new Set([
   "robot", "fairy", "astronaut", "wizard", "dragon", "unicorn", "ninja", "scientist",
 ]);
-
-// ---------------------------------------------------------------------------
-// Band assignment based on grade level
-// ---------------------------------------------------------------------------
-
-function bandForGrade(grade: number): number {
-  if (grade <= 1) return 1; // Explorer: K-1
-  if (grade <= 3) return 2; // Builder: 2-3
-  if (grade <= 4) return 3; // Inventor: 3-4
-  if (grade <= 5) return 4; // Hacker: 4-5
-  return 5; // Creator: 5-6
-}
 
 // ---------------------------------------------------------------------------
 // Complete the onboarding flow (Steps 1-4)
@@ -479,7 +467,7 @@ export async function completeInvitedParentOnboarding(
     display_name: displayName,
     avatar_id: "parent",
     role: "parent",
-    current_band: 0,
+    current_band: 1,
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

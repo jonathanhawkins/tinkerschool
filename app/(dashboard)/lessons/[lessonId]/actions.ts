@@ -287,7 +287,7 @@ export async function completeActivity(
     };
   }
 
-  // Not passed - still mark as in_progress
+  // Not passed - still mark as in_progress and increment attempts
   const now = new Date().toISOString();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase.from("progress") as any).upsert(
@@ -300,7 +300,7 @@ export async function completeActivity(
     },
     {
       onConflict: "profile_id, lesson_id",
-      ignoreDuplicates: true,
+      ignoreDuplicates: false,
     },
   );
 

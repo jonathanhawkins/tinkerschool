@@ -204,9 +204,9 @@ export default async function ParentDashboardPage({
       activityCountByDate.set(dateKey, (activityCountByDate.get(dateKey) ?? 0) + 1);
     }
   }
-  // Also count completed lessons as activity
+  // Also count completed lessons as activity (within 90-day window)
   for (const p of (progressResult.data ?? []) as ProgressWithLesson[]) {
-    if (p.completed_at) {
+    if (p.completed_at && p.completed_at >= ninetyDaysAgo) {
       const dateKey = p.completed_at.slice(0, 10);
       activityCountByDate.set(dateKey, (activityCountByDate.get(dateKey) ?? 0) + 1);
     }

@@ -12,7 +12,8 @@ export interface SimulatorCommand {
     | "tone"
     | "setTextColor"
     | "setTextSize"
-    | "setLed";
+    | "setLed"
+    | "print";
   args: Record<string, unknown>;
 }
 

@@ -20,6 +20,7 @@ import Link from "next/link";
 
 import { DevResetButton } from "./dev-reset-button";
 import { EditKidName } from "./edit-kid-name";
+import { EditKidGrade } from "./edit-kid-grade";
 import { FamilySection } from "./invite-co-parent";
 import { listFamilyParents, listPendingInvitations } from "./invite-actions";
 
@@ -29,6 +30,7 @@ import { requireAuth } from "@/lib/auth/require-auth";
 import { getFamilyTier } from "@/lib/stripe/get-family-tier";
 import { FadeIn, Stagger, StaggerItem } from "@/components/motion";
 import type { Profile } from "@/lib/supabase/types";
+import { BAND_NAMES } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -38,14 +40,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-
-const BAND_NAMES: Record<number, string> = {
-  1: "Explorer",
-  2: "Builder",
-  3: "Inventor",
-  4: "Hacker",
-  5: "Creator",
-};
 
 const BAND_DESCRIPTIONS: Record<number, string> = {
   1: "UIFlow2 blocks & templates",
@@ -67,6 +61,7 @@ const AVATAR_LABELS: Record<string, string> = {
 
 const DEVICE_MODE_LABELS: Record<string, { label: string; description: string }> = {
   usb: { label: "USB Serial", description: "Connected via USB cable" },
+  wifi: { label: "WiFi WebREPL", description: "Connected via WiFi" },
   simulator: { label: "Simulator", description: "Virtual device in browser" },
   none: { label: "Not Set", description: "No device mode selected" },
 };
@@ -203,15 +198,26 @@ export default async function SettingsPage() {
 
                       {/* Kid details */}
                       <div className="space-y-2 rounded-xl bg-muted/40 p-4">
-                        <DetailRow
-                          icon={GraduationCap}
-                          label="Grade"
-                          value={
-                            kid.grade_level !== null
-                              ? `Grade ${kid.grade_level}`
-                              : "Not set"
-                          }
-                        />
+                        <div className="flex items-center gap-1">
+                          <div className="flex-1">
+                            <DetailRow
+                              icon={GraduationCap}
+                              label="Grade"
+                              value={
+                                kid.grade_level !== null
+                                  ? kid.grade_level === 0
+                                    ? "Kindergarten"
+                                    : `Grade ${kid.grade_level}`
+                                  : "Not set"
+                              }
+                            />
+                          </div>
+                          <EditKidGrade
+                            kidId={kid.id}
+                            currentGrade={kid.grade_level}
+                            kidName={kid.display_name}
+                          />
+                        </div>
                         <DetailRow
                           icon={Layers}
                           label="Band"
@@ -401,18 +407,20 @@ export default async function SettingsPage() {
         )}
 
         {/* ---- Parent Dashboard link ---- */}
-        <StaggerItem>
-          <Button
-            asChild
-            variant="outline"
-            className="w-full rounded-2xl py-6"
-          >
-            <Link href="/dashboard">
-              <Shield className="size-4" />
-              Open Parent Dashboard
-            </Link>
-          </Button>
-        </StaggerItem>
+        {profile.role === "parent" && (
+          <StaggerItem>
+            <Button
+              asChild
+              variant="outline"
+              className="w-full rounded-2xl py-6"
+            >
+              <Link href="/dashboard">
+                <Shield className="size-4" />
+                Open Parent Dashboard
+              </Link>
+            </Button>
+          </StaggerItem>
+        )}
 
         {/* ---- Dev Tools (development only) ---- */}
         {process.env.NODE_ENV !== "production" && (

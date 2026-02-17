@@ -163,7 +163,7 @@ export class WebREPLManager implements DeviceTransport {
     }
 
     try {
-      this.ws.send(data.buffer);
+      this.ws.send(data);
     } catch (error) {
       this.onError?.(
         error instanceof Error ? error : new Error("Write failed"),

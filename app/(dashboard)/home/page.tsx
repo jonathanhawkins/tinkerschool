@@ -603,18 +603,26 @@ export default async function MissionControlPage() {
     .select("*, skills(*)")
     .eq("profile_id", activeProfile.id);
 
+  // Fetch ALL skills so we can show accurate totals per subject even when
+  // the kid hasn't started a subject yet.
+  const allSkillsPromise = supabase
+    .from("skills")
+    .select("id, subject_id");
+
   const [
     { data: modules },
     { data: subjects },
     { data: progressRows },
     { data: userBadges },
     { data: skillProficiencies },
+    { data: allSkills },
   ] = await Promise.all([
     modulesPromise,
     subjectsPromise,
     progressPromise,
     badgesPromise,
     skillProficiencyPromise,
+    allSkillsPromise,
   ]);
 
   const safeModules: Module[] = modules ?? [];
@@ -655,24 +663,39 @@ export default async function MissionControlPage() {
   }
 
   // Skills mastered per subject: subjectId -> { mastered, total }
+  // Total comes from the full skills table so subjects show "X of Y skills"
+  // even when the kid hasn't started that subject yet.
+  const safeAllSkills = (allSkills ?? []) as Pick<Skill, "id" | "subject_id">[];
+
   const skillCountBySubject = new Map<
     string,
     { mastered: number; total: number }
   >();
 
-  for (const sp of safeSkillProficiencies) {
-    const subjectId = sp.skills?.subject_id;
-    if (!subjectId) continue;
-
-    const current = skillCountBySubject.get(subjectId) ?? {
+  // First, count total skills per subject from the skills table
+  for (const skill of safeAllSkills) {
+    if (!skill.subject_id) continue;
+    const current = skillCountBySubject.get(skill.subject_id) ?? {
       mastered: 0,
       total: 0,
     };
     current.total += 1;
+    skillCountBySubject.set(skill.subject_id, current);
+  }
+
+  // Then, count mastered/proficient skills from the kid's proficiency records
+  for (const sp of safeSkillProficiencies) {
+    const subjectId = sp.skills?.subject_id;
+    if (!subjectId) continue;
+
     if (sp.level === "mastered" || sp.level === "proficient") {
+      const current = skillCountBySubject.get(subjectId) ?? {
+        mastered: 0,
+        total: 0,
+      };
       current.mastered += 1;
+      skillCountBySubject.set(subjectId, current);
     }
-    skillCountBySubject.set(subjectId, current);
   }
 
   // Group lessons by module

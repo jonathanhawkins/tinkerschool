@@ -73,7 +73,7 @@ class ActivityErrorBoundary extends Component<ActivityErrorBoundaryProps, Activi
               </p>
             </div>
             <Button asChild size="lg" className="rounded-xl">
-              <Link href="/">Back to Mission Control</Link>
+              <Link href="/home">Back to Mission Control</Link>
             </Button>
           </CardContent>
         </Card>
@@ -95,27 +95,31 @@ function ActivityRenderer() {
     return <ActivityComplete />;
   }
 
+  // Key forces React to remount the widget when the question changes,
+  // resetting all internal useState hooks (selected answer, shuffle, etc.)
+  const questionKey = `${state.currentActivityIndex}-${state.currentQuestionIndex}`;
+
   switch (currentActivity.type) {
     case "multiple_choice":
-      return <MultipleChoice />;
+      return <MultipleChoice key={questionKey} />;
     case "counting":
-      return <CountingWidget />;
+      return <CountingWidget key={questionKey} />;
     case "matching_pairs":
-      return <MatchingPairs />;
+      return <MatchingPairs key={questionKey} />;
     case "sequence_order":
-      return <SequenceOrder />;
+      return <SequenceOrder key={questionKey} />;
     case "flash_card":
-      return <FlashCard />;
+      return <FlashCard key={questionKey} />;
     case "fill_in_blank":
-      return <FillInBlank />;
+      return <FillInBlank key={questionKey} />;
     case "number_bond":
-      return <NumberBond />;
+      return <NumberBond key={questionKey} />;
     case "ten_frame":
-      return <TenFrame />;
+      return <TenFrame key={questionKey} />;
     case "number_line":
-      return <NumberLine />;
+      return <NumberLine key={questionKey} />;
     case "rekenrek":
-      return <Rekenrek />;
+      return <Rekenrek key={questionKey} />;
     default:
       return (
         <p className="text-center text-sm text-muted-foreground">

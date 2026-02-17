@@ -70,9 +70,8 @@ async function gatherWeeklyStats(
 
   // Get lesson IDs to fetch activity session scores
   const lessonIds = progressRows
-    .map((p) => p.lessons)
-    .filter(Boolean)
-    .map((_, i) => (weekProgress as { lesson_id: string }[])[i].lesson_id);
+    .map((p, i) => p.lessons ? (weekProgress as { lesson_id: string }[])[i].lesson_id : null)
+    .filter((id): id is string => id !== null);
 
   // Fetch activity sessions for scores this week
   const { data: sessions } = lessonIds.length > 0

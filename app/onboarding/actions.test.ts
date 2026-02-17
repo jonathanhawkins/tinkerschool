@@ -1508,7 +1508,7 @@ describe("completeInvitedParentOnboarding", () => {
     expect(payload.display_name).toBe("Jane");
     expect(payload.role).toBe("parent");
     expect(payload.avatar_id).toBe("parent");
-    expect(payload.current_band).toBe(0);
+    expect(payload.current_band).toBe(1);
   });
 
   it("returns error when profile insert fails", async () => {

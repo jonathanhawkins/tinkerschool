@@ -23,6 +23,7 @@ import type { SimulatorCommand } from "./types";
  *  - time.sleep(seconds)
  *  - time.sleep_ms(ms)
  *  - Speaker.tone(freq, duration) -- audio + visual indicator
+ *  - print(args...) -- output via onPrint callback
  *
  * Variable & expression support:
  *  - Variable assignment: score = 0, x = x + 1
@@ -66,6 +67,9 @@ export class SimulatorCodeRunner {
 
   /** Callback fired when LED brightness changes (for visual feedback) */
   onLed: ((brightness: number) => void) | null = null;
+
+  /** Callback fired when a print() statement is executed */
+  onPrint: ((text: string) => void) | null = null;
 
   constructor(simulator: M5StickSimulator) {
     this.simulator = simulator;
@@ -241,7 +245,9 @@ export class SimulatorCodeRunner {
           bodyRange.start,
           bodyRange.end,
           rangeMatch.count,
-          rangeMatch.varName
+          rangeMatch.varName,
+          rangeMatch.start,
+          rangeMatch.step
         );
         i = bodyRange.end;
         continue;
@@ -317,12 +323,14 @@ export class SimulatorCodeRunner {
     bodyStart: number,
     bodyEnd: number,
     count: number,
-    varName: string
+    varName: string,
+    start: number = 0,
+    step: number = 1
   ): Promise<void> {
     const iterations = Math.min(count, SimulatorCodeRunner.MAX_LOOP_ITERATIONS);
     for (let iter = 0; iter < iterations; iter++) {
       this.checkAbort();
-      this.variables.set(varName, iter);
+      this.variables.set(varName, start + iter * step);
       await this.executeLines(lines, bodyStart, bodyEnd);
     }
   }
@@ -342,11 +350,37 @@ export class SimulatorCodeRunner {
    */
   private isForRangeLoop(
     line: string
-  ): { count: number; varName: string } | null {
-    const match = line.match(/^for\s+(\w+)\s+in\s+range\((\d+)\)\s*:/);
-    if (match) {
-      return { varName: match[1], count: parseInt(match[2], 10) };
+  ): { count: number; start: number; step: number; varName: string } | null {
+    const match = line.match(/^for\s+(\w+)\s+in\s+range\((.+)\)\s*:/);
+    if (!match) return null;
+
+    const varName = match[1];
+    const args = this.splitArgs(match[2]);
+
+    if (args.length === 1) {
+      // range(stop)
+      const stop = Math.floor(Number(this.evaluate(args[0].trim())));
+      return { varName, start: 0, step: 1, count: Math.max(0, stop) };
     }
+    if (args.length === 2) {
+      // range(start, stop)
+      const start = Math.floor(Number(this.evaluate(args[0].trim())));
+      const stop = Math.floor(Number(this.evaluate(args[1].trim())));
+      return { varName, start, step: 1, count: Math.max(0, stop - start) };
+    }
+    if (args.length >= 3) {
+      // range(start, stop, step)
+      const start = Math.floor(Number(this.evaluate(args[0].trim())));
+      const stop = Math.floor(Number(this.evaluate(args[1].trim())));
+      const step = Math.floor(Number(this.evaluate(args[2].trim()))) || 1;
+      const count = step > 0
+        ? Math.max(0, Math.ceil((stop - start) / step))
+        : step < 0
+          ? Math.max(0, Math.ceil((start - stop) / Math.abs(step)))
+          : 0;
+      return { varName, start, step, count };
+    }
+
     return null;
   }
 
@@ -823,6 +857,19 @@ export class SimulatorCodeRunner {
    * Returns null for unrecognized lines (which are silently skipped).
    */
   private parseLine(line: string): SimulatorCommand | null {
+    // Match print() calls -- common Python function that should show output
+    const printMatch = line.match(/^print\((.*)\)\s*$/);
+    if (printMatch) {
+      const argsStr = printMatch[1].trim();
+      if (argsStr === "") {
+        return { type: "print", args: { text: "" } };
+      }
+      // Evaluate all arguments and join with spaces (like Python's print)
+      const parts = this.splitArgs(argsStr);
+      const text = parts.map((p) => String(this.evaluate(p.trim()))).join(" ");
+      return { type: "print", args: { text } };
+    }
+
     // Match API calls: [M5.]Object.method(args) or [M5.]Object.method()
     const apiMatch = line.match(
       /^(?:M5\.)?(\w+)\.(\w+)\((.*)\)\s*$/
@@ -1192,6 +1239,12 @@ export class SimulatorCodeRunner {
         }
         // Small visual pause so the tone indicator is visible
         await this.delay(Math.min(args.durationMs as number, 500));
+        break;
+
+      case "print":
+        if (this.onPrint) {
+          this.onPrint(args.text as string);
+        }
         break;
     }
   }

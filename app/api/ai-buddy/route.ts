@@ -15,7 +15,7 @@ import { isValidUUID } from "@/lib/utils";
 
 /** Known subject slugs — reject unknown values to prevent prompt injection. */
 const VALID_SUBJECTS = new Set([
-  "math", "reading", "science", "music", "art", "problem_solving", "coding",
+  "math", "reading", "science", "music", "art", "problem-solving", "coding",
 ]);
 
 /** Max length limits to prevent cost amplification and prompt injection. */
@@ -30,6 +30,7 @@ interface AiBuddyRequestBody {
   band: number;
   currentSubject?: string;
   currentLesson?: string;
+  currentLessonId?: string;
   currentCode?: string;
   chatSessionId?: string;
 }
@@ -66,6 +67,10 @@ function parseRequestBody(body: unknown): AiBuddyRequestBody | null {
     band: b.band,
     currentSubject,
     currentLesson,
+    currentLessonId:
+      typeof b.currentLessonId === "string" && isValidUUID(b.currentLessonId)
+        ? b.currentLessonId
+        : undefined,
     currentCode,
     chatSessionId:
       typeof b.chatSessionId === "string" && isValidUUID(b.chatSessionId)
@@ -421,6 +426,7 @@ export async function POST(request: Request) {
     messages,
     currentSubject,
     currentLesson,
+    currentLessonId,
     currentCode,
     chatSessionId,
   } = parsed;
@@ -441,7 +447,7 @@ export async function POST(request: Request) {
   const systemPrompt = getChipSystemPrompt({
     childName: verifiedName,
     age: verifiedAge,
-    gradeLevel: verifiedBand,
+    gradeLevel: personalization.gradeLevel ?? 1,
     currentSubject,
     currentLesson,
     currentCode,
@@ -490,7 +496,7 @@ export async function POST(request: Request) {
           userText,
           text,
           chatSessionId,
-          currentLesson,
+          currentLessonId,
         );
       }
     },

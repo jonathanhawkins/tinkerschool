@@ -81,6 +81,7 @@ export default function SimulatorPanel({
   const [ledBrightness, setLedBrightness] = useState(0);
   const [audioMuted, setAudioMuted] = useState(false);
   const [earnedBadges, setEarnedBadges] = useState<EarnedBadge[]>([]);
+  const [printOutput, setPrintOutput] = useState<string[]>([]);
 
   // -------------------------------------------------------------------------
   // Initialize buzzer audio (once, lazily)
@@ -115,6 +116,13 @@ export default function SimulatorPanel({
       runner.onLed = (brightness) => {
         setLedBrightness(brightness);
       };
+      runner.onPrint = (text) => {
+        setPrintOutput((prev) => {
+          const next = [...prev, text];
+          // Cap at 50 lines to prevent memory issues
+          return next.length > 50 ? next.slice(-50) : next;
+        });
+      };
       runnerRef.current = runner;
     }
 
@@ -140,6 +148,7 @@ export default function SimulatorPanel({
     // Clear output tracking before each run
     const sim = simulatorRef.current?.getSimulator();
     sim?.clearOutputLog();
+    setPrintOutput([]);
 
     setStatus("running");
 
@@ -189,6 +198,7 @@ export default function SimulatorPanel({
     simulatorRef.current?.clear();
     simulatorRef.current?.getSimulator()?.clearOutputLog();
     setLedBrightness(0);
+    setPrintOutput([]);
     setStatus("ready");
   }, []);
 
@@ -314,6 +324,15 @@ export default function SimulatorPanel({
             {audioMuted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
           </Button>
         </div>
+
+        {/* Print output console */}
+        {printOutput.length > 0 && (
+          <div className="max-h-24 w-full overflow-y-auto rounded-lg bg-muted p-2">
+            <pre className="whitespace-pre-wrap break-all font-mono text-xs text-muted-foreground">
+              {printOutput.join("\n")}
+            </pre>
+          </div>
+        )}
 
         {/* No-device tip -- right below the Run button */}
         {showNoDeviceTip && (

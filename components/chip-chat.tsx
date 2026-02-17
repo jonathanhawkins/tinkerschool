@@ -25,6 +25,7 @@ interface ChipChatProps {
   band: number;
   currentSubject?: string;
   currentLesson?: string;
+  currentLessonId?: string;
   currentCode?: string;
 }
 
@@ -52,6 +53,7 @@ export default function ChipChat({
   band,
   currentSubject,
   currentLesson,
+  currentLessonId,
   currentCode,
 }: ChipChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -66,10 +68,11 @@ export default function ChipChat({
           band,
           currentSubject,
           currentLesson,
+          currentLessonId,
           currentCode,
         },
       }),
-    [kidName, age, band, currentSubject, currentLesson, currentCode]
+    [kidName, age, band, currentSubject, currentLesson, currentLessonId, currentCode]
   );
 
   const {
@@ -149,8 +152,10 @@ export default function ChipChat({
       <CardContent className="relative min-h-0 flex-1 p-0">
         <div className="absolute inset-0 overflow-y-auto" ref={scrollRef}>
           <div className="flex flex-col gap-2 p-3">
-            {/* Initial greeting from Chip (always shown) */}
-            <ChatBubble role="assistant" text={greeting} kidName={kidName} />
+            {/* Initial greeting from Chip (only shown before any AI messages) */}
+            {messages.length === 0 && (
+              <ChatBubble role="assistant" text={greeting} kidName={kidName} />
+            )}
 
             {/* Conversation messages */}
             {messages.map((msg) => {

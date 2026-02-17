@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Nunito, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
 
 import { Analytics } from "@vercel/analytics/react";
@@ -72,6 +73,11 @@ export default function RootLayout({
           <ChipVoiceGlobal />
           <Analytics />
           <SpeedInsights />
+          <Script
+            defer
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon='{"token": "5d17afae58b64c0798cc717bae46bbb1"}'
+          />
         </body>
       </html>
     </ClerkProvider>

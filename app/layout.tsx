@@ -36,12 +36,29 @@ export const metadata: Metadata = {
     description:
       "Where every kid is a genius waiting to bloom. An open-source AI-powered education platform for K-6 kids.",
     locale: "en_US",
+    images: [
+      {
+        url: "https://tinkerschool.ai/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "TinkerSchool - Where every kid is a genius waiting to bloom",
+        type: "image/png",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "TinkerSchool - Learn Everything with Chip!",
     description:
       "Where every kid is a genius waiting to bloom. An open-source AI-powered education platform for K-6 kids.",
+    images: [
+      {
+        url: "https://tinkerschool.ai/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "TinkerSchool - Where every kid is a genius waiting to bloom",
+      },
+    ],
   },
   icons: {
     icon: [

@@ -8,9 +8,15 @@ vi.mock("server-only", () => ({}));
 // ---------------------------------------------------------------------------
 
 const mockAuth = vi.fn();
+const mockDeleteOrg = vi.fn().mockResolvedValue({});
+const mockDeleteUser = vi.fn().mockResolvedValue({});
 
 vi.mock("@clerk/nextjs/server", () => ({
   auth: () => mockAuth(),
+  clerkClient: () => Promise.resolve({
+    organizations: { deleteOrganization: mockDeleteOrg },
+    users: { deleteUser: mockDeleteUser },
+  }),
 }));
 
 // ---------------------------------------------------------------------------
@@ -42,7 +48,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 // Import after mocks
-import { exportChildData } from "./actions";
+import { exportChildData, deleteAccount } from "./actions";
 
 // ---------------------------------------------------------------------------
 // exportChildData
@@ -266,5 +272,154 @@ describe("exportChildData", () => {
     expect(parsed).toHaveProperty("badges");
     expect(parsed).toHaveProperty("learningProfile");
     expect(parsed).toHaveProperty("activitySessions");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// deleteAccount
+// ---------------------------------------------------------------------------
+
+describe("deleteAccount", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAdminSupabase = createChainableMock();
+    mockAuth.mockResolvedValue({ userId: "user_parent", orgId: "org_123" });
+  });
+
+  it("returns error when confirmText is not DELETE", async () => {
+    const result = await deleteAccount("delete");
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Please type DELETE to confirm account deletion.");
+  });
+
+  it("returns error when not authenticated", async () => {
+    mockAuth.mockResolvedValue({ userId: null, orgId: null });
+
+    const result = await deleteAccount("DELETE");
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Not authenticated");
+  });
+
+  it("returns error when caller is not a parent", async () => {
+    mockAdminSupabase.from.mockImplementation(() => ({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { id: "kid-001", role: "kid", family_id: "fam-001" },
+          }),
+        }),
+      }),
+    }));
+
+    const result = await deleteAccount("DELETE");
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Only parents can delete the family account");
+  });
+
+  it("returns error when parent profile not found", async () => {
+    mockAdminSupabase.from.mockImplementation(() => ({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: null }),
+        }),
+      }),
+    }));
+
+    const result = await deleteAccount("DELETE");
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Only parents can delete the family account");
+  });
+
+  it("successfully deletes all family data and Clerk resources", async () => {
+    let fromCallCount = 0;
+    const deleteMock = vi.fn().mockResolvedValue({ error: null });
+
+    mockAdminSupabase.from.mockImplementation(() => {
+      fromCallCount++;
+
+      if (fromCallCount === 1) {
+        // Parent profile lookup
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: { id: "parent-001", role: "parent", family_id: "fam-001" },
+              }),
+            }),
+          }),
+        };
+      }
+
+      if (fromCallCount === 2) {
+        // Family profiles lookup
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({
+              data: [{ id: "parent-001" }, { id: "kid-001" }],
+            }),
+          }),
+        };
+      }
+
+      // All delete operations return chainable mock
+      return {
+        delete: vi.fn().mockReturnValue({
+          in: deleteMock,
+          eq: deleteMock,
+        }),
+      };
+    });
+
+    const result = await deleteAccount("DELETE");
+
+    expect(result.success).toBe(true);
+    expect(mockDeleteOrg).toHaveBeenCalledWith("org_123");
+    expect(mockDeleteUser).toHaveBeenCalledWith("user_parent");
+  });
+
+  it("still succeeds if Clerk org deletion fails", async () => {
+    let fromCallCount = 0;
+    const deleteMock = vi.fn().mockResolvedValue({ error: null });
+
+    mockAdminSupabase.from.mockImplementation(() => {
+      fromCallCount++;
+      if (fromCallCount === 1) {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: { id: "parent-001", role: "parent", family_id: "fam-001" },
+              }),
+            }),
+          }),
+        };
+      }
+      if (fromCallCount === 2) {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({
+              data: [{ id: "parent-001" }],
+            }),
+          }),
+        };
+      }
+      return {
+        delete: vi.fn().mockReturnValue({
+          in: deleteMock,
+          eq: deleteMock,
+        }),
+      };
+    });
+
+    mockDeleteOrg.mockRejectedValue(new Error("Clerk org not found"));
+
+    const result = await deleteAccount("DELETE");
+
+    // Should still succeed -- Clerk errors are logged but not blocking
+    expect(result.success).toBe(true);
   });
 });

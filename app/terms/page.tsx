@@ -12,6 +12,9 @@ import {
   Mail,
   ArrowLeft,
   Ban,
+  Gavel,
+  Globe,
+  Link2,
 } from "lucide-react";
 
 import {
@@ -28,7 +31,7 @@ export const metadata: Metadata = {
     "TinkerSchool's terms of service. Simple, readable terms for our AI-powered education platform for kids ages 5-12.",
 };
 
-const LAST_UPDATED = "February 8, 2026";
+const LAST_UPDATED = "February 17, 2026";
 
 export default function TermsOfServicePage() {
   return (
@@ -230,8 +233,8 @@ export default function TermsOfServicePage() {
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                   The TinkerSchool platform, curriculum, lessons, Chip's
                   personality and responses, and the TinkerSchool brand are
-                  provided under an open-source license. See our GitHub
-                  repository for license details.
+                  provided under the MIT License. The full license text is
+                  available in our GitHub repository.
                 </p>
               </div>
               <div className="rounded-xl bg-muted/40 p-3">
@@ -356,6 +359,98 @@ export default function TermsOfServicePage() {
               TinkerSchool after changes take effect constitutes acceptance of
               the updated terms.
             </p>
+          </TermsSection>
+
+          {/* Section 10: Governing law */}
+          <TermsSection
+            icon={Globe}
+            title="Governing Law & Jurisdiction"
+            id="governing-law"
+          >
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              These terms are governed by and construed in accordance with the
+              laws of the State of Delaware, United States, without regard to
+              its conflict of law provisions. Any legal action or proceeding
+              arising under these terms shall be brought exclusively in the
+              federal or state courts located in Delaware, and you consent to
+              the personal jurisdiction of such courts.
+            </p>
+          </TermsSection>
+
+          {/* Section 11: Dispute resolution */}
+          <TermsSection
+            icon={Gavel}
+            title="Dispute Resolution"
+            id="dispute-resolution"
+          >
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              We encourage you to contact us first at{" "}
+              <a
+                href="mailto:hello@tinkerschool.ai"
+                className="font-medium text-primary hover:underline"
+              >
+                hello@tinkerschool.ai
+              </a>{" "}
+              to resolve any disputes informally. If a dispute cannot be
+              resolved informally within 30 days, either party may pursue
+              resolution through the courts described in the Governing Law
+              section above. For claims under $10,000, either party may choose
+              to resolve the dispute through small claims court.
+            </p>
+          </TermsSection>
+
+          {/* Section 12: General provisions */}
+          <TermsSection
+            icon={Link2}
+            title="General Provisions"
+            id="general-provisions"
+          >
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary/60" />
+                <strong className="font-medium text-foreground">
+                  Severability
+                </strong>{" "}
+                -- If any provision of these terms is found to be unenforceable
+                or invalid, that provision will be limited or eliminated to the
+                minimum extent necessary, and the remaining provisions will
+                remain in full force and effect.
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary/60" />
+                <strong className="font-medium text-foreground">
+                  Entire agreement
+                </strong>{" "}
+                -- These terms, together with our{" "}
+                <Link
+                  href="/privacy"
+                  className="font-medium text-primary hover:underline"
+                >
+                  Privacy Policy
+                </Link>
+                , constitute the entire agreement between you and TinkerSchool
+                regarding your use of the platform.
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary/60" />
+                <strong className="font-medium text-foreground">
+                  Indemnification
+                </strong>{" "}
+                -- You agree to indemnify and hold harmless TinkerSchool, its
+                contributors, and affiliates from any claims, damages, or
+                expenses arising from your violation of these terms or misuse of
+                the platform.
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary/60" />
+                <strong className="font-medium text-foreground">
+                  Waiver
+                </strong>{" "}
+                -- Our failure to enforce any provision of these terms shall not
+                be considered a waiver of our right to enforce that or any other
+                provision in the future.
+              </li>
+            </ul>
           </TermsSection>
 
           {/* Contact */}

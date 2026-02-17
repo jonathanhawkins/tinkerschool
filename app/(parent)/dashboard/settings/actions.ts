@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -142,4 +142,123 @@ export async function exportChildData(kidProfileId: string): Promise<ExportResul
     success: true,
     data: JSON.stringify(exportData, null, 2),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Delete account and all family data (COPPA right to deletion)
+// ---------------------------------------------------------------------------
+
+interface DeleteAccountResult {
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Permanently deletes the parent's account and all associated family data.
+ *
+ * This action:
+ * 1. Verifies the caller is a parent
+ * 2. Deletes all child data from Supabase (profile-scoped tables)
+ * 3. Deletes the family record (cascades to profiles via FK)
+ * 4. Deletes the Clerk organization and user account
+ *
+ * The `confirmText` parameter requires the parent to type "DELETE" to confirm.
+ */
+export async function deleteAccount(
+  confirmText: string,
+): Promise<DeleteAccountResult> {
+  if (confirmText !== "DELETE") {
+    return { success: false, error: "Please type DELETE to confirm account deletion." };
+  }
+
+  const { userId, orgId } = await auth();
+  if (!userId) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  const supabase = createAdminSupabaseClient();
+
+  // Verify the caller is a parent
+  const { data: parentProfile } = (await supabase
+    .from("profiles")
+    .select("id, role, family_id")
+    .eq("clerk_id", userId)
+    .single()) as unknown as { data: { id: string; role: string; family_id: string } | null };
+
+  if (!parentProfile || parentProfile.role !== "parent") {
+    return { success: false, error: "Only parents can delete the family account" };
+  }
+
+  const familyId = parentProfile.family_id;
+
+  // Get all profile IDs in this family (parent + kids)
+  const { data: familyProfiles } = (await supabase
+    .from("profiles")
+    .select("id")
+    .eq("family_id", familyId)) as unknown as { data: { id: string }[] | null };
+
+  const profileIds = (familyProfiles ?? []).map((p) => p.id);
+
+  if (profileIds.length === 0) {
+    return { success: false, error: "No profiles found for this family" };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type AnyQuery = any;
+
+  try {
+    // Delete all profile-scoped data in parallel
+    // Order matters: delete dependent records before profiles/families
+    await Promise.all([
+      supabase.from("activity_sessions").delete().in("profile_id", profileIds) as AnyQuery,
+      supabase.from("voice_sessions").delete().in("profile_id", profileIds) as AnyQuery,
+      supabase.from("chat_sessions").delete().in("profile_id", profileIds) as AnyQuery,
+      supabase.from("progress").delete().in("profile_id", profileIds) as AnyQuery,
+      supabase.from("projects").delete().in("profile_id", profileIds) as AnyQuery,
+      supabase.from("user_badges").delete().in("profile_id", profileIds) as AnyQuery,
+      supabase.from("learning_profiles").delete().in("profile_id", profileIds) as AnyQuery,
+      supabase.from("skill_proficiencies").delete().in("profile_id", profileIds) as AnyQuery,
+      supabase.from("device_sessions").delete().in("profile_id", profileIds) as AnyQuery,
+      supabase.from("notifications").delete().in("profile_id", profileIds) as AnyQuery,
+    ]);
+
+    // Delete artifact_ratings, then artifacts (which reference profiles)
+    await (supabase.from("artifact_ratings").delete().in("profile_id", profileIds) as AnyQuery);
+    await (supabase.from("artifacts").delete().in("profile_id", profileIds) as AnyQuery);
+
+    // Delete profiles, then the family record
+    await (supabase.from("profiles").delete().eq("family_id", familyId) as AnyQuery);
+    await (supabase.from("families").delete().eq("id", familyId) as AnyQuery);
+
+    // Delete the Clerk organization and user
+    const clerk = await clerkClient();
+
+    if (orgId) {
+      try {
+        await clerk.organizations.deleteOrganization(orgId);
+      } catch (clerkOrgErr) {
+        console.error(
+          "[delete-account] Failed to delete Clerk org:",
+          clerkOrgErr instanceof Error ? clerkOrgErr.message : "unknown",
+        );
+      }
+    }
+
+    try {
+      await clerk.users.deleteUser(userId);
+    } catch (clerkUserErr) {
+      console.error(
+        "[delete-account] Failed to delete Clerk user:",
+        clerkUserErr instanceof Error ? clerkUserErr.message : "unknown",
+      );
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error(
+      "[delete-account] Failed to delete account:",
+      err instanceof Error ? err.message : "unknown",
+    );
+    return { success: false, error: "Something went wrong. Please contact privacy@tinkerschool.ai for assistance." };
+  }
 }

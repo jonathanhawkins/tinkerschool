@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     "TinkerSchool's privacy policy explains how we protect your child's data. COPPA-compliant, family-scoped, and designed with children's safety first.",
 };
 
-const LAST_UPDATED = "February 15, 2026";
+const LAST_UPDATED = "February 17, 2026";
 
 export default function PrivacyPolicyPage() {
   return (
@@ -136,6 +136,18 @@ export default function PrivacyPolicyPage() {
                 label="Projects created"
                 reason="Code blocks and projects your child builds in the workshop"
               />
+              <DataItem
+                label="Learning profile"
+                reason="Learning style preferences, interests, and skill proficiency levels to personalize Chip's tutoring"
+              />
+              <DataItem
+                label="Voice session metadata"
+                reason="When using Chip's voice mode, we store session duration and timestamps (not audio recordings)"
+              />
+              <DataItem
+                label="IP address at signup"
+                reason="Recorded once during account creation for COPPA consent verification"
+              />
             </div>
             <Separator className="my-4" />
             <div className="space-y-2">
@@ -149,7 +161,13 @@ export default function PrivacyPolicyPage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
-                  Photos, videos, or audio recordings
+                  Photos or videos
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
+                  Stored audio recordings (voice audio is streamed to Hume AI
+                  in real-time for voice tutoring but is not recorded or stored
+                  by TinkerSchool)
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
@@ -246,17 +264,32 @@ export default function PrivacyPolicyPage() {
               <ServiceRow
                 name="Anthropic (Claude)"
                 purpose="AI tutoring"
-                data="Each conversation sends the child's first name, current subject, lesson context, and the chat message to generate Chip's responses. No email, address, photo, or other identifying information is included. Conversations are not used to train AI models."
+                data="Each conversation sends the child's first name, age, grade level, current subject, lesson context, learning profile (learning style and interests), skill proficiency levels, recent lesson titles, and the chat message to generate Chip's responses. No email, address, photo, or other identifying information is included. Per Anthropic's commercial API data usage policy, conversations sent through their API are not used to train AI models."
               />
               <ServiceRow
                 name="Hume AI"
                 purpose="Voice tutoring"
-                data="Voice audio is processed in real-time for Chip's voice responses. TinkerSchool does not store audio recordings. Hume AI may process voice data per their privacy policy. Only session duration and timestamps are stored locally."
+                data="Voice audio is streamed in real-time from your child's microphone to generate Chip's spoken responses. TinkerSchool does not store audio recordings. Hume AI may process voice data per their privacy policy. Only session duration and timestamps are stored by TinkerSchool."
+              />
+              <ServiceRow
+                name="Stripe"
+                purpose="Payment processing"
+                data="Processes parent subscription payments. Stripe receives parent billing information (name, email, payment method) but never receives any child data. Stripe is PCI DSS Level 1 compliant."
               />
               <ServiceRow
                 name="Vercel"
-                purpose="Application hosting"
-                data="Standard web server logs (IP addresses, request metadata). No personal child data is stored by Vercel."
+                purpose="Application hosting and analytics"
+                data="Hosts the application and collects anonymous page view analytics and performance metrics (Web Vitals). Standard web server logs include IP addresses and request metadata. No personal child data is stored by Vercel."
+              />
+              <ServiceRow
+                name="Cloudflare"
+                purpose="Web analytics"
+                data="Collects anonymous, aggregated page view statistics. No cookies are set and no personal data is collected. Used to understand overall site traffic."
+              />
+              <ServiceRow
+                name="Upstash"
+                purpose="Rate limiting"
+                data="Stores anonymous rate limit counters (keyed by parent account ID) to prevent AI chat abuse. No child data or conversation content is sent to Upstash."
               />
             </div>
           </PolicySection>

@@ -13,6 +13,8 @@ const isPublicRoute = createRouteMatcher([
   "/firmware(.*)",
   "/support",
   "/onboarding(.*)",
+  "/opengraph-image(.*)",
+  "/twitter-image(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

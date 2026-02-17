@@ -6,11 +6,16 @@ import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Error({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // Log the error digest to help debug production issues
+  // (the actual message is redacted in production builds).
+  console.error("[error-boundary]", error.message, error.digest ?? "");
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 px-4 text-center">
       <Image

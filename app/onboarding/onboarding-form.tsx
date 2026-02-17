@@ -804,7 +804,7 @@ function StepChild({
             Grade Level
           </label>
           <Select value={gradeLevel} onValueChange={onGradeLevelChange}>
-            <SelectTrigger className="h-11 w-full rounded-xl text-base">
+            <SelectTrigger className="h-11 w-full rounded-xl text-base" tabIndex={0}>
               <SelectValue placeholder="Select a grade" />
             </SelectTrigger>
             <SelectContent>
@@ -832,9 +832,11 @@ function StepChild({
               <button
                 key={avatar.id}
                 type="button"
+                tabIndex={0}
                 onClick={() => onAvatarChange(avatar.id)}
                 className={cn(
                   "flex flex-col items-center gap-1 rounded-xl border-2 p-3 transition-all duration-200",
+                  "focus-visible:ring-[3px] focus-visible:ring-primary/50 focus-visible:outline-none",
                   avatarId === avatar.id
                     ? "border-primary bg-primary/10 shadow-sm"
                     : "border-transparent bg-muted/40 hover:border-border hover:bg-muted/70",

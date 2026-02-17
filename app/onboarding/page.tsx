@@ -1,7 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import { checkInvitedParentStatus } from "./actions";
 import { InvitedParentOnboarding } from "./invited-parent-onboarding";
@@ -15,9 +15,8 @@ export default async function OnboardingPage() {
   try {
     const authResult = await auth();
     userId = authResult.userId;
-  } catch {
-    // Network error (e.g. Clerk unreachable) -- render the form anyway;
-    // the server action will re-check auth before writing anything.
+  } catch (err) {
+    console.error("[onboarding/page] auth() threw:", err);
   }
 
   if (!userId) {
@@ -26,7 +25,10 @@ export default async function OnboardingPage() {
 
   try {
     // Check whether the user already completed onboarding.
-    const supabase = await createServerSupabaseClient();
+    // Use admin client here because the Clerk "supabase" JWT template may not
+    // be configured yet. This is a simple existence check scoped by clerk_id
+    // (already verified via auth() above), so RLS bypass is safe.
+    const supabase = createAdminSupabaseClient();
     const { data: profile } = (await supabase
       .from("profiles")
       .select("id")
@@ -34,8 +36,8 @@ export default async function OnboardingPage() {
       .single()) as { data: { id: string } | null };
 
     hasProfile = !!profile;
-  } catch {
-    // Supabase unreachable -- let the client component handle it.
+  } catch (err) {
+    console.error("[onboarding/page] Supabase profile check failed:", err);
   }
 
   // If the user has a profile, they don't need onboarding at all.
@@ -51,8 +53,8 @@ export default async function OnboardingPage() {
           familyName: info.familyName ?? "",
         };
       }
-    } catch {
-      // If check fails, fall through to normal onboarding
+    } catch (err) {
+      console.error("[onboarding/page] checkInvitedParentStatus() failed:", err);
     }
   }
 
@@ -61,8 +63,8 @@ export default async function OnboardingPage() {
     const user = await currentUser();
     parentName =
       [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "";
-  } catch {
-    // Network error -- parentName stays empty, user can type it.
+  } catch (err) {
+    console.error("[onboarding/page] currentUser() failed:", err);
   }
 
   // Invited parent: show simplified onboarding

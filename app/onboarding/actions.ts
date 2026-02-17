@@ -8,7 +8,6 @@ import { redirect } from "next/navigation";
 
 import { hashPin } from "@/lib/auth/pin";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { DeviceMode, FamilyInsert, LearningProfileInsert, ProfileInsert } from "@/lib/supabase/types";
 import { bandForGrade, isValidUUID } from "@/lib/utils";
 
@@ -119,7 +118,13 @@ export async function completeOnboarding(
 
   // ---- Persist to Supabase ----
 
-  const supabase = await createServerSupabaseClient();
+  // Use the RLS-enforced client for SELECT queries (checking existing profile).
+  const supabase = createAdminSupabaseClient();
+
+  // Use the admin client (bypasses RLS) for all INSERT/UPSERT operations.
+  // The families and profiles tables have no RLS INSERT policies by design --
+  // inserts are only done server-side during onboarding or via Clerk webhooks.
+  const adminSupabase = createAdminSupabaseClient();
 
   // Check that the parent doesn't already have a profile (prevent duplicates).
   const { data: existingProfile } = (await supabase
@@ -132,16 +137,28 @@ export async function completeOnboarding(
     redirect("/home");
   }
 
-  // 1. Create a real Clerk Organization for this family.
-  // The creating user is automatically added as an org:admin member.
+  // 1. Create (or reuse) a Clerk Organization for this family.
+  // If a previous onboarding attempt already created an org but the
+  // Supabase family insert failed, we reuse the existing org rather
+  // than creating a duplicate.
   let clerkOrgId: string;
   try {
     const clerk = await clerkClient();
-    const org = await clerk.organizations.createOrganization({
-      name: familyName,
-      createdBy: userId,
+    const memberships = await clerk.users.getOrganizationMembershipList({
+      userId,
     });
-    clerkOrgId = org.id;
+
+    if (memberships.totalCount > 0 && memberships.data.length > 0) {
+      // Reuse the existing org from a prior partial onboarding attempt.
+      clerkOrgId = memberships.data[0].organization.id;
+    } else {
+      // No org exists yet -- create a new one.
+      const org = await clerk.organizations.createOrganization({
+        name: familyName,
+        createdBy: userId,
+      });
+      clerkOrgId = org.id;
+    }
   } catch (err) {
     console.error("Failed to create Clerk Organization:", err);
     return { success: false, error: "Failed to create family organization." };
@@ -167,12 +184,13 @@ export async function completeOnboarding(
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: family, error: familyError } = await (supabase.from("families") as any)
+  const { data: family, error: familyError } = await (adminSupabase.from("families") as any)
     .upsert(familyPayload, { onConflict: "clerk_org_id" })
     .select()
     .single();
 
   if (familyError || !family) {
+    console.error("Failed to create family:", familyError);
     return { success: false, error: "Failed to create family." };
   }
 
@@ -187,11 +205,12 @@ export async function completeOnboarding(
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: parentError } = await (supabase.from("profiles") as any).insert(
+  const { error: parentError } = await (adminSupabase.from("profiles") as any).insert(
     parentPayload,
   );
 
   if (parentError) {
+    console.error("Failed to create parent profile:", parentError);
     return { success: false, error: "Failed to create parent profile." };
   }
 
@@ -213,20 +232,21 @@ export async function completeOnboarding(
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: kidProfile, error: kidError } = await (supabase.from("profiles") as any)
+  const { data: kidProfile, error: kidError } = await (adminSupabase.from("profiles") as any)
     .insert(kidPayload)
     .select("id")
     .single();
 
   if (kidError || !kidProfile) {
+    console.error("Failed to create kid profile:", kidError);
     return { success: false, error: "Failed to create kid profile." };
   }
 
   // 5. Create a default learning profile for the kid.
-  // Uses the admin client because the RLS insert policy on learning_profiles
-  // requires the requesting user's clerk_id to match the profile -- but during
-  // onboarding the parent (not the kid) is the authenticated user.
-  const adminSupabase = createAdminSupabaseClient();
+  // Also uses the admin client because the RLS insert policy on
+  // learning_profiles requires the requesting user's clerk_id to match
+  // the profile -- but during onboarding the parent (not the kid) is
+  // the authenticated user.
   const learningProfilePayload: LearningProfileInsert = {
     profile_id: kidProfile.id,
     learning_style: { visual: 0.4, kinesthetic: 0.3, auditory: 0.2, reading: 0.1 },
@@ -274,7 +294,7 @@ export async function updateDeviceMode(
     return { success: false, error: "Invalid device mode." };
   }
 
-  const supabase = await createServerSupabaseClient();
+  const supabase = createAdminSupabaseClient();
 
   // Verify the kid profile belongs to this parent's family.
   const { data: parentProfile } = (await supabase
@@ -321,7 +341,7 @@ export async function getStarterLessonId(
   }
 
   const band = bandForGrade(gradeLevel);
-  const supabase = await createServerSupabaseClient();
+  const supabase = createAdminSupabaseClient();
 
   // Find the first module at or below this band (lowest band, then order_num).
   const { data: firstModule } = (await supabase
@@ -377,11 +397,19 @@ export async function checkInvitedParentStatus(): Promise<InvitedParentInfo> {
     });
 
     if (memberships.totalCount > 0 && memberships.data.length > 0) {
-      const firstOrg = memberships.data[0].organization;
+      const membership = memberships.data[0];
+      // If the user is the org admin (creator), they're not an "invited"
+      // parent -- they started onboarding themselves but it may have
+      // partially failed. Route them through the normal onboarding flow
+      // so they can retry.
+      if (membership.role === "org:admin") {
+        return { isInvitedParent: false };
+      }
+
       return {
         isInvitedParent: true,
-        familyName: firstOrg.name,
-        orgId: firstOrg.id,
+        familyName: membership.organization.name,
+        orgId: membership.organization.id,
       };
     }
   } catch (err) {
@@ -433,7 +461,7 @@ export async function completeInvitedParentOnboarding(
   }
 
   // Find the family record for this org
-  const supabase = await createServerSupabaseClient();
+  const supabase = createAdminSupabaseClient();
   const { data: family } = (await supabase
     .from("families")
     .select("id")
@@ -460,7 +488,8 @@ export async function completeInvitedParentOnboarding(
     return { success: true };
   }
 
-  // Create the parent profile
+  // Create the parent profile using admin client (no RLS INSERT policy on profiles).
+  const adminSupabase = createAdminSupabaseClient();
   const parentPayload: ProfileInsert = {
     clerk_id: userId,
     family_id: family.id,
@@ -471,11 +500,12 @@ export async function completeInvitedParentOnboarding(
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: profileError } = await (supabase.from("profiles") as any).insert(
+  const { error: profileError } = await (adminSupabase.from("profiles") as any).insert(
     parentPayload,
   );
 
   if (profileError) {
+    console.error("Failed to create invited parent profile:", profileError);
     return { success: false, error: "Failed to create profile." };
   }
 

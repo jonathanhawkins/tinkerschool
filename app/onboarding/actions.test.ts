@@ -69,15 +69,18 @@ vi.mock("@/lib/auth/pin", () => ({
   hashPin: vi.fn().mockResolvedValue("$2b$10$hashedpin1234"),
 }));
 
-let mockServerSupabase: ChainableMock;
-let mockAdminSupabase: ChainableMock;
-
-vi.mock("@/lib/supabase/server", () => ({
-  createServerSupabaseClient: vi.fn(() => Promise.resolve(mockServerSupabase)),
-}));
+// The production code may call createAdminSupabaseClient() twice in the same
+// function: once for SELECT queries (profile checks) and once for INSERT/UPSERT.
+// We use two separate chainable mocks so tests can set up different behaviors.
+let mockAdminSelectClient: ChainableMock;
+let mockAdminWriteClient: ChainableMock;
+let _adminCallIdx = 0;
 
 vi.mock("@/lib/supabase/admin", () => ({
-  createAdminSupabaseClient: vi.fn(() => mockAdminSupabase),
+  createAdminSupabaseClient: vi.fn(() => {
+    _adminCallIdx++;
+    return _adminCallIdx === 1 ? mockAdminSelectClient : mockAdminWriteClient;
+  }),
 }));
 
 // Import after mocks are set up
@@ -123,10 +126,17 @@ const validOnboardingData: Record<string, string> = {
 describe("completeOnboarding", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockServerSupabase = createChainableMock();
-    mockAdminSupabase = createChainableMock();
+    mockAdminSelectClient = createChainableMock();
+    mockAdminWriteClient = createChainableMock();
+    _adminCallIdx = 0;
     mockAuth.mockResolvedValue({ userId: "user_abc123" });
     mockClerkClient.mockResolvedValue({
+      users: {
+        getOrganizationMembershipList: vi.fn().mockResolvedValue({
+          totalCount: 0,
+          data: [],
+        }),
+      },
       organizations: {
         createOrganization: vi.fn().mockResolvedValue({ id: "org_xyz" }),
       },
@@ -278,7 +288,7 @@ describe("completeOnboarding", () => {
 
   it("accepts names with accented characters and apostrophes", async () => {
     // Setup so it doesn't fail on the existing profile check
-    mockServerSupabase.from.mockImplementation(() => {
+    mockAdminSelectClient.from.mockImplementation(() => {
       const chain = createChainableMock();
       chain.single.mockResolvedValue({ data: null, error: { code: "PGRST116" } });
       chain.eq.mockReturnValue(chain);
@@ -365,11 +375,12 @@ describe("completeOnboarding", () => {
     for (const avatar of validAvatars) {
       vi.clearAllMocks();
       mockAuth.mockResolvedValue({ userId: "user_abc123" });
-      mockServerSupabase = createChainableMock();
-      mockAdminSupabase = createChainableMock();
+      mockAdminSelectClient = createChainableMock();
+    mockAdminWriteClient = createChainableMock();
+    _adminCallIdx = 0;
 
       // Mock existing profile check to return null (no existing profile)
-      mockServerSupabase.from.mockImplementation(() => {
+      mockAdminSelectClient.from.mockImplementation(() => {
         const chain = createChainableMock();
         chain.single.mockResolvedValue({ data: null, error: { code: "PGRST116" } });
         chain.eq.mockReturnValue(chain);
@@ -380,6 +391,12 @@ describe("completeOnboarding", () => {
       });
 
       mockClerkClient.mockResolvedValue({
+        users: {
+          getOrganizationMembershipList: vi.fn().mockResolvedValue({
+            totalCount: 0,
+            data: [],
+          }),
+        },
         organizations: {
           createOrganization: vi.fn().mockResolvedValue({ id: "org_xyz" }),
         },
@@ -398,7 +415,7 @@ describe("completeOnboarding", () => {
 
   it("redirects to /home when parent profile already exists", async () => {
     // Mock the existing profile check to return a profile
-    mockServerSupabase.from.mockImplementation(() => {
+    mockAdminSelectClient.from.mockImplementation(() => {
       const chain = createChainableMock();
       chain.single.mockResolvedValue({ data: { id: "existing-profile-id" }, error: null });
       chain.eq.mockReturnValue(chain);
@@ -417,7 +434,7 @@ describe("completeOnboarding", () => {
 
   it("returns error when Clerk organization creation fails", async () => {
     // Mock no existing profile
-    mockServerSupabase.from.mockImplementation(() => {
+    mockAdminSelectClient.from.mockImplementation(() => {
       const chain = createChainableMock();
       chain.single.mockResolvedValue({ data: null, error: { code: "PGRST116" } });
       chain.eq.mockReturnValue(chain);
@@ -426,6 +443,12 @@ describe("completeOnboarding", () => {
     });
 
     mockClerkClient.mockResolvedValue({
+      users: {
+        getOrganizationMembershipList: vi.fn().mockResolvedValue({
+          totalCount: 0,
+          data: [],
+        }),
+      },
       organizations: {
         createOrganization: vi.fn().mockRejectedValue(new Error("Clerk API error")),
       },
@@ -440,20 +463,14 @@ describe("completeOnboarding", () => {
   // ---- Happy path ----
 
   it("successfully creates family, parent profile, kid profile, and learning profile", async () => {
-    const profilesInsertMock = vi.fn();
     const familiesUpsertMock = vi.fn();
-    const adminInsertMock = vi.fn();
-    let fromCallCount = 0;
+    const parentInsertMock = vi.fn();
+    const kidInsertMock = vi.fn();
+    const learningInsertMock = vi.fn();
 
-    // First call: profiles (existing check) -> null
-    // Second call: families upsert -> { id: "family-001" }
-    // Third call: profiles insert (parent) -> success
-    // Fourth call: profiles insert (kid) -> { id: "kid-001" }
-    mockServerSupabase.from.mockImplementation((table: string) => {
-      fromCallCount++;
-
-      if (table === "profiles" && fromCallCount === 1) {
-        // Existing profile check
+    // Server client: only used for the existing profile SELECT check
+    mockAdminSelectClient.from.mockImplementation((table: string) => {
+      if (table === "profiles") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
@@ -462,6 +479,13 @@ describe("completeOnboarding", () => {
           }),
         };
       }
+      return createChainableMock();
+    });
+
+    // Admin client: used for all INSERT/UPSERT operations
+    let adminFromCallCount = 0;
+    mockAdminWriteClient.from.mockImplementation((table: string) => {
+      adminFromCallCount++;
 
       if (table === "families") {
         familiesUpsertMock.mockReturnValue({
@@ -475,33 +499,31 @@ describe("completeOnboarding", () => {
         return { upsert: familiesUpsertMock };
       }
 
-      if (table === "profiles" && fromCallCount === 3) {
+      if (table === "profiles" && adminFromCallCount === 2) {
         // Parent profile insert
-        profilesInsertMock.mockResolvedValue({ error: null });
-        return { insert: profilesInsertMock };
+        parentInsertMock.mockResolvedValue({ error: null });
+        return { insert: parentInsertMock };
       }
 
-      if (table === "profiles" && fromCallCount === 4) {
+      if (table === "profiles" && adminFromCallCount === 3) {
         // Kid profile insert
-        return {
-          insert: vi.fn().mockReturnValue({
-            select: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: { id: "kid-001" },
-                error: null,
-              }),
+        kidInsertMock.mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: { id: "kid-001" },
+              error: null,
             }),
           }),
-        };
+        });
+        return { insert: kidInsertMock };
+      }
+
+      if (table === "learning_profiles") {
+        learningInsertMock.mockResolvedValue({ error: null });
+        return { insert: learningInsertMock };
       }
 
       return createChainableMock();
-    });
-
-    // Admin client for learning profile
-    adminInsertMock.mockResolvedValue({ error: null });
-    mockAdminSupabase.from.mockImplementation(() => {
-      return { insert: adminInsertMock };
     });
 
     const result = await completeOnboarding(makeFormData(validOnboardingData));
@@ -512,7 +534,7 @@ describe("completeOnboarding", () => {
     // Verify hashPin was called with the pin
     expect(mockHashPin).toHaveBeenCalledWith("1234");
 
-    // Verify family was created with COPPA consent
+    // Verify family was created with COPPA consent via admin client
     expect(familiesUpsertMock).toHaveBeenCalledTimes(1);
     const familyPayload = familiesUpsertMock.mock.calls[0][0];
     expect(familyPayload.clerk_org_id).toBe("org_xyz");
@@ -520,17 +542,17 @@ describe("completeOnboarding", () => {
     expect(familyPayload.coppa_consent_given).toBe(true);
     expect(familyPayload.coppa_consent_ip).toBe("192.168.1.1");
 
-    // Verify parent profile was created
-    expect(profilesInsertMock).toHaveBeenCalledTimes(1);
-    const parentPayload = profilesInsertMock.mock.calls[0][0];
+    // Verify parent profile was created via admin client
+    expect(parentInsertMock).toHaveBeenCalledTimes(1);
+    const parentPayload = parentInsertMock.mock.calls[0][0];
     expect(parentPayload.clerk_id).toBe("user_abc123");
     expect(parentPayload.display_name).toBe("John");
     expect(parentPayload.role).toBe("parent");
     expect(parentPayload.avatar_id).toBe("parent");
 
     // Verify learning profile was created via admin client
-    expect(adminInsertMock).toHaveBeenCalledTimes(1);
-    const learningPayload = adminInsertMock.mock.calls[0][0];
+    expect(learningInsertMock).toHaveBeenCalledTimes(1);
+    const learningPayload = learningInsertMock.mock.calls[0][0];
     expect(learningPayload.profile_id).toBe("kid-001");
     expect(learningPayload.preferred_session_length).toBe(15);
   });
@@ -538,12 +560,9 @@ describe("completeOnboarding", () => {
   // ---- Family creation failure ----
 
   it("returns error when family upsert fails", async () => {
-    let fromCallCount = 0;
-
-    mockServerSupabase.from.mockImplementation((table: string) => {
-      fromCallCount++;
-
-      if (table === "profiles" && fromCallCount === 1) {
+    // Server client: existing profile check returns null
+    mockAdminSelectClient.from.mockImplementation((table: string) => {
+      if (table === "profiles") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
@@ -552,7 +571,11 @@ describe("completeOnboarding", () => {
           }),
         };
       }
+      return createChainableMock();
+    });
 
+    // Admin client: family upsert fails
+    mockAdminWriteClient.from.mockImplementation((table: string) => {
       if (table === "families") {
         return {
           upsert: vi.fn().mockReturnValue({
@@ -565,11 +588,12 @@ describe("completeOnboarding", () => {
           }),
         };
       }
-
       return createChainableMock();
     });
 
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await completeOnboarding(makeFormData(validOnboardingData));
+    consoleSpy.mockRestore();
 
     expect(result.success).toBe(false);
     expect(result.error).toBe("Failed to create family.");
@@ -578,12 +602,9 @@ describe("completeOnboarding", () => {
   // ---- Parent profile creation failure ----
 
   it("returns error when parent profile insert fails", async () => {
-    let fromCallCount = 0;
-
-    mockServerSupabase.from.mockImplementation((table: string) => {
-      fromCallCount++;
-
-      if (table === "profiles" && fromCallCount === 1) {
+    // Server client: existing profile check returns null
+    mockAdminSelectClient.from.mockImplementation((table: string) => {
+      if (table === "profiles") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
@@ -592,6 +613,13 @@ describe("completeOnboarding", () => {
           }),
         };
       }
+      return createChainableMock();
+    });
+
+    // Admin client: family upsert succeeds, parent insert fails
+    let adminFromCallCount = 0;
+    mockAdminWriteClient.from.mockImplementation((table: string) => {
+      adminFromCallCount++;
 
       if (table === "families") {
         return {
@@ -606,7 +634,7 @@ describe("completeOnboarding", () => {
         };
       }
 
-      if (table === "profiles" && fromCallCount === 3) {
+      if (table === "profiles" && adminFromCallCount === 2) {
         return {
           insert: vi.fn().mockResolvedValue({ error: { message: "Duplicate" } }),
         };
@@ -615,7 +643,9 @@ describe("completeOnboarding", () => {
       return createChainableMock();
     });
 
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await completeOnboarding(makeFormData(validOnboardingData));
+    consoleSpy.mockRestore();
 
     expect(result.success).toBe(false);
     expect(result.error).toBe("Failed to create parent profile.");
@@ -624,12 +654,9 @@ describe("completeOnboarding", () => {
   // ---- Kid profile creation failure ----
 
   it("returns error when kid profile insert fails", async () => {
-    let fromCallCount = 0;
-
-    mockServerSupabase.from.mockImplementation((table: string) => {
-      fromCallCount++;
-
-      if (table === "profiles" && fromCallCount === 1) {
+    // Server client: existing profile check returns null
+    mockAdminSelectClient.from.mockImplementation((table: string) => {
+      if (table === "profiles") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
@@ -638,6 +665,13 @@ describe("completeOnboarding", () => {
           }),
         };
       }
+      return createChainableMock();
+    });
+
+    // Admin client: family upsert succeeds, parent insert succeeds, kid insert fails
+    let adminFromCallCount = 0;
+    mockAdminWriteClient.from.mockImplementation((table: string) => {
+      adminFromCallCount++;
 
       if (table === "families") {
         return {
@@ -652,14 +686,14 @@ describe("completeOnboarding", () => {
         };
       }
 
-      if (table === "profiles" && fromCallCount === 3) {
+      if (table === "profiles" && adminFromCallCount === 2) {
         // Parent insert success
         return {
           insert: vi.fn().mockResolvedValue({ error: null }),
         };
       }
 
-      if (table === "profiles" && fromCallCount === 4) {
+      if (table === "profiles" && adminFromCallCount === 3) {
         // Kid insert failure
         return {
           insert: vi.fn().mockReturnValue({
@@ -676,7 +710,9 @@ describe("completeOnboarding", () => {
       return createChainableMock();
     });
 
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await completeOnboarding(makeFormData(validOnboardingData));
+    consoleSpy.mockRestore();
 
     expect(result.success).toBe(false);
     expect(result.error).toBe("Failed to create kid profile.");
@@ -686,12 +722,10 @@ describe("completeOnboarding", () => {
 
   it("assigns band 1 (Explorer) for kindergarten (grade 0)", async () => {
     let kidPayload: Record<string, unknown> | null = null;
-    let fromCallCount = 0;
 
-    mockServerSupabase.from.mockImplementation((table: string) => {
-      fromCallCount++;
-
-      if (table === "profiles" && fromCallCount === 1) {
+    // Server client: existing profile check returns null
+    mockAdminSelectClient.from.mockImplementation((table: string) => {
+      if (table === "profiles") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
@@ -700,6 +734,13 @@ describe("completeOnboarding", () => {
           }),
         };
       }
+      return createChainableMock();
+    });
+
+    // Admin client: all writes
+    let adminFromCallCount = 0;
+    mockAdminWriteClient.from.mockImplementation((table: string) => {
+      adminFromCallCount++;
 
       if (table === "families") {
         return {
@@ -710,12 +751,10 @@ describe("completeOnboarding", () => {
           }),
         };
       }
-
-      if (table === "profiles" && fromCallCount === 3) {
+      if (table === "profiles" && adminFromCallCount === 2) {
         return { insert: vi.fn().mockResolvedValue({ error: null }) };
       }
-
-      if (table === "profiles" && fromCallCount === 4) {
+      if (table === "profiles" && adminFromCallCount === 3) {
         return {
           insert: vi.fn().mockImplementation((payload: Record<string, unknown>) => {
             kidPayload = payload;
@@ -727,13 +766,11 @@ describe("completeOnboarding", () => {
           }),
         };
       }
-
+      if (table === "learning_profiles") {
+        return { insert: vi.fn().mockResolvedValue({ error: null }) };
+      }
       return createChainableMock();
     });
-
-    mockAdminSupabase.from.mockImplementation(() => ({
-      insert: vi.fn().mockResolvedValue({ error: null }),
-    }));
 
     await completeOnboarding(
       makeFormData({ ...validOnboardingData, grade_level: "0" }),
@@ -746,12 +783,9 @@ describe("completeOnboarding", () => {
 
   it("assigns band 2 (Builder) for grade 2", async () => {
     let kidPayload: Record<string, unknown> | null = null;
-    let fromCallCount = 0;
 
-    mockServerSupabase.from.mockImplementation((table: string) => {
-      fromCallCount++;
-
-      if (table === "profiles" && fromCallCount === 1) {
+    mockAdminSelectClient.from.mockImplementation((table: string) => {
+      if (table === "profiles") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
@@ -760,6 +794,13 @@ describe("completeOnboarding", () => {
           }),
         };
       }
+      return createChainableMock();
+    });
+
+    let adminFromCallCount = 0;
+    mockAdminWriteClient.from.mockImplementation((table: string) => {
+      adminFromCallCount++;
+
       if (table === "families") {
         return {
           upsert: vi.fn().mockReturnValue({
@@ -769,10 +810,10 @@ describe("completeOnboarding", () => {
           }),
         };
       }
-      if (table === "profiles" && fromCallCount === 3) {
+      if (table === "profiles" && adminFromCallCount === 2) {
         return { insert: vi.fn().mockResolvedValue({ error: null }) };
       }
-      if (table === "profiles" && fromCallCount === 4) {
+      if (table === "profiles" && adminFromCallCount === 3) {
         return {
           insert: vi.fn().mockImplementation((payload: Record<string, unknown>) => {
             kidPayload = payload;
@@ -784,12 +825,11 @@ describe("completeOnboarding", () => {
           }),
         };
       }
+      if (table === "learning_profiles") {
+        return { insert: vi.fn().mockResolvedValue({ error: null }) };
+      }
       return createChainableMock();
     });
-
-    mockAdminSupabase.from.mockImplementation(() => ({
-      insert: vi.fn().mockResolvedValue({ error: null }),
-    }));
 
     await completeOnboarding(
       makeFormData({ ...validOnboardingData, grade_level: "2" }),
@@ -800,12 +840,9 @@ describe("completeOnboarding", () => {
 
   it("assigns band 5 (Creator) for grade 6", async () => {
     let kidPayload: Record<string, unknown> | null = null;
-    let fromCallCount = 0;
 
-    mockServerSupabase.from.mockImplementation((table: string) => {
-      fromCallCount++;
-
-      if (table === "profiles" && fromCallCount === 1) {
+    mockAdminSelectClient.from.mockImplementation((table: string) => {
+      if (table === "profiles") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
@@ -814,6 +851,13 @@ describe("completeOnboarding", () => {
           }),
         };
       }
+      return createChainableMock();
+    });
+
+    let adminFromCallCount = 0;
+    mockAdminWriteClient.from.mockImplementation((table: string) => {
+      adminFromCallCount++;
+
       if (table === "families") {
         return {
           upsert: vi.fn().mockReturnValue({
@@ -823,10 +867,10 @@ describe("completeOnboarding", () => {
           }),
         };
       }
-      if (table === "profiles" && fromCallCount === 3) {
+      if (table === "profiles" && adminFromCallCount === 2) {
         return { insert: vi.fn().mockResolvedValue({ error: null }) };
       }
-      if (table === "profiles" && fromCallCount === 4) {
+      if (table === "profiles" && adminFromCallCount === 3) {
         return {
           insert: vi.fn().mockImplementation((payload: Record<string, unknown>) => {
             kidPayload = payload;
@@ -838,12 +882,11 @@ describe("completeOnboarding", () => {
           }),
         };
       }
+      if (table === "learning_profiles") {
+        return { insert: vi.fn().mockResolvedValue({ error: null }) };
+      }
       return createChainableMock();
     });
-
-    mockAdminSupabase.from.mockImplementation(() => ({
-      insert: vi.fn().mockResolvedValue({ error: null }),
-    }));
 
     await completeOnboarding(
       makeFormData({ ...validOnboardingData, grade_level: "6" }),
@@ -855,12 +898,9 @@ describe("completeOnboarding", () => {
   // ---- Learning profile failure does not fail onboarding ----
 
   it("succeeds even if learning profile creation fails", async () => {
-    let fromCallCount = 0;
-
-    mockServerSupabase.from.mockImplementation((table: string) => {
-      fromCallCount++;
-
-      if (table === "profiles" && fromCallCount === 1) {
+    // Server client: existing profile check returns null
+    mockAdminSelectClient.from.mockImplementation((table: string) => {
+      if (table === "profiles") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
@@ -869,6 +909,14 @@ describe("completeOnboarding", () => {
           }),
         };
       }
+      return createChainableMock();
+    });
+
+    // Admin client: families & profiles succeed, learning_profiles fails
+    let adminFromCallCount = 0;
+    mockAdminWriteClient.from.mockImplementation((table: string) => {
+      adminFromCallCount++;
+
       if (table === "families") {
         return {
           upsert: vi.fn().mockReturnValue({
@@ -878,10 +926,10 @@ describe("completeOnboarding", () => {
           }),
         };
       }
-      if (table === "profiles" && fromCallCount === 3) {
+      if (table === "profiles" && adminFromCallCount === 2) {
         return { insert: vi.fn().mockResolvedValue({ error: null }) };
       }
-      if (table === "profiles" && fromCallCount === 4) {
+      if (table === "profiles" && adminFromCallCount === 3) {
         return {
           insert: vi.fn().mockReturnValue({
             select: vi.fn().mockReturnValue({
@@ -890,13 +938,13 @@ describe("completeOnboarding", () => {
           }),
         };
       }
+      if (table === "learning_profiles") {
+        return {
+          insert: vi.fn().mockResolvedValue({ error: { message: "Insert failed" } }),
+        };
+      }
       return createChainableMock();
     });
-
-    // Admin client fails for learning profile
-    mockAdminSupabase.from.mockImplementation(() => ({
-      insert: vi.fn().mockResolvedValue({ error: { message: "Insert failed" } }),
-    }));
 
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -920,7 +968,9 @@ describe("completeOnboarding", () => {
 describe("updateDeviceMode", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockServerSupabase = createChainableMock();
+    mockAdminSelectClient = createChainableMock();
+    mockAdminWriteClient = createChainableMock();
+    _adminCallIdx = 0;
     mockAuth.mockResolvedValue({ userId: "user_abc123" });
   });
 
@@ -954,7 +1004,7 @@ describe("updateDeviceMode", () => {
   });
 
   it("returns error when parent profile is not found", async () => {
-    mockServerSupabase.from.mockImplementation(() => ({
+    mockAdminSelectClient.from.mockImplementation(() => ({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({ data: null, error: null }),
@@ -974,7 +1024,7 @@ describe("updateDeviceMode", () => {
   it("returns error when update query fails", async () => {
     let fromCallCount = 0;
 
-    mockServerSupabase.from.mockImplementation(() => {
+    mockAdminSelectClient.from.mockImplementation(() => {
       fromCallCount++;
 
       if (fromCallCount === 1) {
@@ -1018,12 +1068,14 @@ describe("updateDeviceMode", () => {
     for (const mode of validModes) {
       vi.clearAllMocks();
       mockAuth.mockResolvedValue({ userId: "user_abc123" });
-      mockServerSupabase = createChainableMock();
+      mockAdminSelectClient = createChainableMock();
+    mockAdminWriteClient = createChainableMock();
+    _adminCallIdx = 0;
 
       let fromCallCount = 0;
       const updateMock = vi.fn();
 
-      mockServerSupabase.from.mockImplementation(() => {
+      mockAdminSelectClient.from.mockImplementation(() => {
         fromCallCount++;
 
         if (fromCallCount === 1) {
@@ -1065,7 +1117,9 @@ describe("updateDeviceMode", () => {
 describe("getStarterLessonId", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockServerSupabase = createChainableMock();
+    mockAdminSelectClient = createChainableMock();
+    mockAdminWriteClient = createChainableMock();
+    _adminCallIdx = 0;
     mockAuth.mockResolvedValue({ userId: "user_abc123" });
   });
 
@@ -1078,7 +1132,7 @@ describe("getStarterLessonId", () => {
   });
 
   it("returns null when no module exists for the band", async () => {
-    mockServerSupabase.from.mockImplementation(() => ({
+    mockAdminSelectClient.from.mockImplementation(() => ({
       select: vi.fn().mockReturnValue({
         lte: vi.fn().mockReturnValue({
           order: vi.fn().mockReturnValue({
@@ -1100,7 +1154,7 @@ describe("getStarterLessonId", () => {
   it("returns null when no lesson exists in the first module", async () => {
     let fromCallCount = 0;
 
-    mockServerSupabase.from.mockImplementation((table: string) => {
+    mockAdminSelectClient.from.mockImplementation((table: string) => {
       fromCallCount++;
 
       if (table === "modules") {
@@ -1145,7 +1199,7 @@ describe("getStarterLessonId", () => {
   });
 
   it("returns the lesson ID when both module and lesson exist", async () => {
-    mockServerSupabase.from.mockImplementation((table: string) => {
+    mockAdminSelectClient.from.mockImplementation((table: string) => {
       if (table === "modules") {
         return {
           select: vi.fn().mockReturnValue({
@@ -1209,13 +1263,14 @@ describe("checkInvitedParentStatus", () => {
     expect(result.isInvitedParent).toBe(false);
   });
 
-  it("returns isInvitedParent: true with org info when user has memberships", async () => {
+  it("returns isInvitedParent: true with org info when user is a non-admin member", async () => {
     mockClerkClient.mockResolvedValue({
       users: {
         getOrganizationMembershipList: vi.fn().mockResolvedValue({
           totalCount: 1,
           data: [
             {
+              role: "org:member",
               organization: {
                 name: "Smith Family",
                 id: "org_abc",
@@ -1231,6 +1286,29 @@ describe("checkInvitedParentStatus", () => {
     expect(result.isInvitedParent).toBe(true);
     expect(result.familyName).toBe("Smith Family");
     expect(result.orgId).toBe("org_abc");
+  });
+
+  it("returns isInvitedParent: false when user is the org admin (creator)", async () => {
+    mockClerkClient.mockResolvedValue({
+      users: {
+        getOrganizationMembershipList: vi.fn().mockResolvedValue({
+          totalCount: 1,
+          data: [
+            {
+              role: "org:admin",
+              organization: {
+                name: "Smith Family",
+                id: "org_abc",
+              },
+            },
+          ],
+        }),
+      },
+    });
+
+    const result = await checkInvitedParentStatus();
+
+    expect(result.isInvitedParent).toBe(false);
   });
 
   it("returns isInvitedParent: false when user has no memberships", async () => {
@@ -1275,7 +1353,9 @@ describe("checkInvitedParentStatus", () => {
 describe("completeInvitedParentOnboarding", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockServerSupabase = createChainableMock();
+    mockAdminSelectClient = createChainableMock();
+    mockAdminWriteClient = createChainableMock();
+    _adminCallIdx = 0;
     mockAuth.mockResolvedValue({ userId: "user_abc123" });
   });
 
@@ -1374,7 +1454,7 @@ describe("completeInvitedParentOnboarding", () => {
     });
 
     // Family lookup returns null
-    mockServerSupabase.from.mockImplementation(() => ({
+    mockAdminSelectClient.from.mockImplementation(() => ({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({ data: null, error: null }),
@@ -1405,7 +1485,7 @@ describe("completeInvitedParentOnboarding", () => {
       eq: vi.fn().mockResolvedValue({ error: null }),
     });
 
-    mockServerSupabase.from.mockImplementation(() => {
+    mockAdminSelectClient.from.mockImplementation(() => {
       fromCallCount++;
 
       if (fromCallCount === 1) {
@@ -1461,7 +1541,8 @@ describe("completeInvitedParentOnboarding", () => {
     let fromCallCount = 0;
     const insertMock = vi.fn().mockResolvedValue({ error: null });
 
-    mockServerSupabase.from.mockImplementation(() => {
+    // Select client: family lookup + profile check
+    mockAdminSelectClient.from.mockImplementation(() => {
       fromCallCount++;
 
       if (fromCallCount === 1) {
@@ -1478,21 +1559,21 @@ describe("completeInvitedParentOnboarding", () => {
         };
       }
 
-      if (fromCallCount === 2) {
-        // Existing profile check -- no profile
-        return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: null,
-                error: { code: "PGRST116" },
-              }),
+      // Existing profile check -- no profile
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: null,
+              error: { code: "PGRST116" },
             }),
           }),
-        };
-      }
+        }),
+      };
+    });
 
-      // Profile insert
+    // Write client: profile insert
+    mockAdminWriteClient.from.mockImplementation(() => {
       return { insert: insertMock };
     });
 
@@ -1523,10 +1604,12 @@ describe("completeInvitedParentOnboarding", () => {
 
     let fromCallCount = 0;
 
-    mockServerSupabase.from.mockImplementation(() => {
+    // Select client: family lookup + profile check
+    mockAdminSelectClient.from.mockImplementation(() => {
       fromCallCount++;
 
       if (fromCallCount === 1) {
+        // Family lookup
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
@@ -1539,19 +1622,21 @@ describe("completeInvitedParentOnboarding", () => {
         };
       }
 
-      if (fromCallCount === 2) {
-        return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: null,
-                error: { code: "PGRST116" },
-              }),
+      // Existing profile check -- no profile
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: null,
+              error: { code: "PGRST116" },
             }),
           }),
-        };
-      }
+        }),
+      };
+    });
 
+    // Write client: profile insert fails
+    mockAdminWriteClient.from.mockImplementation(() => {
       return {
         insert: vi.fn().mockResolvedValue({
           error: { message: "Insert failed" },
@@ -1559,9 +1644,11 @@ describe("completeInvitedParentOnboarding", () => {
       };
     });
 
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await completeInvitedParentOnboarding(
       makeFormData({ display_name: "Jane" }),
     );
+    consoleSpy.mockRestore();
 
     expect(result.success).toBe(false);
     expect(result.error).toBe("Failed to create profile.");

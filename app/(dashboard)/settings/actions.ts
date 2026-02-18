@@ -65,6 +65,46 @@ export async function resetProgress() {
   revalidatePath("/", "layout");
 }
 
+/**
+ * Resets onboarding by deleting all profiles and the family for the current
+ * user. After this, `requireAuth()` will redirect to /onboarding since
+ * no profile exists. Dev-only.
+ */
+export async function resetOnboarding() {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Reset onboarding is not available in production.");
+  }
+
+  const { profile, supabase } = await requireAuth();
+  const familyId = profile.family_id;
+
+  // Delete all dependent rows first (progress, badges, chat, etc.)
+  const { data: familyProfiles } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("family_id", familyId);
+
+  const profileIds = (familyProfiles as { id: string }[] | null)?.map((p) => p.id) ?? [];
+
+  if (profileIds.length > 0) {
+    await Promise.all([
+      supabase.from("progress").delete().in("profile_id", profileIds),
+      supabase.from("user_badges").delete().in("profile_id", profileIds),
+      supabase.from("chat_sessions").delete().in("profile_id", profileIds),
+      supabase.from("learning_profiles").delete().in("profile_id", profileIds),
+      supabase.from("skill_proficiency").delete().in("profile_id", profileIds),
+    ]);
+
+    // Delete all profiles in the family
+    await supabase.from("profiles").delete().eq("family_id", familyId);
+  }
+
+  // Delete the family itself
+  await supabase.from("families").delete().eq("id", familyId);
+
+  revalidatePath("/", "layout");
+}
+
 // ---------------------------------------------------------------------------
 // Update a kid's display name
 // ---------------------------------------------------------------------------

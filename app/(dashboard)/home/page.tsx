@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { Suspense } from "react";
+
+import { MissionControlWalkthrough } from "@/components/mission-control-walkthrough";
 
 export const metadata: Metadata = { title: "Mission Control" };
 import {
@@ -793,6 +796,11 @@ export default async function MissionControlPage() {
 
   return (
     <div className="space-y-8">
+      {/* Mission Control walkthrough for first-time users from onboarding */}
+      <Suspense>
+        <MissionControlWalkthrough />
+      </Suspense>
+
       {/* ----- Welcome Header ----- */}
       <FadeIn>
         <header className="flex items-center gap-4">

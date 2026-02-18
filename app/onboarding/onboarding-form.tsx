@@ -38,7 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { completeOnboarding, getStarterLessonId, updateDeviceMode } from "./actions";
+import { completeOnboarding, updateDeviceMode } from "./actions";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -431,20 +431,13 @@ export function OnboardingForm({ parentNameDefault, hasProfile }: OnboardingForm
   );
 
   // ---------------------------------------------------------------------------
-  // Navigate to first lesson (Step 7)
+  // Navigate to Mission Control after onboarding (Step 7)
   // ---------------------------------------------------------------------------
 
-  const navigateToFirstLesson = useCallback(async () => {
+  const navigateToHome = useCallback(() => {
     clearSavedState();
-    const grade = parseInt(gradeLevel, 10) || 0;
-    const lessonId = await getStarterLessonId(grade);
-    if (lessonId) {
-      window.location.href = `/lessons/${lessonId}`;
-    } else {
-      // No lessons found for this band -- fall back to the home page
-      window.location.href = "/home";
-    }
-  }, [gradeLevel]);
+    window.location.href = "/home?welcome=true";
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Render helpers
@@ -512,7 +505,7 @@ export function OnboardingForm({ parentNameDefault, hasProfile }: OnboardingForm
         return (
           <StepFirstLesson
             childName={childName}
-            onLaunch={navigateToFirstLesson}
+            onLaunch={navigateToHome}
           />
         );
       default:
@@ -981,9 +974,10 @@ function StepPin({
                 <input
                   id="coppa-consent"
                   type="checkbox"
+                  tabIndex={0}
                   checked={coppaConsent}
                   onChange={(e) => onCoppaConsentChange(e.target.checked)}
-                  className="mt-0.5 size-4 shrink-0 cursor-pointer rounded accent-primary"
+                  className="mt-0.5 size-4 shrink-0 cursor-pointer rounded accent-primary focus-visible:ring-[3px] focus-visible:ring-primary/50 focus-visible:outline-none"
                   aria-describedby="coppa-consent-description"
                 />
                 <span
@@ -1651,7 +1645,7 @@ function StepMeetChip({ childName, avatarId, onContinue }: StepMeetChipProps) {
 }
 
 // ===========================================================================
-// Step 7: First Lesson Auto-Launch
+// Step 7: Heading to Mission Control
 // ===========================================================================
 
 interface StepFirstLessonProps {
@@ -1691,16 +1685,16 @@ function StepFirstLesson({ childName, onLaunch }: StepFirstLessonProps) {
 
       <div className="flex flex-col gap-2">
         <h2 className="text-xl font-semibold text-foreground">
-          Launching your first lesson...
+          Heading to Mission Control...
         </h2>
         <p className="text-sm text-muted-foreground">
-          Get ready, {childName || "explorer"}! Your adventure awaits!
+          Get ready, {childName || "explorer"}! Let&apos;s explore your dashboard!
         </p>
       </div>
 
       <div className="flex items-center gap-2 text-muted-foreground">
         <Loader2 className="size-4 animate-spin" />
-        <span className="text-sm">Loading adventure...</span>
+        <span className="text-sm">Loading Mission Control...</span>
       </div>
 
       {/* Manual launch button as fallback */}

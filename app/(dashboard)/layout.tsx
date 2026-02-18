@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
 import { MobileNav } from "@/components/mobile-nav";
 import { TabletBottomNav } from "@/components/tablet-bottom-nav";
+import { DevDebugWidget } from "@/components/dev-debug-widget";
 
 export default async function DashboardLayout({
   children,
@@ -54,6 +55,9 @@ export default async function DashboardLayout({
       {/* Chip voice FAB lives in the root layout (app/layout.tsx) so it
           persists across navigations without being affected by this
           dynamic layout's re-renders. */}
+
+      {/* Dev-only debug widget for testing onboarding/walkthroughs */}
+      {process.env.NODE_ENV !== "production" && <DevDebugWidget />}
     </div>
   );
 }

@@ -144,16 +144,18 @@ export interface SequenceOrderContent {
 /** Flash Card: Flip to reveal answer, self-assess */
 export interface FlashCardItem {
   id: string;
-  /** Front of the card (question/prompt) */
-  front: {
+  /** Front of the card (question/prompt) — can be a string or {text, emoji} */
+  front: string | {
     text: string;
     emoji?: string;
   };
-  /** Back of the card (answer/explanation) */
-  back: {
+  /** Back of the card (answer/explanation) — can be a string or {text, emoji} */
+  back: string | {
     text: string;
     emoji?: string;
   };
+  /** Optional hex color for the card (e.g. "#EF4444" for a red-themed card) */
+  color?: string;
 }
 
 export interface FlashCardContent {

@@ -51,14 +51,26 @@ export function FillInBlank() {
 
   const [answer, setAnswer] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const questionKey = rawQuestion?.id ?? state.currentQuestionIndex;
 
-  // Auto-focus the input on mount / question change
+  // Clear answer and focus input on mount / question change
   useEffect(() => {
     setAnswer("");
+    // Also clear DOM value directly to override browser form restoration
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
     inputRef.current?.focus();
   }, [questionKey]);
+
+  // Clean up retry timer on unmount
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+  }, []);
 
   if (!rawQuestion) return null;
 
@@ -69,6 +81,9 @@ export function FillInBlank() {
 
   function handleSubmit() {
     if (!answer.trim()) return;
+
+    // Clear any pending retry timer from a previous incorrect attempt
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
 
     const trimmed = answer.trim().toLowerCase();
     const correct = question.correctAnswer.toLowerCase();
@@ -83,8 +98,11 @@ export function FillInBlank() {
 
     if (!isCorrect) {
       // Reset for retry after feedback dismisses
-      setTimeout(() => {
+      retryTimerRef.current = setTimeout(() => {
         setAnswer("");
+        if (inputRef.current) {
+          inputRef.current.value = "";
+        }
         inputRef.current?.focus();
       }, 2000);
     }
@@ -114,6 +132,7 @@ export function FillInBlank() {
                 <input
                   ref={i === 0 ? inputRef : undefined}
                   type="text"
+                  name={`answer-${questionKey}`}
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
                   onKeyDown={handleKeyDown}

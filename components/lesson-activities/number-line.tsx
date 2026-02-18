@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Check, RotateCcw } from "lucide-react";
 
@@ -32,6 +32,7 @@ export function NumberLine() {
 
   const [position, setPosition] = useState(question?.startPosition ?? 0);
   const [hops, setHops] = useState<Hop[]>([]);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const questionKey = question?.id ?? state.currentQuestionIndex;
 
@@ -40,6 +41,13 @@ export function NumberLine() {
     setPosition(question?.startPosition ?? 0);
     setHops([]);
   }, [questionKey, question?.startPosition]);
+
+  // Clean up retry timer on unmount
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+  }, []);
 
   if (!question) return null;
 
@@ -94,7 +102,7 @@ export function NumberLine() {
     recordAnswer(String(position), isCorrect);
 
     if (!isCorrect) {
-      setTimeout(() => {
+      retryTimerRef.current = setTimeout(() => {
         setPosition(startPosition);
         setHops([]);
       }, 2000);

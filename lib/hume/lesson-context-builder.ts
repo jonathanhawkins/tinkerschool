@@ -91,8 +91,8 @@ function extractFlashCards(
   activity: FlashCardContent,
 ): VoiceQuestionSummary[] {
   return activity.cards.map((card) => ({
-    prompt: card.front.text,
-    correctAnswer: card.back.text,
+    prompt: typeof card.front === "string" ? card.front : card.front.text,
+    correctAnswer: typeof card.back === "string" ? card.back : card.back.text,
   }));
 }
 

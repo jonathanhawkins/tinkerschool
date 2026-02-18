@@ -1034,33 +1034,39 @@ INSERT INTO public.lessons (
         "cards": [
           {
             "id": "fc-red",
-            "front": "RED",
-            "back": "Red is bright and bold! You can find it on fire trucks, apples, and ladybugs."
+            "front": {"text": "RED", "emoji": "🔴"},
+            "back": {"text": "Red is bright and bold! Find it on fire trucks 🚒, apples 🍎, and ladybugs 🐞"},
+            "color": "#EF4444"
           },
           {
             "id": "fc-orange",
-            "front": "ORANGE",
-            "back": "Orange is warm and happy! You can find it on oranges, pumpkins, and goldfish."
+            "front": {"text": "ORANGE", "emoji": "🟠"},
+            "back": {"text": "Orange is warm and happy! Find it on oranges 🍊, pumpkins 🎃, and goldfish 🐠"},
+            "color": "#F97316"
           },
           {
             "id": "fc-yellow",
-            "front": "YELLOW",
-            "back": "Yellow is sunny and cheerful! You can find it on the sun, bananas, and school buses."
+            "front": {"text": "YELLOW", "emoji": "🟡"},
+            "back": {"text": "Yellow is sunny and cheerful! Find it on the sun ☀️, bananas 🍌, and school buses 🚌"},
+            "color": "#EAB308"
           },
           {
             "id": "fc-green",
-            "front": "GREEN",
-            "back": "Green is the color of nature! You can find it on grass, leaves, and frogs."
+            "front": {"text": "GREEN", "emoji": "🟢"},
+            "back": {"text": "Green is the color of nature! Find it on grass 🌿, leaves 🍃, and frogs 🐸"},
+            "color": "#22C55E"
           },
           {
             "id": "fc-blue",
-            "front": "BLUE",
-            "back": "Blue is cool and calm! You can find it in the sky, the ocean, and blueberries."
+            "front": {"text": "BLUE", "emoji": "🔵"},
+            "back": {"text": "Blue is cool and calm! Find it in the sky 🌤️, the ocean 🌊, and blueberries 🫐"},
+            "color": "#3B82F6"
           },
           {
             "id": "fc-purple",
-            "front": "PURPLE",
-            "back": "Purple is magical and special! You can find it on grapes, eggplants, and some flowers."
+            "front": {"text": "PURPLE", "emoji": "🟣"},
+            "back": {"text": "Purple is magical and special! Find it on grapes 🍇, eggplants 🍆, and butterflies 🦋"},
+            "color": "#A855F7"
           }
         ]
       },
@@ -1068,12 +1074,12 @@ INSERT INTO public.lessons (
         "type": "matching_pairs",
         "prompt": "Match each color to something that is that color!",
         "pairs": [
-          {"id": "rc-1", "left": {"id": "rc-1-l", "text": "Red"},    "right": {"id": "rc-1-r", "text": "A fire truck"}},
-          {"id": "rc-2", "left": {"id": "rc-2-l", "text": "Orange"}, "right": {"id": "rc-2-r", "text": "A pumpkin"}},
-          {"id": "rc-3", "left": {"id": "rc-3-l", "text": "Yellow"}, "right": {"id": "rc-3-r", "text": "The sun"}},
-          {"id": "rc-4", "left": {"id": "rc-4-l", "text": "Green"},  "right": {"id": "rc-4-r", "text": "A frog"}},
-          {"id": "rc-5", "left": {"id": "rc-5-l", "text": "Blue"},   "right": {"id": "rc-5-r", "text": "The sky"}},
-          {"id": "rc-6", "left": {"id": "rc-6-l", "text": "Purple"}, "right": {"id": "rc-6-r", "text": "Grapes"}}
+          {"id": "rc-1", "left": {"id": "rc-1-l", "text": "🔴 Red"},    "right": {"id": "rc-1-r", "text": "🚒 Fire truck"}},
+          {"id": "rc-2", "left": {"id": "rc-2-l", "text": "🟠 Orange"}, "right": {"id": "rc-2-r", "text": "🎃 Pumpkin"}},
+          {"id": "rc-3", "left": {"id": "rc-3-l", "text": "🟡 Yellow"}, "right": {"id": "rc-3-r", "text": "☀️ The sun"}},
+          {"id": "rc-4", "left": {"id": "rc-4-l", "text": "🟢 Green"},  "right": {"id": "rc-4-r", "text": "🐸 A frog"}},
+          {"id": "rc-5", "left": {"id": "rc-5-l", "text": "🔵 Blue"},   "right": {"id": "rc-5-r", "text": "🌊 The ocean"}},
+          {"id": "rc-6", "left": {"id": "rc-6-l", "text": "🟣 Purple"}, "right": {"id": "rc-6-r", "text": "🍇 Grapes"}}
         ]
       }
     ],

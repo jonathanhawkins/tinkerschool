@@ -30,6 +30,7 @@ export function NumberBond() {
   const [part1Input, setPart1Input] = useState("");
   const [part2Input, setPart2Input] = useState("");
   const firstEmptyRef = useRef<HTMLInputElement>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const questionKey = question?.id ?? state.currentQuestionIndex;
 
@@ -41,6 +42,13 @@ export function NumberBond() {
     // Focus the first empty field after a tick
     setTimeout(() => firstEmptyRef.current?.focus(), 100);
   }, [questionKey]);
+
+  // Clean up retry timer on unmount
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+  }, []);
 
   if (!question) return null;
 
@@ -89,7 +97,7 @@ export function NumberBond() {
     recordAnswer(answerParts.join(","), allCorrect);
 
     if (!allCorrect) {
-      setTimeout(() => {
+      retryTimerRef.current = setTimeout(() => {
         setWholeInput("");
         setPart1Input("");
         setPart2Input("");
@@ -147,6 +155,7 @@ export function NumberBond() {
               ref={getFirstEmptyRef()}
               type="number"
               inputMode="numeric"
+              name={`${label}-${questionKey}`}
               value={input}
               onChange={(e) => {
                 play("tap");
@@ -161,6 +170,7 @@ export function NumberBond() {
               disabled={isCorrectFeedback}
               className="w-12 bg-transparent text-center text-2xl font-bold text-foreground outline-none sm:w-14"
               placeholder="?"
+              autoComplete="off"
               aria-label={`Enter the ${label}`}
             />
           )}

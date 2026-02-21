@@ -17,7 +17,7 @@
  *   back through Next.js's router.
  */
 
-import type { VoiceLessonContext } from "./types";
+import type { VoiceActivityFeedback, VoiceLessonContext } from "./types";
 
 type PathListener = (pathname: string) => void;
 type NavigateHandler = (path: string) => void;
@@ -91,6 +91,38 @@ class VoiceBridge {
     this._lessonListeners.add(listener);
     return () => {
       this._lessonListeners.delete(listener);
+    };
+  }
+
+  // ── Activity feedback channel ──
+
+  private _activityFeedback: VoiceActivityFeedback | null = null;
+  private _activityFeedbackListeners: Set<() => void> = new Set();
+
+  /** Current activity feedback (null when none is active). */
+  get activityFeedback(): VoiceActivityFeedback | null {
+    return this._activityFeedback;
+  }
+
+  /**
+   * Called by ActivityVoiceSync to push encouragement messages for the FAB.
+   */
+  setActivityFeedback(feedback: VoiceActivityFeedback | null): void {
+    this._activityFeedback = feedback;
+    for (const listener of this._activityFeedbackListeners) {
+      listener();
+    }
+  }
+
+  /**
+   * Subscribe to activity feedback changes. The callback receives no arguments —
+   * consumers read the value via the getter (useSyncExternalStore pattern).
+   * Returns an unsubscribe function.
+   */
+  subscribeActivityFeedback(listener: () => void): () => void {
+    this._activityFeedbackListeners.add(listener);
+    return () => {
+      this._activityFeedbackListeners.delete(listener);
     };
   }
 

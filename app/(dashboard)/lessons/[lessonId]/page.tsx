@@ -341,7 +341,7 @@ export default async function LessonPage({
       {isInteractive && activityConfig && (
         <FadeIn delay={0.15}>
           <Card
-            className="overflow-hidden rounded-2xl border-2"
+            className="rounded-2xl border-2"
             style={{ borderColor: `${subjectColor}40` }}
           >
             <CardContent className="p-5 sm:p-6">

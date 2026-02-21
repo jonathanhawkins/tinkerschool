@@ -72,6 +72,34 @@ export interface VoiceLessonContext {
   isInteractive: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Voice activity feedback — real-time encouragement from the activity system
+// pushed through voiceBridge so the global FAB can show contextual messages.
+// ---------------------------------------------------------------------------
+
+export type ActivityFeedbackType =
+  | "welcome"
+  | "correct"
+  | "incorrect_first"
+  | "incorrect_hint"
+  | "streak"
+  | "idle"
+  | "encouragement"
+  | "difficulty_badge";
+
+export interface VoiceActivityFeedback {
+  /** The message text to display */
+  text: string;
+  /** Category of feedback (drives bubble color) */
+  type: ActivityFeedbackType;
+  /** How long to show the message (ms) */
+  durationMs: number;
+  /** Difficulty label to show alongside (optional) */
+  difficultyLabel?: string;
+  /** Monotonically increasing ID to deduplicate */
+  id: number;
+}
+
 /**
  * Props for the ChipVoice client component.
  */

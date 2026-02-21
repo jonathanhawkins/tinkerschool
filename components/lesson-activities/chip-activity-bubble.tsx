@@ -379,7 +379,7 @@ export function ChipActivityBubble() {
 
   return (
     <div
-      className="pointer-events-none absolute right-3 bottom-3 z-10 flex items-end gap-2"
+      className="flex items-end justify-end gap-2"
       aria-live="polite"
       aria-atomic="true"
     >
@@ -405,7 +405,7 @@ export function ChipActivityBubble() {
             }
             transition={{ duration: 0.25, ease: "easeOut" }}
             className={cn(
-              "pointer-events-auto max-w-48 rounded-2xl rounded-br-md border px-3 py-2 shadow-sm",
+              "max-w-48 rounded-2xl rounded-br-md border px-3 py-2 shadow-sm",
               bubbleBgClass,
               bubbleBorderClass,
             )}
@@ -433,7 +433,7 @@ export function ChipActivityBubble() {
         whileHover={prefersReducedMotion ? undefined : { scale: 1.08 }}
         whileTap={prefersReducedMotion ? undefined : { scale: 0.92 }}
         className={cn(
-          "pointer-events-auto relative flex size-12 shrink-0 items-center justify-center rounded-full shadow-md",
+          "relative flex size-12 shrink-0 items-center justify-center rounded-full shadow-md",
           "bg-primary/10 ring-2 ring-primary/30",
           "transition-shadow duration-200",
           "hover:shadow-lg hover:ring-primary/50",

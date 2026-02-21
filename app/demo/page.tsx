@@ -128,7 +128,7 @@ export default function DemoPage() {
 
         {/* Main demo area */}
         <FadeIn delay={0.1}>
-          <Card className="overflow-hidden rounded-2xl border-2 shadow-lg">
+          <Card className="rounded-2xl border-2 shadow-lg">
             <CardContent className="p-5 sm:p-6 md:p-8">
               <DemoContent />
             </CardContent>

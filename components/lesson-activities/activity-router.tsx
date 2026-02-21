@@ -6,14 +6,15 @@ import Link from "next/link";
 
 import { ActivityProvider, useActivity, type MilestoneNudgeData } from "@/lib/activities/activity-context";
 import type { LessonActivityConfig, ActivitySessionMetrics } from "@/lib/activities/types";
+import type { DifficultyLevel } from "@/lib/activities/adaptive-difficulty";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ActivityVoiceSync } from "@/components/activity-voice-sync";
 
 import { SessionTimer } from "@/lib/activities/session-timer";
 
 import { ActivityProgress } from "./activity-progress";
 import { ActivityComplete } from "./activity-complete";
-import { ChipActivityBubble } from "./chip-activity-bubble";
 import { MultipleChoice } from "./multiple-choice";
 import { CountingWidget } from "./counting-widget";
 import { MatchingPairs } from "./matching-pairs";
@@ -145,6 +146,10 @@ interface ActivityRouterProps {
   nextLessonTitle?: string;
   /** Milestone nudge data (parent-facing supporter nudge) */
   milestoneNudge?: MilestoneNudgeData;
+  /** Adaptive difficulty level (forwarded to global Chip FAB via voiceBridge) */
+  difficultyLevel?: DifficultyLevel;
+  /** Encouragement message from adaptive difficulty */
+  encouragementMessage?: string;
 }
 
 export function ActivityRouter({
@@ -156,6 +161,8 @@ export function ActivityRouter({
   nextLessonId,
   nextLessonTitle,
   milestoneNudge,
+  difficultyLevel,
+  encouragementMessage,
 }: ActivityRouterProps) {
   const [key, setKey] = useState(0);
 
@@ -180,6 +187,12 @@ export function ActivityRouter({
       nextLessonTitle={nextLessonTitle}
       milestoneNudge={milestoneNudge}
     >
+      {/* Bridge activity feedback to the global Chip FAB via voiceBridge */}
+      <ActivityVoiceSync
+        difficultyLevel={difficultyLevel}
+        encouragementMessage={encouragementMessage}
+      />
+
       <div className="relative space-y-6">
         {/* Progress bar + sound toggle + timer */}
         <div className="flex items-start gap-3">
@@ -194,9 +207,6 @@ export function ActivityRouter({
         <ActivityErrorBoundary>
           <ActivityRenderer />
         </ActivityErrorBoundary>
-
-        {/* Chip mascot floating companion */}
-        <ChipActivityBubble />
       </div>
     </ActivityProvider>
   );

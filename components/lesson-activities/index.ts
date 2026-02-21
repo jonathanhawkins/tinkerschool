@@ -12,5 +12,4 @@ export { Rekenrek } from "./rekenrek";
 export { ActivityFeedback } from "./activity-feedback";
 export { ActivityProgress } from "./activity-progress";
 export { ActivityComplete } from "./activity-complete";
-export { ChipActivityBubble } from "./chip-activity-bubble";
 export { SoundToggle } from "./sound-toggle";

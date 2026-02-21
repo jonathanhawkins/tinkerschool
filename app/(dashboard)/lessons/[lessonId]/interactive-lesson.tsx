@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
 
 import { ActivityRouter } from "@/components/lesson-activities/activity-router";
 import { BadgeCelebration, type EarnedBadge } from "@/components/badge-celebration";
@@ -100,32 +99,8 @@ export function InteractiveLesson({
       {/* First-lesson walkthrough */}
       <LessonWalkthrough isFirstLesson={isFirstLesson} />
 
-      {/* Chip mascot floating encouragement */}
-      <div className="mb-4 flex items-center gap-3 rounded-2xl bg-primary/5 p-4">
-        <Image
-          src="/images/chip.png"
-          alt="Chip"
-          width={40}
-          height={40}
-          className="size-10 shrink-0 drop-shadow-sm"
-        />
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-foreground">
-            {encouragementMessage ??
-              "Let's do this, friend! I'm right here if you need help."}
-          </p>
-          {difficultyLevel === "challenge" && (
-            <p className="mt-0.5 text-xs text-primary">Challenge Mode</p>
-          )}
-          {difficultyLevel === "supportive" && (
-            <p className="mt-0.5 text-xs text-emerald-600">
-              Extra hints enabled
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Activity router */}
+      {/* Activity router -- encouragement and difficulty info are now pushed
+          to the global Chip FAB via ActivityVoiceSync inside the router */}
       <ActivityRouter
         config={config}
         lessonId={lessonId}
@@ -135,6 +110,8 @@ export function InteractiveLesson({
         nextLessonId={nextLessonId ?? undefined}
         nextLessonTitle={nextLessonTitle ?? undefined}
         milestoneNudge={milestoneNudge}
+        difficultyLevel={difficultyLevel}
+        encouragementMessage={encouragementMessage}
       />
 
       {/* Badge celebration overlay */}

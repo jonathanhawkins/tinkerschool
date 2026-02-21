@@ -25,9 +25,11 @@ import {
 } from "@/lib/hume/actions";
 import { createChipToolCallHandler } from "@/lib/hume/tools";
 import type {
+  ActivityFeedbackType,
   ChipVoiceProps,
   ChipVoiceStatus,
   VoiceAction,
+  VoiceActivityFeedback,
   VoiceLessonContext,
   VoicePageContext,
 } from "@/lib/hume/types";
@@ -84,6 +86,68 @@ function useVoiceBridgeLessonContext(): VoiceLessonContext | null {
     getBridgeLessonContext,
     getServerLessonContext,
   );
+}
+
+// ---------------------------------------------------------------------------
+// Hook: subscribe to voiceBridge activity feedback
+// ---------------------------------------------------------------------------
+
+function subscribeToBridgeActivityFeedback(onStoreChange: () => void): () => void {
+  return voiceBridge.subscribeActivityFeedback(onStoreChange);
+}
+function getBridgeActivityFeedback(): VoiceActivityFeedback | null {
+  return voiceBridge.activityFeedback;
+}
+function getServerActivityFeedback(): VoiceActivityFeedback | null {
+  return null;
+}
+
+function useVoiceBridgeActivityFeedback(): VoiceActivityFeedback | null {
+  return useSyncExternalStore(
+    subscribeToBridgeActivityFeedback,
+    getBridgeActivityFeedback,
+    getServerActivityFeedback,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Encouragement bubble color mapping
+// ---------------------------------------------------------------------------
+
+function feedbackBgClass(type: ActivityFeedbackType): string {
+  switch (type) {
+    case "correct":
+    case "streak":
+      return "bg-emerald-500/10";
+    case "incorrect_first":
+    case "incorrect_hint":
+      return "bg-amber-500/10";
+    case "idle":
+      return "bg-blue-500/10";
+    case "encouragement":
+    case "difficulty_badge":
+    case "welcome":
+    default:
+      return "bg-primary/10";
+  }
+}
+
+function feedbackBorderClass(type: ActivityFeedbackType): string {
+  switch (type) {
+    case "correct":
+    case "streak":
+      return "border-emerald-500/30";
+    case "incorrect_first":
+    case "incorrect_hint":
+      return "border-amber-500/30";
+    case "idle":
+      return "border-blue-500/30";
+    case "encouragement":
+    case "difficulty_badge":
+    case "welcome":
+    default:
+      return "border-primary/30";
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -326,6 +390,7 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
   // Use voiceBridge instead of usePathname (we are outside Next.js Router)
   const pathname = useVoiceBridgePathname();
   const lessonContext = useVoiceBridgeLessonContext();
+  const activityFeedback = useVoiceBridgeActivityFeedback();
 
   // Hide FAB on public routes but keep VoiceProvider mounted so the
   // WebSocket connection survives navigation to/from these routes.
@@ -913,6 +978,55 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
                 </>
               )}
             </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Activity encouragement speech bubble (anchored to the FAB) */}
+      <AnimatePresence>
+        {activityFeedback && !isOpen && (
+          <motion.div
+            key={activityFeedback.id}
+            initial={
+              prefersReducedMotion
+                ? { opacity: 0 }
+                : { opacity: 0, x: 10, scale: 0.9 }
+            }
+            animate={
+              prefersReducedMotion
+                ? { opacity: 1 }
+                : { opacity: 1, x: 0, scale: 1 }
+            }
+            exit={
+              prefersReducedMotion
+                ? { opacity: 0 }
+                : { opacity: 0, x: 10, scale: 0.9 }
+            }
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className={cn(
+              "fixed right-[5.25rem] z-50 max-w-52 rounded-2xl rounded-br-md border px-3 py-2 shadow-sm",
+              "bottom-[1.25rem] lg:bottom-[1.25rem] max-lg:bottom-[calc(56px+1rem)]",
+              feedbackBgClass(activityFeedback.type),
+              feedbackBorderClass(activityFeedback.type),
+            )}
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <p className="text-sm font-medium leading-snug text-foreground">
+              {activityFeedback.text}
+            </p>
+            {activityFeedback.difficultyLabel && (
+              <p
+                className={cn(
+                  "mt-0.5 text-xs font-medium",
+                  activityFeedback.difficultyLabel === "Challenge Mode"
+                    ? "text-primary"
+                    : "text-emerald-600",
+                )}
+              >
+                {activityFeedback.difficultyLabel}
+              </p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

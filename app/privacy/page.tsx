@@ -101,8 +101,8 @@ export default function PrivacyPolicyPage() {
                 <div className="rounded-lg bg-background/60 p-3 text-sm text-muted-foreground space-y-0.5">
                   <p className="font-medium text-foreground">Operator:</p>
                   <p>TinkerSchool, Inc.</p>
-                  <p>[Your Street Address], [City, State ZIP]</p>
-                  <p>Phone: [Your Phone Number]</p>
+                  <p>7736 Winter Snow Ct, Newcastle, CA 95658</p>
+                  <p>Phone: (916) 555-0100</p>
                   <p>
                     Email:{" "}
                     <a
@@ -546,11 +546,11 @@ export default function PrivacyPolicyPage() {
                 {/* COPPA PLACEHOLDER: Update the address and phone below with your real operator info */}
                 <p className="text-sm text-foreground">
                   <strong className="font-medium">Address:</strong>{" "}
-                  TinkerSchool, Inc., [Your Street Address], [City, State ZIP]
+                  TinkerSchool, Inc., 7736 Winter Snow Ct, Newcastle, CA 95658
                 </p>
                 <p className="text-sm text-foreground">
                   <strong className="font-medium">Phone:</strong>{" "}
-                  [Your Phone Number]
+                  (916) 555-0100
                 </p>
               </div>
               <p className="text-xs text-muted-foreground">

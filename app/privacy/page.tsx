@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     "TinkerSchool's privacy policy explains how we protect your child's data. COPPA-compliant, family-scoped, and designed with children's safety first.",
 };
 
-const LAST_UPDATED = "February 17, 2026";
+const LAST_UPDATED = "February 22, 2026";
 
 export default function PrivacyPolicyPage() {
   return (
@@ -87,15 +87,65 @@ export default function PrivacyPolicyPage() {
           <Card className="rounded-2xl border-primary/20 bg-primary/5">
             <CardContent className="flex items-start gap-3 pt-6">
               <Lock className="mt-0.5 size-5 shrink-0 text-primary" />
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <p className="text-sm font-semibold text-foreground">
-                  COPPA Compliant
+                  Children&apos;s Privacy &amp; COPPA Compliance
                 </p>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  TinkerSchool complies with the Children's Online Privacy
-                  Protection Act (COPPA). We never collect personal information
-                  from children under 13 without verified parental consent. A
-                  parent or guardian must create and manage all accounts.
+                  TinkerSchool is designed for children ages 5-12 and complies
+                  with the Children&apos;s Online Privacy Protection Act
+                  (COPPA). We never collect personal information from children
+                  under 13 without verifiable parental consent.
+                </p>
+                {/* COPPA PLACEHOLDER: Update the address and phone below with your real operator info */}
+                <div className="rounded-lg bg-background/60 p-3 text-sm text-muted-foreground space-y-0.5">
+                  <p className="font-medium text-foreground">Operator:</p>
+                  <p>TinkerSchool, Inc.</p>
+                  <p>[Your Street Address], [City, State ZIP]</p>
+                  <p>Phone: [Your Phone Number]</p>
+                  <p>
+                    Email:{" "}
+                    <a
+                      href="mailto:privacy@tinkerschool.ai"
+                      className="font-medium text-primary hover:underline"
+                    >
+                      privacy@tinkerschool.ai
+                    </a>
+                  </p>
+                </div>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  A parent or legal guardian must create and manage all
+                  accounts. During account setup, parents must affirmatively
+                  consent to data collection by checking a consent box
+                  acknowledging this privacy policy. We record the consent
+                  timestamp and the consenting IP address. A confirmation
+                  email is sent to the parent&apos;s registered email address
+                  summarizing what data is collected and how to exercise
+                  parental rights.
+                </p>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  <strong className="font-medium text-foreground">
+                    You may refuse consent at any time.
+                  </strong>{" "}
+                  If you do not consent or later withdraw consent, you may
+                  request deletion of all data collected from your child by
+                  emailing{" "}
+                  <a
+                    href="mailto:privacy@tinkerschool.ai"
+                    className="font-medium text-primary hover:underline"
+                  >
+                    privacy@tinkerschool.ai
+                  </a>{" "}
+                  or by using the Delete Account feature in the{" "}
+                  <a
+                    href="/dashboard/settings"
+                    className="font-medium text-primary hover:underline"
+                  >
+                    parent dashboard
+                  </a>
+                  . Your child&apos;s ability to use the platform is not
+                  conditioned on providing more data than is reasonably
+                  necessary for the educational activities.
                 </p>
               </div>
             </CardContent>
@@ -263,13 +313,18 @@ export default function PrivacyPolicyPage() {
               />
               <ServiceRow
                 name="Anthropic (Claude)"
-                purpose="AI tutoring"
-                data="Each conversation sends the child's first name, age, grade level, current subject, lesson context, learning profile (learning style and interests), skill proficiency levels, recent lesson titles, and the chat message to generate Chip's responses. No email, address, photo, or other identifying information is included. Per Anthropic's commercial API data usage policy, conversations sent through their API are not used to train AI models."
+                purpose="AI tutoring (authenticated users)"
+                data="Each conversation sends the child's first name, age, grade level, current subject, lesson context, learning profile (learning style and interests), skill proficiency levels, recent lesson titles, and the chat message to generate Chip's responses. No email, address, photo, or other identifying information is included. Per Anthropic's commercial API data usage policy, conversations sent through their API are not used to train AI models. Anthropic retains API inputs for up to 30 days for safety monitoring, then deletes them."
+              />
+              <ServiceRow
+                name="OpenAI"
+                purpose="AI demo on landing page (unauthenticated)"
+                data="The anonymous Try Chip demo on the landing page uses OpenAI to generate responses. Messages are not persisted and no account data is sent. The demo does not ask for or store any personal information. Per OpenAI's API data usage policy, data sent through their API is not used to train models."
               />
               <ServiceRow
                 name="Hume AI"
-                purpose="Voice tutoring"
-                data="Voice audio is streamed in real-time from your child's microphone to generate Chip's spoken responses. TinkerSchool does not store audio recordings. Hume AI may process voice data per their privacy policy. Only session duration and timestamps are stored by TinkerSchool."
+                purpose="Voice tutoring (requires parental voice consent)"
+                data={`Voice audio is streamed in real-time from your child's microphone to generate Chip's spoken responses. Voice mode requires a separate parental consent step before first use. TinkerSchool does not store audio recordings -- only session duration and timestamps are stored. Hume AI processes voice data to generate speech and does not use it for model training. See Hume AI's privacy policy at hume.ai/privacy for full details on their data handling.`}
               />
               <ServiceRow
                 name="Stripe"
@@ -279,12 +334,12 @@ export default function PrivacyPolicyPage() {
               <ServiceRow
                 name="Vercel"
                 purpose="Application hosting and analytics"
-                data="Hosts the application and collects anonymous page view analytics and performance metrics (Web Vitals). Standard web server logs include IP addresses and request metadata. No personal child data is stored by Vercel."
+                data="Hosts the application. Vercel Analytics and Speed Insights collect anonymous page view metrics and Web Vitals performance data. These analytics scripts are only loaded on public marketing pages and the parent dashboard -- they are never loaded on kid-facing authenticated pages. Standard web server logs include IP addresses and request metadata. No personal child data is stored by Vercel."
               />
               <ServiceRow
                 name="Cloudflare"
                 purpose="Web analytics"
-                data="Collects anonymous, aggregated page view statistics. No cookies are set and no personal data is collected. Used to understand overall site traffic."
+                data="Collects anonymous, aggregated page view statistics on public marketing pages and the parent dashboard only. Cloudflare analytics scripts are never loaded on kid-facing authenticated pages. No cookies are set and no personal data is collected. Used to understand overall site traffic."
               />
               <ServiceRow
                 name="Upstash"
@@ -294,7 +349,24 @@ export default function PrivacyPolicyPage() {
             </div>
           </PolicySection>
 
-          {/* Section 5: Data retention */}
+          {/* Section 5: Anonymous demo */}
+          <PolicySection
+            icon={Eye}
+            title="Anonymous Demo (Landing Page)"
+            id="anonymous-demo"
+          >
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              The &quot;Try Chip&quot; demo on our landing page is fully
+              anonymous. It does not require an account, does not set
+              tracking cookies, and does not collect or store any personal
+              information. Messages typed into the demo are sent to OpenAI
+              to generate responses and are not persisted by TinkerSchool.
+              The demo reminds visitors not to share personal information
+              such as their name or school.
+            </p>
+          </PolicySection>
+
+          {/* Section 6: Data retention */}
           <PolicySection
             icon={Trash2}
             title="Data Retention"
@@ -433,20 +505,24 @@ export default function PrivacyPolicyPage() {
             </p>
           </PolicySection>
 
-          {/* Section 9: Contact */}
+          {/* Section 9: Contact / Operator Information */}
           <Card className="rounded-2xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Mail className="size-4 text-primary" />
-                Contact Us
+                Contact Us (Operator Information)
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm leading-relaxed text-muted-foreground">
-                If you have questions about this privacy policy or want to
-                exercise your parental rights, reach out:
+                If you have questions about this privacy policy, want to
+                exercise your parental rights, or need to request data
+                deletion, contact the operator:
               </p>
-              <div className="rounded-xl bg-muted/40 p-4">
+              <div className="rounded-xl bg-muted/40 p-4 space-y-1.5">
+                <p className="text-sm font-medium text-foreground">
+                  TinkerSchool, Inc.
+                </p>
                 <p className="text-sm text-foreground">
                   <strong className="font-medium">Email:</strong>{" "}
                   <a
@@ -456,8 +532,8 @@ export default function PrivacyPolicyPage() {
                     privacy@tinkerschool.ai
                   </a>
                 </p>
-                <p className="mt-1 text-sm text-foreground">
-                  <strong className="font-medium">Project:</strong>{" "}
+                <p className="text-sm text-foreground">
+                  <strong className="font-medium">Website:</strong>{" "}
                   <a
                     href="https://tinkerschool.ai"
                     target="_blank"
@@ -467,9 +543,22 @@ export default function PrivacyPolicyPage() {
                     tinkerschool.ai
                   </a>
                 </p>
+                {/* COPPA PLACEHOLDER: Update the address and phone below with your real operator info */}
+                <p className="text-sm text-foreground">
+                  <strong className="font-medium">Address:</strong>{" "}
+                  TinkerSchool, Inc., [Your Street Address], [City, State ZIP]
+                </p>
+                <p className="text-sm text-foreground">
+                  <strong className="font-medium">Phone:</strong>{" "}
+                  [Your Phone Number]
+                </p>
               </div>
               <p className="text-xs text-muted-foreground">
                 We aim to respond to all privacy inquiries within 30 days.
+                If you believe we have collected personal information from
+                your child without proper consent, please contact us
+                immediately and we will promptly investigate and delete the
+                data if appropriate.
               </p>
             </CardContent>
           </Card>

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useActivity } from "@/lib/activities/activity-context";
 import { useSound } from "@/lib/activities/use-sound";
+import { useRepeatPress } from "@/hooks/use-repeat-press";
 import type { NumberLineContent } from "@/lib/activities/types";
 import { ActivityFeedback } from "./activity-feedback";
 
@@ -70,17 +71,39 @@ export function NumberLine() {
     return ((n - min) / range) * 100;
   }
 
-  function handleHop(direction: 1 | -1) {
+  const handleHopForward = useCallback(() => {
     if (isCorrectFeedback) return;
     const hopAmount = jumpSize ?? 1;
-    const from = position;
-    const to = Math.max(min, Math.min(max, position + direction * hopAmount));
-    if (to === from) return;
+    setPosition((prev) => {
+      const to = Math.min(max, prev + hopAmount);
+      if (to === prev) return prev;
+      play("tap");
+      setHops((h) => [...h, { from: prev, to }]);
+      return to;
+    });
+  }, [isCorrectFeedback, jumpSize, max, play]);
 
-    play("tap");
-    setPosition(to);
-    setHops((prev) => [...prev, { from, to }]);
-  }
+  const handleHopBackward = useCallback(() => {
+    if (isCorrectFeedback) return;
+    const hopAmount = jumpSize ?? 1;
+    setPosition((prev) => {
+      const to = Math.max(min, prev - hopAmount);
+      if (to === prev) return prev;
+      play("tap");
+      setHops((h) => [...h, { from: prev, to }]);
+      return to;
+    });
+  }, [isCorrectFeedback, jumpSize, min, play]);
+
+  const { pressHandlers: hopForwardHandlers } = useRepeatPress({
+    onAction: handleHopForward,
+    disabled: position >= max || isCorrectFeedback,
+  });
+
+  const { pressHandlers: hopBackwardHandlers } = useRepeatPress({
+    onAction: handleHopBackward,
+    disabled: position <= min || isCorrectFeedback,
+  });
 
   function handleTickClick(n: number) {
     if (isCorrectFeedback) return;
@@ -242,11 +265,11 @@ export function NumberLine() {
       {/* Controls */}
       <div className="flex items-center justify-center gap-4">
         <Button
-          onClick={() => handleHop(-1)}
           variant="outline"
           size="lg"
-          className="rounded-xl px-6 text-base"
+          className="rounded-xl px-6 text-base select-none"
           disabled={position <= min || isCorrectFeedback}
+          {...hopBackwardHandlers}
         >
           ← {jumpSize ?? 1}
         </Button>
@@ -271,11 +294,11 @@ export function NumberLine() {
         </motion.div>
 
         <Button
-          onClick={() => handleHop(1)}
           variant="outline"
           size="lg"
-          className="rounded-xl px-6 text-base"
+          className="rounded-xl px-6 text-base select-none"
           disabled={position >= max || isCorrectFeedback}
+          {...hopForwardHandlers}
         >
           {jumpSize ?? 1} →
         </Button>

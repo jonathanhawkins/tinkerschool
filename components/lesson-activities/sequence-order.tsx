@@ -67,9 +67,17 @@ export function SequenceOrder() {
   const question = rawQuestion ?? null;
   const prefersReducedMotion = useReducedMotion();
 
-  // Shuffled items for ordering (normalized to always have correctPosition)
+  // Normalized items with correctPosition (before shuffle)
+  const normalizedItems = question ? normalizeItems(question) : [];
+
+  // Correct text sequence (items sorted by correctPosition)
+  const correctTextOrder = [...normalizedItems]
+    .sort((a, b) => a.correctPosition - b.correctPosition)
+    .map((item) => item.text);
+
+  // Shuffled items for ordering
   const [items, setItems] = useState<SequenceItem[]>(() =>
-    shuffle(question ? normalizeItems(question) : []),
+    shuffle(normalizedItems),
   );
 
   const questionKey = question?.id ?? state.currentQuestionIndex;
@@ -77,12 +85,13 @@ export function SequenceOrder() {
   if (!question) return null;
 
   function handleCheck() {
-    // Check if items are in correct order
+    // Compare by TEXT sequence, not item IDs — handles duplicate text values
+    // (e.g. CLAP, TAP, CLAP, TAP where both CLAPs are equivalent)
     const isCorrect = items.every(
-      (item, index) => item.correctPosition === index + 1,
+      (item, index) => item.text === correctTextOrder[index],
     );
 
-    const orderStr = items.map((item) => item.id).join(",");
+    const orderStr = items.map((item) => item.text).join(",");
     recordAnswer(orderStr, isCorrect);
 
     if (!isCorrect) {

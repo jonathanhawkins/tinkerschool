@@ -314,6 +314,8 @@ export interface FamilyInsert {
   coppa_consent_given?: boolean;
   coppa_consent_at?: string;
   coppa_consent_ip?: string;
+  coppa_consent_method?: string;
+  coppa_consent_confirmed_at?: string;
   stripe_customer_id?: string;
   subscription_tier?: SubscriptionTier;
   stripe_subscription_id?: string;

@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
 import { Nunito, Geist_Mono } from "next/font/google";
-import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
 
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/next";
-
 import ChipVoiceGlobal from "@/components/chip-voice-global";
+import { CoppaAnalytics } from "@/components/coppa-analytics";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -88,13 +85,9 @@ export default function RootLayout({
         >
           {children}
           <ChipVoiceGlobal />
-          <Analytics />
-          <SpeedInsights />
-          <Script
-            defer
-            src="https://static.cloudflareinsights.com/beacon.min.js"
-            data-cf-beacon='{"token": "5d17afae58b64c0798cc717bae46bbb1"}'
-          />
+          {/* COPPA: Analytics only load on public/marketing and parent pages,
+              never on kid-facing authenticated pages. See coppa-analytics.tsx. */}
+          <CoppaAnalytics />
         </body>
       </html>
     </ClerkProvider>

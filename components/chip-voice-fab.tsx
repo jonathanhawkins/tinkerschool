@@ -151,6 +151,11 @@ function feedbackBorderClass(type: ActivityFeedbackType): string {
 }
 
 // ---------------------------------------------------------------------------
+// COPPA voice consent localStorage key
+// ---------------------------------------------------------------------------
+const VOICE_CONSENT_STORAGE_KEY = "tinkerschool_voice_consent";
+
+// ---------------------------------------------------------------------------
 // Kid-friendly emotion labels (subset of Hume's 48 emotions)
 // ---------------------------------------------------------------------------
 
@@ -405,6 +410,19 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
   const [isAttemptingConnect, setIsAttemptingConnect] = useState(false);
   const prefersReducedMotion = useReducedMotion();
 
+  // ── COPPA Voice Consent Gate ──
+  // Under COPPA, streaming a child's audio to a third-party service (Hume AI)
+  // requires separate parental consent since voice data is biometric/personal
+  // information. This gate shows a one-time consent dialog before the first
+  // voice session. Consent is stored in localStorage.
+  const [voiceConsentGiven, setVoiceConsentGiven] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(VOICE_CONSENT_STORAGE_KEY) === "true";
+  });
+  const [showVoiceConsent, setShowVoiceConsent] = useState(false);
+  // Ref to hold the pending connect callback after consent is granted
+  const pendingConnectRef = useRef<(() => void) | null>(null);
+
   // ── Voice budget & session timer ──
   const [voiceBudget, setVoiceBudget] = useState<VoiceBudgetResult | null>(null);
   const [sessionSeconds, setSessionSeconds] = useState(0);
@@ -591,11 +609,13 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
     sendSessionSettings({ systemPrompt });
   }, [pathname, lessonContext, status, systemPrompt, sendSessionSettings]);
 
-  // Connect handler -- checks voice budget, fetches a fresh token, then connects.
+  // Connect handler -- checks voice consent + budget, fetches a fresh token, then connects.
   // If we have a previous `chatGroupId`, pass it as `resumedChatGroupId` so Hume
   // continues from the prior conversation context instead of starting fresh.
   const tokenRef = useRef(accessToken);
-  const handleConnect = useCallback(async () => {
+
+  // The actual connection logic, extracted so it can be called after consent.
+  const doConnect = useCallback(async () => {
     setConnectError(null);
     setBudgetWarning(null);
     onClearProviderError?.();
@@ -635,6 +655,34 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
       setIsAttemptingConnect(false);
     }
   }, [connect, accessToken, configId, systemPrompt, onClearProviderError]);
+
+  // Consent gate wrapper: checks voice consent, shows dialog if not consented.
+  const handleConnect = useCallback(async () => {
+    if (!voiceConsentGiven) {
+      // Store the connect action and show consent dialog
+      pendingConnectRef.current = () => { doConnect(); };
+      setShowVoiceConsent(true);
+      return;
+    }
+    doConnect();
+  }, [voiceConsentGiven, doConnect]);
+
+  // Called when parent grants voice consent from the consent dialog.
+  const handleVoiceConsentGranted = useCallback(() => {
+    localStorage.setItem(VOICE_CONSENT_STORAGE_KEY, "true");
+    setVoiceConsentGiven(true);
+    setShowVoiceConsent(false);
+    // Execute the pending connect
+    if (pendingConnectRef.current) {
+      pendingConnectRef.current();
+      pendingConnectRef.current = null;
+    }
+  }, []);
+
+  const handleVoiceConsentDenied = useCallback(() => {
+    setShowVoiceConsent(false);
+    pendingConnectRef.current = null;
+  }, []);
 
   // Toggle mic mute
   const handleToggleMic = useCallback(() => {
@@ -711,6 +759,92 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
 
   return (
     <>
+      {/* COPPA Voice Consent Dialog */}
+      <AnimatePresence>
+        {showVoiceConsent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+          >
+            <motion.div
+              initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
+              animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="w-full max-w-sm"
+            >
+              <Card className="rounded-2xl border-border/60 shadow-xl">
+                <div className="p-5 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                      <Mic className="size-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-foreground">
+                        Voice Mode Consent
+                      </h3>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Parent or guardian approval required
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-sm leading-relaxed text-muted-foreground space-y-2">
+                    <p>
+                      Voice mode streams audio from your child&apos;s microphone
+                      to <strong className="font-medium text-foreground">Hume AI</strong> to
+                      generate Chip&apos;s spoken responses. Under children&apos;s
+                      privacy law (COPPA), this requires your consent because
+                      voice data is considered personal information.
+                    </p>
+                    <ul className="ml-3 space-y-1 text-xs list-disc">
+                      <li>Audio is processed in real-time and is not stored by TinkerSchool</li>
+                      <li>Hume AI does not use voice data for model training</li>
+                      <li>You can revoke this consent at any time from Settings</li>
+                    </ul>
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleVoiceConsentDenied}
+                      className="flex-1 rounded-xl"
+                    >
+                      Not Now
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleVoiceConsentGranted}
+                      className="flex-1 rounded-xl"
+                    >
+                      <Mic className="size-3.5" />
+                      Allow Voice Mode
+                    </Button>
+                  </div>
+
+                  <p className="text-center text-[10px] text-muted-foreground/60">
+                    See our{" "}
+                    <a
+                      href="/privacy#third-party"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      Privacy Policy
+                    </a>{" "}
+                    for full details on voice data handling.
+                  </p>
+                </div>
+              </Card>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Expanded panel */}
       <AnimatePresence>
         {isOpen && (

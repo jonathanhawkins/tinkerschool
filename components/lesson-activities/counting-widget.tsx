@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useActivity } from "@/lib/activities/activity-context";
 import { useSound } from "@/lib/activities/use-sound";
+import { useRepeatPress } from "@/hooks/use-repeat-press";
 import type { CountingContent } from "@/lib/activities/types";
 import { ActivityFeedback } from "./activity-feedback";
 
@@ -51,15 +52,27 @@ export function CountingWidget() {
     });
   }
 
-  function handleIncrement() {
+  const handleIncrement = useCallback(() => {
     if (state.showingFeedback && state.feedbackType === "correct") return;
     setCount((c) => c + 1);
-  }
+  }, [state.showingFeedback, state.feedbackType]);
 
-  function handleDecrement() {
+  const handleDecrement = useCallback(() => {
     if (state.showingFeedback && state.feedbackType === "correct") return;
     setCount((c) => Math.max(0, c - 1));
-  }
+  }, [state.showingFeedback, state.feedbackType]);
+
+  const isLocked = state.showingFeedback && state.feedbackType === "correct";
+
+  const { pressHandlers: incrementHandlers } = useRepeatPress({
+    onAction: handleIncrement,
+    disabled: isLocked,
+  });
+
+  const { pressHandlers: decrementHandlers } = useRepeatPress({
+    onAction: handleDecrement,
+    disabled: count <= 0 || isLocked,
+  });
 
   function handleSubmit() {
     setSubmitted(true);
@@ -156,15 +169,12 @@ export function CountingWidget() {
       {/* Counter controls */}
       <div className="flex items-center justify-center gap-4">
         <Button
-          onClick={handleDecrement}
           variant="outline"
           size="icon"
-          className="size-12 rounded-full text-lg"
-          disabled={
-            count <= 0 ||
-            (state.showingFeedback && state.feedbackType === "correct")
-          }
+          className="size-12 rounded-full text-lg select-none"
+          disabled={count <= 0 || isLocked}
           aria-label="Subtract one"
+          {...decrementHandlers}
         >
           <Minus className="size-5" />
         </Button>
@@ -189,14 +199,12 @@ export function CountingWidget() {
         </motion.div>
 
         <Button
-          onClick={handleIncrement}
           variant="outline"
           size="icon"
-          className="size-12 rounded-full text-lg"
-          disabled={
-            state.showingFeedback && state.feedbackType === "correct"
-          }
+          className="size-12 rounded-full text-lg select-none"
+          disabled={isLocked}
           aria-label="Add one"
+          {...incrementHandlers}
         >
           <Plus className="size-5" />
         </Button>

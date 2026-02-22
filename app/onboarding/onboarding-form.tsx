@@ -965,8 +965,30 @@ function StepPin({
             <Shield className="mt-0.5 size-5 shrink-0 text-primary" />
             <div className="flex flex-col gap-2.5">
               <p className="text-sm font-medium text-foreground">
-                Parental Consent
+                Parental Consent Required
               </p>
+              <div className="text-xs leading-relaxed text-muted-foreground space-y-1.5">
+                <p>
+                  By checking the box below, you consent to TinkerSchool
+                  collecting the following from your child for educational
+                  purposes:
+                </p>
+                <ul className="ml-3 space-y-0.5 list-disc">
+                  <li>First name and grade level (to personalize lessons)</li>
+                  <li>Learning progress, projects, and quiz scores</li>
+                  <li>AI chat conversations (viewable in your parent dashboard)</li>
+                  <li>Learning style preferences and skill levels</li>
+                </ul>
+                <p>
+                  This data is shared with{" "}
+                  <strong className="font-medium text-foreground">Anthropic (Claude AI)</strong>{" "}
+                  for tutoring and{" "}
+                  <strong className="font-medium text-foreground">Supabase</strong>{" "}
+                  for storage. It is not sold or used for advertising.
+                  You can review, export, or delete all data at any time
+                  from the parent dashboard.
+                </p>
+              </div>
               <label
                 htmlFor="coppa-consent"
                 className="flex cursor-pointer items-start gap-2.5"
@@ -986,7 +1008,7 @@ function StepPin({
                 >
                   I am this child&apos;s parent or legal guardian and I consent
                   to TinkerSchool collecting and using my child&apos;s
-                  information as described in the{" "}
+                  information as described above and in the{" "}
                   <a
                     href="/privacy"
                     target="_blank"
@@ -994,10 +1016,21 @@ function StepPin({
                     className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
                   >
                     Privacy Policy
-                  </a>{" "}
-                  for educational purposes.
+                  </a>
+                  .
                 </span>
               </label>
+              <p className="text-[11px] leading-relaxed text-muted-foreground/70">
+                A confirmation email will be sent to your registered email
+                address. You may withdraw consent at any time by contacting{" "}
+                <a
+                  href="mailto:privacy@tinkerschool.ai"
+                  className="text-primary hover:underline"
+                >
+                  privacy@tinkerschool.ai
+                </a>{" "}
+                or by deleting your account from the parent dashboard.
+              </p>
             </div>
           </div>
         </div>

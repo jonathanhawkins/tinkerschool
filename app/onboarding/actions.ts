@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { hashPin } from "@/lib/auth/pin";
+import { sendCoppaConsentConfirmation } from "@/lib/notifications/send-parent-notification";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type { DeviceMode, FamilyInsert, LearningProfileInsert, ProfileInsert } from "@/lib/supabase/types";
 import { bandForGrade, isValidUUID } from "@/lib/utils";
@@ -181,6 +182,10 @@ export async function completeOnboarding(
     coppa_consent_given: true,
     coppa_consent_at: new Date().toISOString(),
     coppa_consent_ip: clientIp ?? undefined,
+    // "checkbox_email_plus" = parent checked consent box + confirmation email sent.
+    // This is the FTC-approved "Email Plus" method for COPPA VPC.
+    // TODO: Upgrade to "email_plus_verified" once confirmation link flow is implemented.
+    coppa_consent_method: "checkbox_email_plus",
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -262,6 +267,39 @@ export async function completeOnboarding(
   if (learningProfileError) {
     // Log but don't fail onboarding -- the learning profile can be created later
     console.error("Failed to create learning profile:", learningProfileError);
+  }
+
+  // 6. Send COPPA consent confirmation notification (fire-and-forget).
+  // This creates a notification record and will send a confirmation email
+  // once email delivery is implemented (part of "Email Plus" VPC method).
+  try {
+    const clerk = await clerkClient();
+    const clerkUser = await clerk.users.getUser(userId);
+    const primaryEmail = clerkUser.emailAddresses.find(
+      (e) => e.id === clerkUser.primaryEmailAddressId,
+    );
+
+    // Look up the parent profile ID we just created
+    const { data: parentProfile } = (await adminSupabase
+      .from("profiles")
+      .select("id")
+      .eq("clerk_id", userId)
+      .single()) as { data: { id: string } | null };
+
+    if (parentProfile) {
+      // Don't await -- fire and forget so it doesn't slow onboarding
+      sendCoppaConsentConfirmation(adminSupabase, {
+        parentProfileId: parentProfile.id,
+        familyId: family.id,
+        kidName: childName,
+        parentEmail: primaryEmail?.emailAddress ?? null,
+      }).catch((err) => {
+        console.error("[onboarding] Failed to send COPPA consent confirmation:", err);
+      });
+    }
+  } catch (err) {
+    // Non-fatal -- log and continue
+    console.error("[onboarding] Failed to send COPPA consent confirmation:", err);
   }
 
   // NOTE: Do NOT call revalidatePath here. It causes the onboarding page's

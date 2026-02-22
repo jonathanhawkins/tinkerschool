@@ -27,19 +27,19 @@ import { cn } from "@/lib/utils";
 
 const STARTER_PROMPTS = [
   {
-    label: "Show my name",
-    message: "I want to make the screen show my name! My name is Cassidy.",
-    emoji: "✨",
+    label: "Show a greeting",
+    message: "I want to make the screen show a fun greeting! Something like Hello World!",
+    emoji: "\u2728",
   },
   {
     label: "Count to 10",
     message: "Can you help me make it count from 1 to 10 on the screen?",
-    emoji: "🔢",
+    emoji: "\uD83D\uDD22",
   },
   {
     label: "Play a melody",
     message: "I want to play a song! Can you make it play a melody?",
-    emoji: "🎵",
+    emoji: "\uD83C\uDFB5",
   },
 ];
 
@@ -298,6 +298,13 @@ export function TryChipDemo() {
                           </motion.button>
                         ))}
                       </div>
+
+                      {/* COPPA privacy notice for demo */}
+                      <p className="pl-10 text-[11px] leading-relaxed text-muted-foreground/70">
+                        This demo is anonymous. Messages are sent to an AI service
+                        for responses and are not saved. Please don&apos;t share
+                        personal information like your name or school.
+                      </p>
                     </motion.div>
                   )}
 

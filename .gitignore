@@ -64,3 +64,6 @@ public/firmware/*.bin
 # Legacy PRD files (kept locally for reference)
 PRD-CODEBUDDY-OLD.md
 PRD-TINKERSCHOOL.md
+
+# E2E test screenshots
+e2e/screenshots/

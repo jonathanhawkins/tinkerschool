@@ -251,11 +251,11 @@ export function TryChipDemo() {
         </div>
 
         {/* Main area */}
-        <div className="flex flex-col md:flex-row" style={{ minHeight: 420 }}>
+        <div className="flex flex-col md:flex-row md:min-h-[420px]">
           {/* Chat panel */}
           <div className="flex flex-1 flex-col min-w-0">
             {/* Messages */}
-            <div className="relative flex-1 min-h-0">
+            <div className="relative min-h-[280px] flex-1 md:min-h-0">
               <div
                 className="absolute inset-0 overflow-y-auto p-4"
                 ref={scrollRef}
@@ -408,15 +408,17 @@ export function TryChipDemo() {
           </div>
 
           {/* Simulator panel */}
-          <div className="flex flex-col items-center justify-center border-t md:border-t-0 md:border-l border-border bg-muted/20 px-4 py-6 md:w-[200px]">
-            <p className="mb-3 text-xs font-semibold text-muted-foreground">
+          <div className="flex flex-col items-center justify-center border-t md:border-t-0 md:border-l border-border bg-muted/20 px-4 py-4 md:w-[200px] md:py-6">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground md:mb-3">
               Live Simulator
             </p>
-            <Simulator
-              ref={simulatorRef}
-              scale={1.2}
-              toneActive={toneActive}
-            />
+            <div className="scale-[0.85] md:scale-100 origin-top">
+              <Simulator
+                ref={simulatorRef}
+                scale={1.2}
+                toneActive={toneActive}
+              />
+            </div>
           </div>
         </div>
       </div>

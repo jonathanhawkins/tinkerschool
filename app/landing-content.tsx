@@ -40,6 +40,10 @@ import {
   ShoppingCart,
   ExternalLink,
   Users,
+  Eye,
+  Shield,
+  MessageSquare,
+  Lock,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -528,16 +532,24 @@ export function LandingContent() {
             </h1>
           </div>
 
+          {/* Age/price badge */}
+          <Badge
+            variant="outline"
+            className="rounded-full border-border bg-background px-4 py-1.5 text-xs font-medium text-foreground/70"
+          >
+            Ages 5-12 · Free · No App Download
+          </Badge>
+
           {/* Tagline -- orange TEXT, not orange background */}
           <p className="max-w-2xl text-xl font-medium text-primary sm:text-2xl">
-            Where every kid is a genius waiting to bloom
+            Your kid&apos;s AI tutor for math, reading, science &amp; more
           </p>
 
           {/* Description */}
           <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Meet Chip, your AI buddy. Together you&apos;ll explore math,
-            reading, science, music, art, problem solving, and coding -- all
-            through hands-on projects with a real device.
+            Where every kid is a genius waiting to bloom. Chip, your AI buddy,
+            guides your child through 7 subjects with interactive lessons right
+            in the browser — plus optional hardware projects for extra magic.
           </p>
 
           {/* CTAs -- pill shaped */}
@@ -575,8 +587,28 @@ export function LandingContent() {
           {/* Open source subtext */}
           <p className="flex items-center gap-1.5 pt-2 text-xs text-muted-foreground">
             <Github className="size-3.5" />
-            Free and open source. No credit card required.
+            100% free software · Optional $29 device · No credit card required
           </p>
+
+          {/* Parent trust strip */}
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pt-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <Eye className="size-3.5" />
+              Parent dashboard
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Shield className="size-3.5" />
+              AI safety guardrails
+            </span>
+            <span className="flex items-center gap-1.5">
+              <MessageSquare className="size-3.5" />
+              All chats logged
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Lock className="size-3.5" />
+              COPPA compliant
+            </span>
+          </div>
         </motion.div>
 
         {/* Subject color dots -- visual interest without overwhelming */}

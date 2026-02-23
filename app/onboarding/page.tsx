@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
@@ -6,6 +7,11 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { checkInvitedParentStatus } from "./actions";
 import { InvitedParentOnboarding } from "./invited-parent-onboarding";
 import { OnboardingForm } from "./onboarding-form";
+
+export const metadata: Metadata = {
+  title: "Onboarding",
+  robots: { index: false, follow: false },
+};
 
 export default async function OnboardingPage() {
   let userId: string | null = null;

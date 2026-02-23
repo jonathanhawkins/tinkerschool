@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -11,6 +12,20 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+
+export const metadata: Metadata = {
+  title: "Support TinkerSchool - Help Fund Free Education for Every Kid",
+  description:
+    "TinkerSchool is free and open source. Your support helps fund AI tutoring costs so every child can access personalized learning in math, reading, science, coding, and more.",
+  openGraph: {
+    title: "Support TinkerSchool - Help Fund Free Education for Every Kid",
+    description:
+      "Your support helps fund AI tutoring costs so every child ages 5-12 can access personalized, hands-on learning. Always free, always open source.",
+  },
+  alternates: {
+    canonical: "https://tinkerschool.ai/support",
+  },
+};
 
 const reasons = [
   {

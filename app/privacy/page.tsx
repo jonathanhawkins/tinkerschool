@@ -27,6 +27,9 @@ export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
     "TinkerSchool's privacy policy explains how we protect your child's data. COPPA-compliant, family-scoped, and designed with children's safety first.",
+  alternates: {
+    canonical: "https://tinkerschool.ai/privacy",
+  },
 };
 
 const LAST_UPDATED = "February 22, 2026";

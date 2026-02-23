@@ -1,7 +1,15 @@
+import type { Metadata } from "next";
 import { CheckCircle2, AlertTriangle, XCircle, Clock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Parental Consent Confirmation",
+  description:
+    "Confirm parental consent for your child's TinkerSchool account. COPPA-compliant verification for children's online safety.",
+  robots: { index: false, follow: false },
+};
 
 interface PageProps {
   searchParams: Promise<{ status?: string }>;

@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+
+export const metadata: Metadata = {
+  title: "Page Not Found",
+  description:
+    "The page you're looking for doesn't exist. Head back to TinkerSchool to explore AI-powered learning for kids.",
+  robots: { index: false, follow: false },
+};
 
 export default function NotFound() {
   return (

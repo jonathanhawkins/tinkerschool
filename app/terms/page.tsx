@@ -29,6 +29,9 @@ export const metadata: Metadata = {
   title: "Terms of Service",
   description:
     "TinkerSchool's terms of service. Simple, readable terms for our AI-powered education platform for kids ages 5-12.",
+  alternates: {
+    canonical: "https://tinkerschool.ai/terms",
+  },
 };
 
 const LAST_UPDATED = "February 17, 2026";

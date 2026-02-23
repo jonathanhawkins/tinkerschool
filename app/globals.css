@@ -288,6 +288,109 @@
   padding-bottom: 1rem !important;
 }
 
+/* ---- Blog prose styles ---- */
+
+/*
+ * Minimal prose-like typography for blog post content rendered by
+ * the lightweight markdown-to-HTML converter (lib/blog/markdown.ts).
+ * Uses BEM-style class names prefixed with `blog-` to avoid
+ * collisions with the rest of the app.
+ */
+
+.blog-prose {
+  line-height: 1.75;
+  color: var(--foreground);
+}
+
+.blog-prose .blog-h2 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  color: var(--foreground);
+}
+
+.blog-prose .blog-h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--foreground);
+}
+
+.blog-prose .blog-p {
+  margin-bottom: 1.25rem;
+  font-size: 0.9375rem;
+  color: var(--muted-foreground);
+}
+
+.blog-prose .blog-ul,
+.blog-prose .blog-ol {
+  margin-bottom: 1.25rem;
+  padding-left: 1.5rem;
+}
+
+.blog-prose .blog-ul {
+  list-style: disc;
+}
+
+.blog-prose .blog-ol {
+  list-style: decimal;
+}
+
+.blog-prose .blog-ul li,
+.blog-prose .blog-ol li {
+  margin-bottom: 0.375rem;
+  font-size: 0.9375rem;
+  color: var(--muted-foreground);
+}
+
+.blog-prose .blog-link {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s;
+}
+
+.blog-prose .blog-link:hover {
+  color: color-mix(in oklch, var(--primary), transparent 20%);
+}
+
+.blog-prose .blog-inline-code {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.875em;
+  background-color: var(--muted);
+  padding: 0.15em 0.35em;
+  border-radius: 0.375rem;
+}
+
+.blog-prose .blog-code-block {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  background-color: var(--muted);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  overflow-x: auto;
+}
+
+.blog-prose .blog-code-block code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+.blog-prose strong {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.blog-prose em {
+  font-style: italic;
+}
+
 /* ---- Print styles for progress reports ---- */
 
 @media print {

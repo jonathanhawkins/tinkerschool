@@ -17,6 +17,7 @@ const isPublicRoute = createRouteMatcher([
   "/twitter-image(.*)",
   "/api/coppa-confirm(.*)",
   "/coppa-confirmed(.*)",
+  "/blog(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

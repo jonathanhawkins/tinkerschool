@@ -44,6 +44,7 @@ import {
   Shield,
   MessageSquare,
   Lock,
+  ChevronDown,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -345,7 +346,7 @@ export function LandingContent() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {/* ================================================================= */}
-      {/* Navigation Bar */}
+      {/* Navigation Bar (outside <main> since it's site-wide chrome) */}
       {/* ================================================================= */}
       <nav
         className={cn(
@@ -401,6 +402,12 @@ export function LandingContent() {
             >
               Curriculum
             </a>
+            <Link
+              href="/blog"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Blog
+            </Link>
           </div>
 
           {/* CTA buttons */}
@@ -473,6 +480,13 @@ export function LandingContent() {
               >
                 Curriculum
               </a>
+              <Link
+                href="/blog"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
+              >
+                Blog
+              </Link>
               <div className="flex gap-3 pt-2">
                 <Button
                   asChild
@@ -490,6 +504,7 @@ export function LandingContent() {
         )}
       </nav>
 
+      <main>
       {/* ================================================================= */}
       {/* Section 1: Hero -- clean white bg, orange in text + buttons only */}
       {/* ================================================================= */}
@@ -527,9 +542,9 @@ export function LandingContent() {
             <div className="flex size-12 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/20 sm:size-14">
               <Lightbulb className="size-7 text-primary-foreground sm:size-8" />
             </div>
-            <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl">
+            <span className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl">
               TinkerSchool
-            </h1>
+            </span>
           </div>
 
           {/* Age/price badge */}
@@ -540,16 +555,17 @@ export function LandingContent() {
             Ages 5-12 · Free · No App Download
           </Badge>
 
-          {/* Tagline -- orange TEXT, not orange background */}
-          <p className="max-w-2xl text-xl font-medium text-primary sm:text-2xl">
-            Your kid&apos;s AI tutor for math, reading, science &amp; more
-          </p>
+          {/* H1 Tagline -- optimized for SEO */}
+          <h1 className="max-w-2xl text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl">
+            AI-Powered Hands-On Learning for Kids — Math, Reading, Science, STEM &amp; More
+          </h1>
 
           {/* Description */}
           <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
             Where every kid is a genius waiting to bloom. Chip, your AI buddy,
-            guides your child through 7 subjects with interactive lessons right
-            in the browser — plus optional hardware projects for extra magic.
+            guides your child through 7 subjects with hands-on STEM activities
+            and interactive lessons — perfect for homeschooling, afterschooling,
+            or pushing beyond what school teaches.
           </p>
 
           {/* CTAs -- pill shaped */}
@@ -1391,13 +1407,156 @@ export function LandingContent() {
       </section>
 
       {/* ================================================================= */}
-      {/* Section 8: Footer */}
+      {/* Section 8: FAQ */}
+      {/* ================================================================= */}
+      <section id="faq" className="bg-muted/30 px-6 py-20">
+        <motion.div
+          className="mx-auto max-w-3xl"
+          {...motionProps(fadeInUp)}
+        >
+          <h2 className="mb-2 text-center text-2xl font-bold tracking-tight text-foreground">
+            Frequently Asked Questions
+          </h2>
+          <p className="mb-10 text-center text-sm text-muted-foreground">
+            Everything parents ask before getting started.
+          </p>
+
+          <div className="divide-y divide-border rounded-2xl border border-border bg-background shadow-sm">
+            {[
+              {
+                q: "What is TinkerSchool?",
+                a: "TinkerSchool is an open-source, AI-powered education platform for kids ages 5\u201312. It covers math, reading, science, music, art, problem solving, and coding through hands-on projects with real hardware and a personal AI tutor named Chip.",
+              },
+              {
+                q: "Is TinkerSchool really free?",
+                a: "Yes, completely free and open source. Supporters help fund AI tutoring costs, but every lesson and feature is available to all families at no charge.",
+              },
+              {
+                q: "What ages is TinkerSchool designed for?",
+                a: "TinkerSchool is designed for grades K\u20136 (ages 5\u201312) with five progressive curriculum bands: Explorer (K\u20131), Builder (2\u20133), Inventor (3\u20134), Hacker (4\u20135), and Creator (5\u20136). Each band adapts content and difficulty to the child\u2019s level.",
+              },
+              {
+                q: "How does the AI tutor Chip work?",
+                a: "Chip is a personal AI learning buddy powered by Claude. Chip guides kids through leading questions, never gives away answers, and adapts to each child\u2019s learning style and interests. All conversations are logged so parents can review them anytime.",
+              },
+              {
+                q: "Do I need to buy the M5StickC hardware?",
+                a: "No! TinkerSchool works with a built-in simulator for trying lessons on any device. The M5StickC Plus 2 (~$20) adds hands-on hardware projects but isn\u2019t required to get started.",
+              },
+              {
+                q: "Is TinkerSchool safe for children?",
+                a: "Yes, fully COPPA-compliant. Kids use PIN-based login (no email required), all data is family-scoped, AI conversations are logged for parent review, and content has strict safety guardrails.",
+              },
+              {
+                q: "Can I use TinkerSchool for homeschooling?",
+                a: "Absolutely! TinkerSchool covers all core subjects with personalized AI tutoring. Many families use it as a primary homeschool curriculum or as supplemental afterschooling.",
+              },
+              {
+                q: "How is TinkerSchool different from other learning apps?",
+                a: "TinkerSchool combines an AI tutor, real hardware projects, and all school subjects in one platform. Kids build real things \u2014 not just watch videos or answer multiple-choice questions.",
+              },
+            ].map(({ q, a }, i) => (
+              <details key={i} className="group">
+                <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-base font-semibold text-foreground transition-colors hover:text-primary [&::-webkit-details-marker]:hidden">
+                  {q}
+                  <ChevronDown className="size-5 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180" />
+                </summary>
+                <div className="px-5 pb-4 text-sm leading-relaxed text-muted-foreground">
+                  {a}
+                </div>
+              </details>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* FAQPage JSON-LD structured data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: [
+                {
+                  "@type": "Question",
+                  name: "What is TinkerSchool?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "TinkerSchool is an open-source, AI-powered education platform for kids ages 5\u201312. It covers math, reading, science, music, art, problem solving, and coding through hands-on projects with real hardware and a personal AI tutor named Chip.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "Is TinkerSchool really free?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "Yes, completely free and open source. Supporters help fund AI tutoring costs, but every lesson and feature is available to all families at no charge.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "What ages is TinkerSchool designed for?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "TinkerSchool is designed for grades K\u20136 (ages 5\u201312) with five progressive curriculum bands: Explorer (K\u20131), Builder (2\u20133), Inventor (3\u20134), Hacker (4\u20135), and Creator (5\u20136). Each band adapts content and difficulty to the child\u2019s level.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "How does the AI tutor Chip work?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "Chip is a personal AI learning buddy powered by Claude. Chip guides kids through leading questions, never gives away answers, and adapts to each child\u2019s learning style and interests. All conversations are logged so parents can review them anytime.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "Do I need to buy the M5StickC hardware?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "No! TinkerSchool works with a built-in simulator for trying lessons on any device. The M5StickC Plus 2 (~$20) adds hands-on hardware projects but isn\u2019t required to get started.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "Is TinkerSchool safe for children?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "Yes, fully COPPA-compliant. Kids use PIN-based login (no email required), all data is family-scoped, AI conversations are logged for parent review, and content has strict safety guardrails.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "Can I use TinkerSchool for homeschooling?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "Absolutely! TinkerSchool covers all core subjects with personalized AI tutoring. Many families use it as a primary homeschool curriculum or as supplemental afterschooling.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "How is TinkerSchool different from other learning apps?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "TinkerSchool combines an AI tutor, real hardware projects, and all school subjects in one platform. Kids build real things \u2014 not just watch videos or answer multiple-choice questions.",
+                  },
+                },
+              ],
+            }),
+          }}
+        />
+      </section>
+
+      </main>
+
+      {/* ================================================================= */}
+      {/* Section 9: Footer */}
       {/* ================================================================= */}
       <footer className="border-t border-border bg-muted/20 px-6 py-12">
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 md:grid-cols-4">
           {/* Product */}
           <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-foreground">Product</h4>
+            <h3 className="text-sm font-semibold text-foreground">Product</h3>
             <ul className="space-y-2">
               {["Features", "Subjects", "Curriculum", "Device"].map((item) => (
                 <li key={item}>
@@ -1409,12 +1568,20 @@ export function LandingContent() {
                   </a>
                 </li>
               ))}
+              <li>
+                <Link
+                  href="/blog"
+                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Blog
+                </Link>
+              </li>
             </ul>
           </div>
 
           {/* Community */}
           <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-foreground">Community</h4>
+            <h3 className="text-sm font-semibold text-foreground">Community</h3>
             <ul className="space-y-2">
               {[
                 {
@@ -1449,11 +1616,11 @@ export function LandingContent() {
 
           {/* Parents */}
           <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-foreground">Parents</h4>
+            <h3 className="text-sm font-semibold text-foreground">Parents</h3>
             <ul className="space-y-2">
               {[
                 { label: "Dashboard", href: "/dashboard" },
-                { label: "Child Safety", href: "/privacy#child-safety" },
+                { label: "Child Safety", href: "/privacy#parental-rights" },
                 { label: "Privacy Policy", href: "/privacy" },
                 { label: "Terms of Service", href: "/terms" },
               ].map((item) => (
@@ -1471,7 +1638,7 @@ export function LandingContent() {
 
           {/* Company */}
           <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-foreground">Company</h4>
+            <h3 className="text-sm font-semibold text-foreground">Company</h3>
             <ul className="space-y-2">
               {[
                 { label: "Support Us", href: "/support" },

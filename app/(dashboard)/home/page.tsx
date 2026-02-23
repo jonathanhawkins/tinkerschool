@@ -5,7 +5,10 @@ import { Suspense } from "react";
 
 import { MissionControlWalkthrough } from "@/components/mission-control-walkthrough";
 
-export const metadata: Metadata = { title: "Mission Control" };
+export const metadata: Metadata = {
+  title: "Mission Control",
+  robots: { index: false, follow: false },
+};
 import {
   Rocket,
   Paintbrush,
@@ -941,6 +944,36 @@ export default async function MissionControlPage() {
         </section>
       )}
 
+      {/* ----- Recent Badges ----- */}
+      <section className="space-y-4">
+        <FadeIn>
+          <div className="flex items-center gap-2">
+            <Trophy className="size-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">
+              Your Badges
+            </h2>
+          </div>
+        </FadeIn>
+        {safeUserBadges.length > 0 ? (
+          <Stagger className="flex flex-wrap gap-3">
+            {safeUserBadges.map((ub) => (
+              <StaggerItem key={ub.id}>
+                <EarnedBadge badge={ub.badges} />
+              </StaggerItem>
+            ))}
+          </Stagger>
+        ) : (
+          <Card className="rounded-2xl py-8 text-center">
+            <CardContent className="flex flex-col items-center gap-3">
+              <Trophy className="size-10 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">
+                Complete lessons to earn badges!
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
       {/* ----- Subject Cards Grid ----- */}
       <section className="space-y-4">
         <FadeIn>
@@ -1084,36 +1117,6 @@ export default async function MissionControlPage() {
           </Card>
         </section>
       )}
-
-      {/* ----- Recent Badges ----- */}
-      <section className="space-y-4">
-        <FadeIn>
-          <div className="flex items-center gap-2">
-            <Trophy className="size-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">
-              Your Badges
-            </h2>
-          </div>
-        </FadeIn>
-        {safeUserBadges.length > 0 ? (
-          <Stagger className="flex flex-wrap gap-3">
-            {safeUserBadges.map((ub) => (
-              <StaggerItem key={ub.id}>
-                <EarnedBadge badge={ub.badges} />
-              </StaggerItem>
-            ))}
-          </Stagger>
-        ) : (
-          <Card className="rounded-2xl py-8 text-center">
-            <CardContent className="flex flex-col items-center gap-3">
-              <Trophy className="size-10 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">
-                Complete lessons to earn badges!
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </section>
 
       {/* ----- Quick Actions ----- */}
       <FadeIn>

@@ -27,6 +27,9 @@ export const metadata: Metadata = {
       "Try real interactive lessons from TinkerSchool. No account needed!",
     type: "website",
   },
+  alternates: {
+    canonical: "https://tinkerschool.ai/demo",
+  },
 };
 
 // ---------------------------------------------------------------------------

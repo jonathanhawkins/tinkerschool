@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
   headers: async () => [
     {
-      // Apply security headers to all routes
+      // Security headers for all routes
       source: "/(.*)",
       headers: [
         {
@@ -44,6 +44,16 @@ const nextConfig: NextConfig = {
         {
           key: "Permissions-Policy",
           value: "camera=(), microphone=(self), geolocation=(), serial=(self)",
+        },
+      ],
+    },
+    {
+      // X-Robots-Tag only on public marketing pages (not auth-gated routes)
+      source: "/((?!home|workshop|lessons|subjects|achievements|gallery|chat|settings|setup|onboarding|sign-in|sign-up|dashboard|api|coppa-confirmed).*)",
+      headers: [
+        {
+          key: "X-Robots-Tag",
+          value: "index, follow, max-image-preview:large, max-snippet:-1",
         },
       ],
     },

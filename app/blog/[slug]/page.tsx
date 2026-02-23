@@ -18,18 +18,43 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const post = getPostBySlug(slug);
 
   if (!post) {
-    return { title: "Post Not Found" };
+    return {
+      title: "Post Not Found",
+      robots: { index: false, follow: false },
+    };
   }
 
   return {
     title: post.title,
     description: post.description,
+    authors: [{ name: post.author }],
+    keywords: post.tags,
     openGraph: {
       title: post.title,
       description: post.description,
       type: "article",
+      url: `https://tinkerschool.ai/blog/${slug}`,
+      siteName: "TinkerSchool",
+      locale: "en_US",
       publishedTime: post.date,
+      modifiedTime: post.updatedDate ?? post.date,
+      authors: [post.author],
       tags: post.tags,
+      images: [
+        {
+          url: `https://tinkerschool.ai/blog/${slug}/opengraph-image`,
+          width: 1200,
+          height: 630,
+          alt: post.title,
+          type: "image/png",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.description,
+      images: [`https://tinkerschool.ai/blog/${slug}/opengraph-image`],
     },
     alternates: {
       canonical: `https://tinkerschool.ai/blog/${slug}`,
@@ -65,7 +90,7 @@ export default async function BlogPostPage({ params }: Props) {
     "@context": "https://schema.org",
     "@graph": [
       {
-        "@type": "Article",
+        "@type": "BlogPosting",
         headline: post.title,
         description: post.description,
         datePublished: post.date,
@@ -75,15 +100,27 @@ export default async function BlogPostPage({ params }: Props) {
           name: post.author,
         },
         publisher: {
-          "@type": "Organization",
-          name: "TinkerSchool",
-          url: "https://tinkerschool.ai",
-          logo: "https://tinkerschool.ai/images/chip.png",
+          "@id": "https://tinkerschool.ai/#organization",
+        },
+        image: {
+          "@type": "ImageObject",
+          url: `https://tinkerschool.ai/blog/${post.slug}/opengraph-image`,
+          width: 1200,
+          height: 630,
         },
         keywords: post.tags.join(", "),
+        inLanguage: "en-US",
         mainEntityOfPage: {
           "@type": "WebPage",
           "@id": `https://tinkerschool.ai/blog/${post.slug}`,
+        },
+        isPartOf: {
+          "@type": "Blog",
+          "@id": "https://tinkerschool.ai/blog",
+          name: "TinkerSchool Blog",
+          publisher: {
+            "@id": "https://tinkerschool.ai/#organization",
+          },
         },
       },
       {

@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   ChevronRight,
 } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Chat with Chip",
+  robots: { index: false, follow: false },
+};
 
 import { SubjectIcon } from "@/components/subject-icon";
 import { requireAuth, getActiveKidProfile } from "@/lib/auth/require-auth";

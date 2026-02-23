@@ -26,6 +26,7 @@ import {
 
 export const metadata: Metadata = {
   title: "Help - Getting Started",
+  robots: { index: false, follow: false },
 };
 
 // ---------------------------------------------------------------------------

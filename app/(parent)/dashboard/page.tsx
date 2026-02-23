@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
-export const metadata: Metadata = { title: "Parent Dashboard" };
+export const metadata: Metadata = {
+  title: "Parent Dashboard",
+  robots: { index: false, follow: false },
+};
 import {
   BookOpen,
   Trophy,

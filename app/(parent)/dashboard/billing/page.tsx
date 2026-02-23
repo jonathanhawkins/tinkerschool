@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = {
+  title: "Billing | Parent Dashboard",
+  robots: { index: false, follow: false },
+};
 import { CheckCircle2, Heart } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";

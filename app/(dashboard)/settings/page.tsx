@@ -24,7 +24,10 @@ import { EditKidGrade } from "./edit-kid-grade";
 import { FamilySection } from "./invite-co-parent";
 import { listFamilyParents, listPendingInvitations } from "./invite-actions";
 
-export const metadata: Metadata = { title: "Settings" };
+export const metadata: Metadata = {
+  title: "Settings",
+  robots: { index: false, follow: false },
+};
 
 import { requireAuth } from "@/lib/auth/require-auth";
 import { getFamilyTier } from "@/lib/stripe/get-family-tier";

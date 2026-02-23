@@ -17,10 +17,36 @@ export const metadata: Metadata = {
   title: "Support TinkerSchool - Help Fund Free Education for Every Kid",
   description:
     "TinkerSchool is free and open source. Your support helps fund AI tutoring costs so every child can access personalized learning in math, reading, science, coding, and more.",
+  keywords: [
+    "support open source education",
+    "fund AI tutoring for kids",
+    "donate to education platform",
+    "free learning for kids",
+    "support homeschool platform",
+  ],
   openGraph: {
     title: "Support TinkerSchool - Help Fund Free Education for Every Kid",
     description:
       "Your support helps fund AI tutoring costs so every child ages 5-12 can access personalized, hands-on learning. Always free, always open source.",
+    type: "website",
+    url: "https://tinkerschool.ai/support",
+    siteName: "TinkerSchool",
+    locale: "en_US",
+    images: [
+      {
+        url: "https://tinkerschool.ai/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Support TinkerSchool - Free Education for Every Kid",
+        type: "image/png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Support TinkerSchool - Help Fund Free Education for Every Kid",
+    description:
+      "Your support helps fund AI tutoring costs so every child ages 5-12 can access personalized, hands-on learning.",
   },
   alternates: {
     canonical: "https://tinkerschool.ai/support",
@@ -55,9 +81,34 @@ const benefits = [
   "Priority access to new features",
 ];
 
+const supportStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    {
+      "@type": "ListItem",
+      position: 1,
+      name: "Home",
+      item: "https://tinkerschool.ai",
+    },
+    {
+      "@type": "ListItem",
+      position: 2,
+      name: "Support TinkerSchool",
+      item: "https://tinkerschool.ai/support",
+    },
+  ],
+};
+
 export default function SupportPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(supportStructuredData),
+        }}
+      />
       {/* Nav */}
       <nav className="border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-6">
@@ -95,7 +146,9 @@ export default function SupportPage() {
       </section>
 
       {/* Why support */}
-      <section className="mx-auto grid w-full max-w-4xl gap-6 px-6 pb-16 md:grid-cols-3">
+      <section className="mx-auto w-full max-w-4xl px-6 pb-16">
+        <h2 className="sr-only">Why Support TinkerSchool</h2>
+        <div className="grid gap-6 md:grid-cols-3">
         {reasons.map((reason) => (
           <Card key={reason.title} className="rounded-2xl">
             <CardContent className="flex flex-col gap-3 p-6">
@@ -109,6 +162,7 @@ export default function SupportPage() {
             </CardContent>
           </Card>
         ))}
+        </div>
       </section>
 
       {/* Pricing summary */}
@@ -156,7 +210,7 @@ export default function SupportPage() {
 
       {/* Footer */}
       <footer className="border-t border-border px-6 py-8">
-        <div className="mx-auto flex max-w-4xl items-center justify-between">
+        <div className="mx-auto flex max-w-4xl flex-col items-center justify-between gap-4 sm:flex-row">
           <div className="flex items-center gap-2">
             <Image
               src="/images/chip.png"
@@ -168,6 +222,23 @@ export default function SupportPage() {
             <span className="text-sm text-muted-foreground">
               TinkerSchool.ai
             </span>
+          </div>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <Link href="/" className="transition-colors hover:text-foreground">
+              Home
+            </Link>
+            <Link href="/demo" className="transition-colors hover:text-foreground">
+              Try Demo
+            </Link>
+            <Link href="/blog" className="transition-colors hover:text-foreground">
+              Blog
+            </Link>
+            <Link href="/privacy" className="transition-colors hover:text-foreground">
+              Privacy
+            </Link>
+            <Link href="/terms" className="transition-colors hover:text-foreground">
+              Terms
+            </Link>
           </div>
           <p className="text-xs text-muted-foreground">
             Free and open source, always.

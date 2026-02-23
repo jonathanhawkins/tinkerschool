@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Firmware Browser",
+  robots: { index: false, follow: false },
+};
 
 import { requireAuth } from "@/lib/auth/require-auth";
 import { fetchFirmwareCatalog } from "@/lib/firmware/catalog";

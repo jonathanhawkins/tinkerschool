@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = { title: "Subjects" };
+export const metadata: Metadata = {
+  title: "Subjects",
+  robots: { index: false, follow: false },
+};
 import {
   BookOpen,
   Sparkles,

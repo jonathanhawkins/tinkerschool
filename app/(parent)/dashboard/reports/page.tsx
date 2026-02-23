@@ -26,7 +26,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { Profile, Subject, SkillLevel } from "@/lib/supabase/types";
 
-export const metadata: Metadata = { title: "Learning Reports" };
+export const metadata: Metadata = {
+  title: "Learning Reports",
+  robots: { index: false, follow: false },
+};
 
 // ---------------------------------------------------------------------------
 // Types

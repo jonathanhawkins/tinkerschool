@@ -13,7 +13,10 @@ import type {
 } from "@/lib/supabase/types";
 import { ProgressExplorer } from "./progress-explorer";
 
-export const metadata: Metadata = { title: "Learning Progress" };
+export const metadata: Metadata = {
+  title: "Learning Progress",
+  robots: { index: false, follow: false },
+};
 
 export default async function ProgressPage({
   searchParams,

@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = { title: "Chat with Chip" };
+export const metadata: Metadata = {
+  title: "Chat with Chip",
+  robots: { index: false, follow: false },
+};
 import {
   MessageCircle,
 } from "lucide-react";

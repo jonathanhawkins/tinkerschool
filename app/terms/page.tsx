@@ -29,16 +29,68 @@ export const metadata: Metadata = {
   title: "Terms of Service",
   description:
     "TinkerSchool's terms of service. Simple, readable terms for our AI-powered education platform for kids ages 5-12.",
+  openGraph: {
+    title: "Terms of Service | TinkerSchool",
+    description:
+      "TinkerSchool's terms of service. Simple, readable terms for our AI-powered education platform for kids ages 5-12.",
+    type: "website",
+    url: "https://tinkerschool.ai/terms",
+    siteName: "TinkerSchool",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary",
+    title: "Terms of Service | TinkerSchool",
+    description:
+      "TinkerSchool's terms of service. Simple, readable terms for our AI-powered education platform.",
+  },
   alternates: {
     canonical: "https://tinkerschool.ai/terms",
   },
 };
 
 const LAST_UPDATED = "February 17, 2026";
+const LAST_UPDATED_ISO = "2026-02-17";
+
+const termsJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "@id": "https://tinkerschool.ai/terms",
+  name: "Terms of Service | TinkerSchool",
+  url: "https://tinkerschool.ai/terms",
+  description:
+    "TinkerSchool's terms of service. Simple, readable terms for our AI-powered education platform for kids ages 5-12.",
+  dateModified: LAST_UPDATED_ISO,
+  inLanguage: "en-US",
+  isPartOf: {
+    "@id": "https://tinkerschool.ai/#website",
+  },
+  breadcrumb: {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://tinkerschool.ai",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Terms of Service",
+        item: "https://tinkerschool.ai/terms",
+      },
+    ],
+  },
+};
 
 export default function TermsOfServicePage() {
   return (
     <div className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(termsJsonLd) }}
+      />
       {/* Navigation bar */}
       <nav className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-3">

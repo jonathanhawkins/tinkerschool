@@ -27,16 +27,68 @@ export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
     "TinkerSchool's privacy policy explains how we protect your child's data. COPPA-compliant, family-scoped, and designed with children's safety first.",
+  openGraph: {
+    title: "Privacy Policy | TinkerSchool",
+    description:
+      "TinkerSchool's privacy policy explains how we protect your child's data. COPPA-compliant, family-scoped, and designed with children's safety first.",
+    type: "website",
+    url: "https://tinkerschool.ai/privacy",
+    siteName: "TinkerSchool",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary",
+    title: "Privacy Policy | TinkerSchool",
+    description:
+      "TinkerSchool's privacy policy. COPPA-compliant, family-scoped, and designed with children's safety first.",
+  },
   alternates: {
     canonical: "https://tinkerschool.ai/privacy",
   },
 };
 
 const LAST_UPDATED = "February 22, 2026";
+const LAST_UPDATED_ISO = "2026-02-22";
+
+const privacyJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "@id": "https://tinkerschool.ai/privacy",
+  name: "Privacy Policy | TinkerSchool",
+  url: "https://tinkerschool.ai/privacy",
+  description:
+    "TinkerSchool's privacy policy explains how we protect your child's data. COPPA-compliant, family-scoped, and designed with children's safety first.",
+  dateModified: LAST_UPDATED_ISO,
+  inLanguage: "en-US",
+  isPartOf: {
+    "@id": "https://tinkerschool.ai/#website",
+  },
+  breadcrumb: {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://tinkerschool.ai",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Privacy Policy",
+        item: "https://tinkerschool.ai/privacy",
+      },
+    ],
+  },
+};
 
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(privacyJsonLd) }}
+      />
       {/* Navigation bar */}
       <nav className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-3">

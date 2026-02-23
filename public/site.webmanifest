@@ -1,11 +1,14 @@
 {
   "name": "TinkerSchool",
   "short_name": "TinkerSchool",
-  "description": "Where every kid is a genius waiting to bloom",
+  "description": "Where every kid is a genius waiting to bloom. Free AI-powered education for K-6 kids.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F8FAFC",
   "theme_color": "#F97316",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["education", "kids"],
   "icons": [
     {
       "src": "/icon-192.png",
@@ -23,5 +26,16 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "TinkerSchool - AI-Powered Learning for Kids"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
 }

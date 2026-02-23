@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 
 import { requireAuth, getActiveKidProfile } from "@/lib/auth/require-auth";
 
-export const metadata: Metadata = { title: "Achievements" };
+export const metadata: Metadata = {
+  title: "Achievements",
+  robots: { index: false, follow: false },
+};
 import { BadgeIcon } from "@/lib/badge-icons";
 import { formatDate } from "@/lib/format-date";
 import { cn } from "@/lib/utils";

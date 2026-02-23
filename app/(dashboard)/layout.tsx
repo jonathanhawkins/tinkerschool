@@ -1,7 +1,12 @@
+import type { Metadata } from "next";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 import { MobileNav } from "@/components/mobile-nav";
 import { TabletBottomNav } from "@/components/tablet-bottom-nav";
 import { DevDebugWidget } from "@/components/dev-debug-widget";

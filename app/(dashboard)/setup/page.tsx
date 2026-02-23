@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import { Package } from "lucide-react";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Device Setup",
+  robots: { index: false, follow: false },
+};
 
 import { requireAuth } from "@/lib/auth/require-auth";
 

@@ -4,7 +4,9 @@ import { getPostBySlug, getAllPosts } from "@/lib/blog/posts";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "TinkerSchool Blog Post";
+// Note: Next.js uses this as the static fallback alt. Dynamic alt is set per-post
+// in generateMetadata (app/blog/[slug]/page.tsx) via twitter.images[].alt.
+export const alt = "TinkerSchool Blog";
 
 export function generateStaticParams() {
   const posts = getAllPosts();

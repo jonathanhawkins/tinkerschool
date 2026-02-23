@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
+        allow: ["/", "/demo", "/blog", "/privacy", "/terms", "/support", "/feed.xml", "/sitemap.xml"],
         disallow: [
           "/api/",
           "/dashboard/",
@@ -13,7 +13,9 @@ export default function robots(): MetadataRoute.Robots {
           "/sign-in/",
           "/sign-up/",
           "/home",
+          "/home/",
           "/workshop/",
+          "/workshop",
           "/lessons/",
           "/subjects/",
           "/achievements/",
@@ -22,9 +24,12 @@ export default function robots(): MetadataRoute.Robots {
           "/settings/",
           "/setup/",
           "/coppa-confirmed",
+          "/coppa-confirmed/",
+          "/debug/",
         ],
       },
     ],
     sitemap: "https://tinkerschool.ai/sitemap.xml",
+    host: "https://tinkerschool.ai",
   };
 }

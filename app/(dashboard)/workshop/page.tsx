@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
+
 import { requireAuth, getActiveKidProfile } from "@/lib/auth/require-auth";
+
+export const metadata: Metadata = {
+  title: "Workshop",
+  robots: { index: false, follow: false },
+};
 import type {
   Lesson,
   Module,

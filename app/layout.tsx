@@ -26,10 +26,32 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL ?? "https://tinkerschool.ai"
   ),
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F97316" },
-    { media: "(prefers-color-scheme: dark)", color: "#F97316" },
+  keywords: [
+    "AI tutor for kids",
+    "homeschool curriculum",
+    "STEM activities for kids",
+    "hands-on learning",
+    "coding for kids",
+    "K-6 education platform",
+    "free education platform",
+    "personalized learning",
+    "afterschooling",
+    "kids learning app",
   ],
+  authors: [{ name: "TinkerSchool", url: "https://tinkerschool.ai" }],
+  creator: "TinkerSchool",
+  publisher: "TinkerSchool",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   openGraph: {
     type: "website",
     siteName: "TinkerSchool",
@@ -37,9 +59,10 @@ export const metadata: Metadata = {
     description:
       "Where every kid is a genius waiting to bloom. An open-source AI-powered education platform for K-6 kids.",
     locale: "en_US",
+    url: "https://tinkerschool.ai",
     images: [
       {
-        url: "https://tinkerschool.ai/og-image.png",
+        url: "https://tinkerschool.ai/opengraph-image",
         width: 1200,
         height: 630,
         alt: "TinkerSchool - Where every kid is a genius waiting to bloom",
@@ -56,7 +79,7 @@ export const metadata: Metadata = {
       "Where every kid is a genius waiting to bloom. An open-source AI-powered education platform for K-6 kids.",
     images: [
       {
-        url: "https://tinkerschool.ai/og-image.png",
+        url: "https://tinkerschool.ai/twitter-image",
         width: 1200,
         height: 630,
         alt: "TinkerSchool - Where every kid is a genius waiting to bloom",
@@ -73,6 +96,7 @@ export const metadata: Metadata = {
     apple: [
       { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
+    shortcut: "/favicon.ico",
   },
   manifest: "/site.webmanifest",
   alternates: {
@@ -83,6 +107,7 @@ export const metadata: Metadata = {
   },
   other: {
     "msapplication-TileColor": "#F97316",
+    "msapplication-config": "/browserconfig.xml",
   },
 };
 
@@ -103,21 +128,45 @@ export default function RootLayout({
                 "@graph": [
                   {
                     "@type": "Organization",
+                    "@id": "https://tinkerschool.ai/#organization",
                     name: "TinkerSchool",
                     url: "https://tinkerschool.ai",
-                    logo: "https://tinkerschool.ai/images/chip.png",
+                    logo: {
+                      "@type": "ImageObject",
+                      "@id": "https://tinkerschool.ai/#logo",
+                      url: "https://tinkerschool.ai/icon-512.png",
+                      width: 512,
+                      height: 512,
+                      caption: "TinkerSchool",
+                    },
+                    image: {
+                      "@id": "https://tinkerschool.ai/#logo",
+                    },
                     description:
                       "Open-source AI-powered education platform for K-6 kids. Learn math, reading, science, music, art, problem solving, and coding with your AI buddy Chip.",
+                    email: "hello@tinkerschool.ai",
+                    foundingDate: "2026",
                     sameAs: [
                       "https://github.com/jonathanhawkins/tinkerschool",
                     ],
+                    contactPoint: {
+                      "@type": "ContactPoint",
+                      contactType: "customer support",
+                      email: "hello@tinkerschool.ai",
+                      availableLanguage: "English",
+                    },
                   },
                   {
                     "@type": "WebSite",
+                    "@id": "https://tinkerschool.ai/#website",
                     name: "TinkerSchool",
                     url: "https://tinkerschool.ai",
                     description:
                       "Open-source AI-powered education platform for K-6 kids. Learn math, reading, science, music, art, problem solving, and coding with your AI buddy Chip.",
+                    publisher: {
+                      "@id": "https://tinkerschool.ai/#organization",
+                    },
+                    inLanguage: "en-US",
                     potentialAction: {
                       "@type": "SearchAction",
                       target: {
@@ -130,9 +179,13 @@ export default function RootLayout({
                   },
                   {
                     "@type": "SoftwareApplication",
+                    "@id": "https://tinkerschool.ai/#app",
                     name: "TinkerSchool",
+                    url: "https://tinkerschool.ai",
                     applicationCategory: "EducationalApplication",
-                    operatingSystem: "Web",
+                    applicationSubCategory: "K-12 Education",
+                    operatingSystem: "Web Browser",
+                    browserRequirements: "Requires Chrome 89+ or Edge 89+",
                     offers: {
                       "@type": "Offer",
                       price: "0",
@@ -145,6 +198,17 @@ export default function RootLayout({
                       educationalRole: "student",
                       typicalAgeRange: "5-12",
                     },
+                    creator: {
+                      "@id": "https://tinkerschool.ai/#organization",
+                    },
+                    featureList: [
+                      "AI-powered personalized tutoring",
+                      "Math, Reading, Science, Music, Art, Problem Solving, Coding",
+                      "M5StickC Plus 2 hardware integration",
+                      "COPPA-compliant child safety",
+                      "Parent dashboard with progress monitoring",
+                      "Offline-capable with browser simulator",
+                    ],
                   },
                 ],
               }),

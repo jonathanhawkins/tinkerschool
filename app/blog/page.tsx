@@ -12,13 +12,45 @@ export const metadata: Metadata = {
   title: "Blog - Homeschool Resources & Learning Tips",
   description:
     "Expert guides on homeschooling, afterschooling, STEM activities, AI-powered learning, and hands-on education for kids ages 5-12. Free resources for parents.",
+  keywords: [
+    "homeschool resources",
+    "learning tips for kids",
+    "STEM activities",
+    "afterschooling guides",
+    "AI-powered learning",
+    "hands-on education",
+    "K-6 education tips",
+    "homeschool curriculum ideas",
+  ],
   openGraph: {
+    title: "TinkerSchool Blog - Homeschool Resources & Learning Tips",
+    description:
+      "Expert guides on homeschooling, afterschooling, STEM activities, and hands-on education for kids ages 5-12.",
+    type: "website",
+    url: "https://tinkerschool.ai/blog",
+    siteName: "TinkerSchool",
+    locale: "en_US",
+    images: [
+      {
+        url: "https://tinkerschool.ai/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "TinkerSchool Blog - Homeschool Resources & Learning Tips",
+        type: "image/png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
     title: "TinkerSchool Blog - Homeschool Resources & Learning Tips",
     description:
       "Expert guides on homeschooling, afterschooling, STEM activities, and hands-on education for kids ages 5-12.",
   },
   alternates: {
     canonical: "https://tinkerschool.ai/blog",
+    types: {
+      "application/rss+xml": "https://tinkerschool.ai/feed.xml",
+    },
   },
 };
 
@@ -31,11 +63,43 @@ function formatDate(dateString: string): string {
   });
 }
 
+function buildBlogJsonLd(posts: ReturnType<typeof getAllPosts>) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    "@id": "https://tinkerschool.ai/blog",
+    name: "TinkerSchool Blog",
+    description:
+      "Expert guides on homeschooling, afterschooling, STEM activities, AI-powered learning, and hands-on education for kids ages 5-12.",
+    url: "https://tinkerschool.ai/blog",
+    publisher: {
+      "@id": "https://tinkerschool.ai/#organization",
+    },
+    inLanguage: "en-US",
+    blogPost: posts.slice(0, 10).map((post) => ({
+      "@type": "BlogPosting",
+      headline: post.title,
+      description: post.description,
+      datePublished: post.date,
+      dateModified: post.updatedDate ?? post.date,
+      url: `https://tinkerschool.ai/blog/${post.slug}`,
+      author: {
+        "@type": "Person",
+        name: post.author,
+      },
+    })),
+  };
+}
+
 export default function BlogPage() {
   const posts = getAllPosts();
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildBlogJsonLd(posts)) }}
+      />
       {/* Navigation */}
       <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">

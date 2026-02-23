@@ -14,6 +14,7 @@ import { ExportDataButton } from "./export-data-button";
 
 export const metadata: Metadata = {
   title: "Settings | Parent Dashboard",
+  robots: { index: false, follow: false },
 };
 
 export default async function ParentSettingsPage() {

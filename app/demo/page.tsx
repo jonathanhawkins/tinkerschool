@@ -21,11 +21,37 @@ export const metadata: Metadata = {
   title: "Try TinkerSchool - Free Interactive Demo",
   description:
     "Try real interactive lessons from TinkerSchool. No account needed! See how kids learn math, reading, science, and more with hands-on activities and an AI tutor.",
+  keywords: [
+    "free interactive learning demo",
+    "kids learning demo",
+    "try AI tutor",
+    "free STEM activities demo",
+    "homeschool demo",
+    "no account needed kids learning",
+  ],
   openGraph: {
     title: "Try TinkerSchool - Free Interactive Demo",
     description:
-      "Try real interactive lessons from TinkerSchool. No account needed!",
+      "Try real interactive lessons from TinkerSchool. No account needed! See how kids learn with hands-on activities and an AI tutor.",
     type: "website",
+    url: "https://tinkerschool.ai/demo",
+    siteName: "TinkerSchool",
+    locale: "en_US",
+    images: [
+      {
+        url: "https://tinkerschool.ai/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Try TinkerSchool - Free Interactive Demo for Kids",
+        type: "image/png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Try TinkerSchool - Free Interactive Demo",
+    description:
+      "Try real interactive lessons from TinkerSchool. No account needed!",
   },
   alternates: {
     canonical: "https://tinkerschool.ai/demo",
@@ -62,12 +88,39 @@ const HIGHLIGHTS = [
 ];
 
 // ---------------------------------------------------------------------------
+// Structured data
+// ---------------------------------------------------------------------------
+
+const demoStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    {
+      "@type": "ListItem",
+      position: 1,
+      name: "Home",
+      item: "https://tinkerschool.ai",
+    },
+    {
+      "@type": "ListItem",
+      position: 2,
+      name: "Try Demo",
+      item: "https://tinkerschool.ai/demo",
+    },
+  ],
+};
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
 export default function DemoPage() {
   return (
     <div className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(demoStructuredData) }}
+      />
       {/* Sticky nav */}
       <nav className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">

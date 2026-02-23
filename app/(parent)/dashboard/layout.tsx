@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Image from "next/image";
+
+export const metadata: Metadata = {
+  title: "Parent Dashboard | TinkerSchool",
+  robots: { index: false, follow: false },
+};
 import {
   LayoutDashboard,
   BarChart3,

@@ -1,10 +1,12 @@
+import type { Metadata } from "next";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Welcome to TinkerSchool!",
-  description: "Set up your family's learning adventure.",
+  description: "Set up your family's learning adventure on TinkerSchool.",
+  robots: { index: false, follow: false },
 };
 
 export default async function OnboardingLayout({

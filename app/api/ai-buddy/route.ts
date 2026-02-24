@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 
 import { getChipSystemPrompt } from "@/lib/ai/chip-system-prompt";
 import type { ChipContext } from "@/lib/ai/chip-system-prompt";
+import { discoverInterests } from "@/lib/ai/interest-discovery";
 import { evaluateBadges } from "@/lib/badges/evaluate-badges";
 import { checkAiBuddyRateLimit } from "@/lib/rate-limit";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -152,6 +153,16 @@ async function persistChat(
           .update({ messages: updatedMessages })
           .eq("id", existing.id);
 
+        // Discover interests on every message, not just new sessions
+        if (userMessage) {
+          discoverInterests(supabase, profile.id, userMessage).catch((err) => {
+            console.error(
+              "[ai-buddy] Interest discovery failed:",
+              err instanceof Error ? err.message : "unknown error",
+            );
+          });
+        }
+
         return existing.id;
       }
     }
@@ -179,6 +190,17 @@ async function persistChat(
           badgeErr instanceof Error ? badgeErr.message : "unknown error",
         );
       }
+    }
+
+    // Discover interests from the kid's message (lightweight keyword matching,
+    // no AI cost). Fire-and-forget — appends new interests to learning_profiles.
+    if (userMessage) {
+      discoverInterests(supabase, profile.id, userMessage).catch((err) => {
+        console.error(
+          "[ai-buddy] Interest discovery failed:",
+          err instanceof Error ? err.message : "unknown error",
+        );
+      });
     }
 
     return inserted?.id ?? null;

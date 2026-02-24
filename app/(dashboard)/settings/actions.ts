@@ -92,7 +92,7 @@ export async function resetOnboarding() {
       supabase.from("user_badges").delete().in("profile_id", profileIds),
       supabase.from("chat_sessions").delete().in("profile_id", profileIds),
       supabase.from("learning_profiles").delete().in("profile_id", profileIds),
-      supabase.from("skill_proficiency").delete().in("profile_id", profileIds),
+      supabase.from("skill_proficiencies").delete().in("profile_id", profileIds),
     ]);
 
     // Delete all profiles in the family

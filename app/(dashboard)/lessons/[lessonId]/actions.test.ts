@@ -65,6 +65,14 @@ vi.mock("@/lib/notifications/send-parent-notification", () => ({
   sendLessonCompletionNotification: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("@/lib/ai/skill-proficiency-writer", () => ({
+  updateSkillProficiency: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/lib/ai/chip-memory-synthesizer", () => ({
+  synthesizeChipNotes: vi.fn().mockResolvedValue(undefined),
+}));
+
 let mockServerSupabase: ChainableMock;
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -240,6 +248,22 @@ describe("completeActivity", () => {
     expect(result.error).toBe("Profile not found");
   });
 
+  // Helper: mock for the progress attempts fetch added by the attempts fix.
+  // Returns { data: { attempts: N } } via .select().eq().eq().maybeSingle().
+  function progressFetchMock(attempts = 0) {
+    return {
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { attempts },
+            }),
+          }),
+        }),
+      }),
+    };
+  }
+
   it("marks lesson as completed and awards XP when score >= 60", async () => {
     let fromCallCount = 0;
     mockServerSupabase.from.mockImplementation(() => {
@@ -266,6 +290,11 @@ describe("completeActivity", () => {
       }
 
       if (fromCallCount === 3) {
+        // Fetch existing progress attempts
+        return progressFetchMock(2);
+      }
+
+      if (fromCallCount === 4) {
         // progress upsert (completed)
         return {
           upsert: vi.fn().mockResolvedValue({ error: null }),
@@ -307,6 +336,11 @@ describe("completeActivity", () => {
         return { insert: vi.fn().mockResolvedValue({ error: null }) };
       }
 
+      if (fromCallCount === 3) {
+        // Fetch existing progress attempts
+        return progressFetchMock(1);
+      }
+
       // progress upsert (in_progress)
       return { upsert: vi.fn().mockResolvedValue({ error: null }) };
     });
@@ -339,6 +373,10 @@ describe("completeActivity", () => {
       }
 
       if (fromCallCount === 3) {
+        return progressFetchMock(0);
+      }
+
+      if (fromCallCount === 4) {
         return { upsert: vi.fn().mockResolvedValue({ error: null }) };
       }
 
@@ -377,6 +415,10 @@ describe("completeActivity", () => {
         return { insert: vi.fn().mockResolvedValue({ error: new Error("Insert failed") }) };
       }
 
+      if (fromCallCount === 3) {
+        return progressFetchMock(0);
+      }
+
       // Still processes the rest
       return { upsert: vi.fn().mockResolvedValue({ error: null }) };
     });
@@ -411,11 +453,15 @@ describe("completeActivity", () => {
       }
 
       if (fromCallCount === 3) {
+        return progressFetchMock(4);
+      }
+
+      if (fromCallCount === 4) {
         return { upsert: vi.fn().mockResolvedValue({ error: null }) };
       }
 
       // Milestone: progress count = 5
-      if (fromCallCount === 4) {
+      if (fromCallCount === 5) {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
@@ -426,7 +472,7 @@ describe("completeActivity", () => {
       }
 
       // Profile for kid name
-      if (fromCallCount === 5) {
+      if (fromCallCount === 6) {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
@@ -439,7 +485,7 @@ describe("completeActivity", () => {
       }
 
       // Family for subscription tier
-      if (fromCallCount === 6) {
+      if (fromCallCount === 7) {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({

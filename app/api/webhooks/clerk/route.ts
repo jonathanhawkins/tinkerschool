@@ -138,14 +138,38 @@ export async function POST(request: Request) {
         if (!existingProfile) {
           // Create a stub profile — the user can complete it during onboarding
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase.from("profiles") as any).insert({
-            clerk_id: clerkUserId,
-            family_id: family.id,
-            display_name: displayName,
-            avatar_id: "chip",
-            role: isAdmin ? "parent" : "kid",
-            current_band: isAdmin ? 0 : 2,
-          });
+          const { data: newProfile } = await (supabase.from("profiles") as any)
+            .insert({
+              clerk_id: clerkUserId,
+              family_id: family.id,
+              display_name: displayName,
+              avatar_id: "chip",
+              role: isAdmin ? "parent" : "kid",
+              current_band: isAdmin ? 0 : 2,
+            })
+            .select("id")
+            .single();
+
+          // Create a learning profile for kid accounts so Chip's memory
+          // features (interest discovery, chip notes synthesis) work
+          // from the very first interaction.
+          if (newProfile && !isAdmin) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { error: lpError } = await (supabase.from("learning_profiles") as any).insert({
+              profile_id: newProfile.id,
+              learning_style: { visual: 0.4, kinesthetic: 0.3, auditory: 0.2, reading: 0.1 },
+              interests: [],
+              preferred_session_length: 15,
+              preferred_encouragement: "enthusiastic",
+            });
+
+            if (lpError) {
+              console.error(
+                `[clerk-webhook] Failed to create learning profile for kid=${newProfile.id}:`,
+                lpError instanceof Error ? lpError.message : "unknown error",
+              );
+            }
+          }
         }
 
         console.log(

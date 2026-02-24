@@ -325,6 +325,76 @@ describe("POST /api/webhooks/clerk", () => {
     );
   });
 
+  it("handles organizationMembership.created — creates learning_profile for kid", async () => {
+    setHeaders();
+
+    const eventPayload = {
+      type: "organizationMembership.created",
+      data: {
+        organization: { id: "org_family1", name: "Smith Family" },
+        public_user_data: {
+          user_id: "user_kid2",
+          first_name: "Lila",
+          last_name: null,
+        },
+        role: "org:member",
+      },
+    };
+    mockVerify.mockReturnValue(eventPayload);
+
+    mockSingle.mockResolvedValue({
+      data: { id: "new-kid-profile-uuid" },
+    });
+    mockMaybeSingle.mockResolvedValue({ data: null });
+
+    const res = await POST(makeRequest(eventPayload));
+
+    expect(res.status).toBe(200);
+    // Should insert both the profile and the learning_profile
+    expect(mockInsert).toHaveBeenCalledTimes(2);
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profile_id: "new-kid-profile-uuid",
+        interests: [],
+        preferred_encouragement: "enthusiastic",
+      }),
+    );
+  });
+
+  it("handles organizationMembership.created — does NOT create learning_profile for parent", async () => {
+    setHeaders();
+
+    const eventPayload = {
+      type: "organizationMembership.created",
+      data: {
+        organization: { id: "org_family1", name: "Smith Family" },
+        public_user_data: {
+          user_id: "user_parent2",
+          first_name: "Alice",
+          last_name: null,
+        },
+        role: "org:admin",
+      },
+    };
+    mockVerify.mockReturnValue(eventPayload);
+
+    mockSingle.mockResolvedValue({
+      data: { id: "new-parent-profile-uuid" },
+    });
+    mockMaybeSingle.mockResolvedValue({ data: null });
+
+    const res = await POST(makeRequest(eventPayload));
+
+    expect(res.status).toBe(200);
+    // Should only insert the profile, NOT a learning_profile
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        role: "parent",
+      }),
+    );
+  });
+
   it("handles organizationMembership.created — uses 'Member' when name is empty", async () => {
     setHeaders();
 

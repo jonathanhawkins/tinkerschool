@@ -3,6 +3,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
+import { synthesizeChipNotes } from "@/lib/ai/chip-memory-synthesizer";
+import { updateSkillProficiency } from "@/lib/ai/skill-proficiency-writer";
 import {
   evaluateBadges,
   type EarnedBadgeInfo,
@@ -190,8 +192,30 @@ export async function completeActivity(
     // Don't fail the whole operation - still update progress
   }
 
+  // Update skill proficiency for all skills covered by this lesson (fire-and-forget).
+  // Runs on every attempt (pass or fail) to track engagement.
+  const adminClient = createAdminSupabaseClient();
+  updateSkillProficiency(adminClient, profileId, input.lessonId, {
+    score: input.score,
+    hintsUsed: input.hintsUsed,
+    correctFirstTry: input.correctFirstTry,
+    totalQuestions: input.totalQuestions,
+  }).catch((err) => {
+    console.error("[completeActivity] Skill proficiency update failed:", err);
+  });
+
   // Determine if the student passed (60% default threshold)
   const passed = input.score >= 60;
+
+  // Fetch existing progress to correctly increment attempts
+  const { data: existingProgress } = (await supabase
+    .from("progress")
+    .select("attempts")
+    .eq("profile_id", profileId)
+    .eq("lesson_id", input.lessonId)
+    .maybeSingle()) as { data: { attempts: number } | null };
+
+  const currentAttempts = existingProgress?.attempts ?? 0;
 
   if (passed) {
     // Update lesson progress to completed
@@ -204,7 +228,7 @@ export async function completeActivity(
         status: "completed",
         started_at: now,
         completed_at: now,
-        attempts: 1,
+        attempts: currentAttempts + 1,
       },
       {
         onConflict: "profile_id, lesson_id",
@@ -250,7 +274,7 @@ export async function completeActivity(
           .eq("id", profileResult.data.family_id)
           .single()) as { data: { subscription_tier: string } | null };
 
-        const isFree = family?.subscription_tier !== "supporter";
+        const isFree = !family || family.subscription_tier === "free";
 
         if (isFree) {
           milestone = {
@@ -275,6 +299,12 @@ export async function completeActivity(
       console.error("[completeActivity] Parent notification failed:", err);
     });
 
+    // Synthesize Chip's evolving notes about this child (fire-and-forget).
+    // Runs every 3rd lesson completion via Claude Haiku (~$0.001).
+    synthesizeChipNotes(adminClient, profileId).catch((err) => {
+      console.error("[completeActivity] Chip notes synthesis failed:", err);
+    });
+
     revalidatePath("/home");
     revalidatePath("/achievements");
     revalidatePath(`/lessons/${input.lessonId}`);
@@ -296,7 +326,7 @@ export async function completeActivity(
       lesson_id: input.lessonId,
       status: "in_progress",
       started_at: now,
-      attempts: 1,
+      attempts: currentAttempts + 1,
     },
     {
       onConflict: "profile_id, lesson_id",

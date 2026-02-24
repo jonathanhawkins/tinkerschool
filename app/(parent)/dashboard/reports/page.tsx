@@ -158,7 +158,7 @@ export default async function ReportsPage({
       .in("profile_id", kidIds)
       .eq("status", "completed"),
     supabase
-      .from("skill_proficiency")
+      .from("skill_proficiencies")
       .select("*, skills(id, name, subject_id)")
       .in("profile_id", kidIds),
   ]);

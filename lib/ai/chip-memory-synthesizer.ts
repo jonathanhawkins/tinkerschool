@@ -196,7 +196,7 @@ export async function synthesizeChipNotes(
   const { text } = await generateText({
     model: anthropic("claude-haiku-4-5-20251001"),
     prompt: context.prompt,
-    maxTokens: 300,
+    maxOutputTokens: 300,
   });
 
   if (!text) return;

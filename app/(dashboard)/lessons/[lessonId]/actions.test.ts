@@ -87,6 +87,9 @@ vi.mock("@/lib/supabase/admin", () => ({
 import { startLesson, completeActivity } from "./actions";
 import { evaluateBadges } from "@/lib/badges/evaluate-badges";
 import { awardXP } from "@/lib/gamification/xp";
+import { updateSkillProficiency } from "@/lib/ai/skill-proficiency-writer";
+import { synthesizeChipNotes } from "@/lib/ai/chip-memory-synthesizer";
+import { sendLessonCompletionNotification } from "@/lib/notifications/send-parent-notification";
 
 // ---------------------------------------------------------------------------
 // startLesson
@@ -313,6 +316,25 @@ describe("completeActivity", () => {
     expect(result.xpAwarded).toBe(50);
     expect(awardXP).toHaveBeenCalled();
     expect(evaluateBadges).toHaveBeenCalled();
+    // Fire-and-forget calls should be triggered
+    expect(updateSkillProficiency).toHaveBeenCalledWith(
+      expect.anything(), // admin client
+      "kid-001",
+      validInput.lessonId,
+      expect.objectContaining({
+        score: 80,
+        hintsUsed: 1,
+        correctFirstTry: 7,
+        totalQuestions: 10,
+      }),
+    );
+    expect(synthesizeChipNotes).toHaveBeenCalledWith(expect.anything(), "kid-001");
+    expect(sendLessonCompletionNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      "kid-001",
+      validInput.lessonId,
+      80,
+    );
   });
 
   it("does not award XP when score < 60 (not passed)", async () => {
@@ -349,6 +371,16 @@ describe("completeActivity", () => {
 
     expect(result.success).toBe(true);
     expect(result.xpAwarded).toBe(0);
+    // Skill proficiency still runs on failed attempts
+    expect(updateSkillProficiency).toHaveBeenCalledWith(
+      expect.anything(),
+      "kid-001",
+      validInput.lessonId,
+      expect.objectContaining({ score: 40 }),
+    );
+    // Chip notes and parent notification should NOT run on failures
+    expect(synthesizeChipNotes).not.toHaveBeenCalled();
+    expect(sendLessonCompletionNotification).not.toHaveBeenCalled();
   });
 
   it("passes exactly at 60% threshold", async () => {

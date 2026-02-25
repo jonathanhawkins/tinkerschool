@@ -43,6 +43,17 @@ export type SubjectSlug =
 
 export type DeviceMode = "usb" | "wifi" | "simulator" | "none";
 
+export type AdventureStatus = "pending" | "completed";
+
+export type FeedbackCategory = "bug" | "feature_request" | "general";
+
+export type FeedbackStatus =
+  | "new"
+  | "in_review"
+  | "planned"
+  | "resolved"
+  | "closed";
+
 export type NotificationType =
   | "lesson_completed"
   | "badge_earned"
@@ -272,10 +283,28 @@ export interface ArtifactRating {
   created_at: string;
 }
 
+export interface DailyAdventure {
+  id: string;
+  profile_id: string;
+  subject_id: string;
+  skill_ids: string[];
+  title: string;
+  description: string;
+  story_text: string | null;
+  content: Record<string, unknown>;
+  subject_color: string;
+  status: AdventureStatus;
+  score: number | null;
+  generated_at: string;
+  expires_at: string;
+  created_at: string;
+}
+
 export interface ActivitySession {
   id: string;
   profile_id: string;
-  lesson_id: string;
+  lesson_id: string | null;
+  adventure_id: string | null;
   score: number;
   total_questions: number;
   correct_first_try: number;
@@ -301,6 +330,21 @@ export interface Notification {
   email_sent: boolean;
   email_sent_at: string | null;
   created_at: string;
+}
+
+export interface Feedback {
+  id: string;
+  profile_id: string;
+  family_id: string;
+  category: FeedbackCategory;
+  title: string;
+  description: string;
+  status: FeedbackStatus;
+  admin_notes: string | null;
+  page_url: string | null;
+  user_agent: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -508,10 +552,28 @@ export interface ArtifactRatingInsert {
   created_at?: string;
 }
 
+export interface DailyAdventureInsert {
+  id?: string;
+  profile_id: string;
+  subject_id: string;
+  skill_ids?: string[];
+  title: string;
+  description: string;
+  story_text?: string | null;
+  content: Record<string, unknown>;
+  subject_color?: string;
+  status?: AdventureStatus;
+  score?: number | null;
+  generated_at?: string;
+  expires_at?: string;
+  created_at?: string;
+}
+
 export interface ActivitySessionInsert {
   id?: string;
   profile_id: string;
-  lesson_id: string;
+  lesson_id?: string | null;
+  adventure_id?: string | null;
   score: number;
   total_questions: number;
   correct_first_try?: number;
@@ -537,6 +599,21 @@ export interface NotificationInsert {
   email_sent?: boolean;
   email_sent_at?: string | null;
   created_at?: string;
+}
+
+export interface FeedbackInsert {
+  id?: string;
+  profile_id: string;
+  family_id: string;
+  category: FeedbackCategory;
+  title: string;
+  description: string;
+  status?: FeedbackStatus;
+  admin_notes?: string | null;
+  page_url?: string | null;
+  user_agent?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -705,6 +782,19 @@ export interface ArtifactRatingUpdate {
   rating?: number;
 }
 
+export interface DailyAdventureUpdate {
+  subject_id?: string;
+  skill_ids?: string[];
+  title?: string;
+  description?: string;
+  story_text?: string | null;
+  content?: Record<string, unknown>;
+  subject_color?: string;
+  status?: AdventureStatus;
+  score?: number | null;
+  expires_at?: string;
+}
+
 export interface ActivitySessionUpdate {
   score?: number;
   total_questions?: number;
@@ -720,6 +810,17 @@ export interface NotificationUpdate {
   read?: boolean;
   email_sent?: boolean;
   email_sent_at?: string | null;
+}
+
+export interface FeedbackUpdate {
+  category?: FeedbackCategory;
+  title?: string;
+  description?: string;
+  status?: FeedbackStatus;
+  admin_notes?: string | null;
+  page_url?: string | null;
+  user_agent?: string | null;
+  updated_at?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -779,6 +880,11 @@ export interface Database {
         ArtifactRatingInsert,
         ArtifactRatingUpdate
       >;
+      daily_adventures: TableDefinition<
+        DailyAdventure,
+        DailyAdventureInsert,
+        DailyAdventureUpdate
+      >;
       activity_sessions: TableDefinition<
         ActivitySession,
         ActivitySessionInsert,
@@ -789,6 +895,7 @@ export interface Database {
         NotificationInsert,
         NotificationUpdate
       >;
+      feedback: TableDefinition<Feedback, FeedbackInsert, FeedbackUpdate>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -800,7 +907,10 @@ export interface Database {
       artifact_type: ArtifactType;
       difficulty_level: DifficultyLevel;
       subject_slug: SubjectSlug;
+      adventure_status: AdventureStatus;
       notification_type: NotificationType;
+      feedback_category: FeedbackCategory;
+      feedback_status: FeedbackStatus;
     };
   };
 }

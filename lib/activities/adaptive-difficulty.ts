@@ -61,7 +61,7 @@ export async function computeDifficulty(
     .order("created_at", { ascending: false })
     .limit(LOOKBACK_COUNT);
 
-  // If we have a subject, also filter by lessons in that subject
+  // If we have a subject, filter by lessons + adventures in that subject
   if (subjectId) {
     // Get lesson IDs for this subject
     const { data: lessons } = await supabase
@@ -69,9 +69,25 @@ export async function computeDifficulty(
       .select("id")
       .eq("subject_id", subjectId);
 
+    // Also get adventure IDs for this subject
+    const { data: adventures } = await supabase
+      .from("daily_adventures")
+      .select("id")
+      .eq("profile_id", profileId)
+      .eq("subject_id", subjectId);
+
     const lessonIds = (lessons ?? []).map((l: { id: string }) => l.id);
-    if (lessonIds.length > 0) {
+    const adventureIds = (adventures ?? []).map((a: { id: string }) => a.id);
+
+    // Filter sessions that are linked to either lessons or adventures in this subject
+    if (lessonIds.length > 0 && adventureIds.length > 0) {
+      query = query.or(
+        `lesson_id.in.(${lessonIds.join(",")}),adventure_id.in.(${adventureIds.join(",")})`,
+      );
+    } else if (lessonIds.length > 0) {
       query = query.in("lesson_id", lessonIds);
+    } else if (adventureIds.length > 0) {
+      query = query.in("adventure_id", adventureIds);
     }
   }
 

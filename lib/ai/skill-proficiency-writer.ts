@@ -133,11 +133,67 @@ export async function updateSkillProficiency(
   }
 
   // 3. Upsert each skill
+  await upsertSkillProficiencies(supabase, profileId, skillIds, result);
+}
+
+/**
+ * Update skill proficiency given skill IDs directly (no lesson lookup).
+ * Used by daily adventures which store skill_ids on the adventure row
+ * rather than looking them up from a lesson.
+ *
+ * Same core logic as updateSkillProficiency: compute level, never-downgrade,
+ * upsert into skill_proficiencies.
+ */
+export async function updateSkillProficiencyDirect(
+  supabase: SupabaseClient<Database>,
+  profileId: string,
+  skillIds: string[],
+  result: ActivityResult,
+): Promise<void> {
+  if (skillIds.length === 0) return;
+  await upsertSkillProficiencies(supabase, profileId, skillIds, result);
+}
+
+// ---------------------------------------------------------------------------
+// Shared upsert logic
+// ---------------------------------------------------------------------------
+
+async function upsertSkillProficiencies(
+  supabase: SupabaseClient<Database>,
+  profileId: string,
+  skillIds: string[],
+  result: ActivityResult,
+): Promise<void> {
+  const newLevel = computeLevel(result);
+  const newLevelOrder = LEVEL_ORDER[newLevel];
+  const passed = result.score >= 60;
+  const now = new Date().toISOString();
+
+  const { data: existingRows, error: fetchError } = (await supabase
+    .from("skill_proficiencies")
+    .select("id, skill_id, level, attempts, correct")
+    .eq("profile_id", profileId)
+    .in("skill_id", skillIds)) as {
+    data: (ExistingProficiency & { skill_id: string })[] | null;
+    error: unknown;
+  };
+
+  if (fetchError) {
+    console.error("[skill-proficiency] Failed to fetch existing rows:", fetchError);
+    return;
+  }
+
+  const existingMap = new Map<string, ExistingProficiency & { skill_id: string }>();
+  if (existingRows) {
+    for (const row of existingRows) {
+      existingMap.set(row.skill_id, row);
+    }
+  }
+
   for (const skillId of skillIds) {
     const existing = existingMap.get(skillId);
 
     if (existing) {
-      // Never downgrade: keep the higher level
       const existingOrder = LEVEL_ORDER[existing.level];
       const effectiveLevel =
         newLevelOrder > existingOrder ? newLevel : existing.level;
@@ -153,7 +209,6 @@ export async function updateSkillProficiency(
         })
         .eq("id", existing.id);
     } else {
-      // Insert new row
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase.from("skill_proficiencies") as any).insert({
         profile_id: profileId,

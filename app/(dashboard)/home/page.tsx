@@ -46,7 +46,10 @@ import {
 } from "lucide-react";
 
 import { SubjectIcon } from "@/components/subject-icon";
+import { DailyAdventureGenerateCard } from "./daily-adventure-generate-card";
 import { requireAuth, getActiveKidProfile } from "@/lib/auth/require-auth";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { getTodayAdventure } from "@/lib/adventures/adventure-store";
 import type {
   Module,
   Lesson,
@@ -57,6 +60,7 @@ import type {
   Subject,
   Skill,
   SkillProficiency,
+  DailyAdventure,
 } from "@/lib/supabase/types";
 import { cn, safeColor } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -569,6 +573,92 @@ function EarnedBadge({ badge }: { badge: Badge }) {
 }
 
 // ---------------------------------------------------------------------------
+// Daily Adventure Card
+// ---------------------------------------------------------------------------
+
+function DailyAdventureCard({
+  adventure,
+}: {
+  adventure: DailyAdventure | null;
+}) {
+  if (adventure?.status === "completed") {
+    return (
+      <FadeIn>
+        <Card className="rounded-2xl border-2 border-emerald-300/50 bg-emerald-500/5">
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15">
+              <CheckCircle2 className="size-7 text-emerald-600" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-emerald-700">
+                  Today&apos;s Adventure Complete!
+                </h3>
+                {adventure.score != null && (
+                  <BadgeUI
+                    variant="default"
+                    className="bg-emerald-600 text-white hover:bg-emerald-600"
+                  >
+                    {adventure.score}%
+                  </BadgeUI>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {adventure.title} -- Great job! Come back tomorrow for a new adventure.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </FadeIn>
+    );
+  }
+
+  if (adventure) {
+    // Adventure exists but not completed -- show play button
+    return (
+      <FadeIn>
+        <Card className="rounded-2xl border-2 border-primary/30 bg-gradient-to-r from-primary/5 to-[#EA580C]/5">
+          <CardContent className="flex items-center gap-4 p-5">
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/15">
+              <Sparkles className="size-7 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-primary">
+                  Today&apos;s Adventure
+                </h3>
+                <BadgeUI
+                  variant="outline"
+                  className="border-primary/50 text-primary"
+                >
+                  New!
+                </BadgeUI>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {adventure.title}
+              </p>
+            </div>
+            <Button asChild size="lg" className="shrink-0 rounded-xl">
+              <Link href={`/adventure?id=${adventure.id}`}>
+                <Play className="size-4" />
+                Play
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </FadeIn>
+    );
+  }
+
+  // No adventure yet -- show generate CTA
+  return (
+    <FadeIn>
+      <DailyAdventureGenerateCard />
+    </FadeIn>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main Page
 // ---------------------------------------------------------------------------
 
@@ -615,6 +705,10 @@ export default async function MissionControlPage() {
     .from("skills")
     .select("id, subject_id");
 
+  // Fetch today's daily adventure (uses admin client to bypass RLS)
+  const adminClient = createAdminSupabaseClient();
+  const adventurePromise = getTodayAdventure(adminClient, activeProfile.id);
+
   const [
     { data: modules },
     { data: subjects },
@@ -622,6 +716,7 @@ export default async function MissionControlPage() {
     { data: userBadges },
     { data: skillProficiencies },
     { data: allSkills },
+    todayAdventure,
   ] = await Promise.all([
     modulesPromise,
     subjectsPromise,
@@ -629,6 +724,7 @@ export default async function MissionControlPage() {
     badgesPromise,
     skillProficiencyPromise,
     allSkillsPromise,
+    adventurePromise,
   ]);
 
   const safeModules: Module[] = modules ?? [];
@@ -875,6 +971,11 @@ export default async function MissionControlPage() {
           })()}
         </div>
       </FadeIn>
+
+      {/* ----- Daily Adventure Card ----- */}
+      <section>
+        <DailyAdventureCard adventure={todayAdventure} />
+      </section>
 
       {/* ----- Getting Started hero for brand-new users ----- */}
       {totalCompleted === 0 &&

@@ -146,6 +146,8 @@ interface ActivityRouterProps {
   nextLessonTitle?: string;
   /** Milestone nudge data (parent-facing supporter nudge) */
   milestoneNudge?: MilestoneNudgeData;
+  /** Override "Play Again" URL (e.g. for adventures which aren't at /lessons/) */
+  playAgainUrl?: string;
   /** Adaptive difficulty level (forwarded to global Chip FAB via voiceBridge) */
   difficultyLevel?: DifficultyLevel;
   /** Encouragement message from adaptive difficulty */
@@ -161,6 +163,7 @@ export function ActivityRouter({
   nextLessonId,
   nextLessonTitle,
   milestoneNudge,
+  playAgainUrl,
   difficultyLevel,
   encouragementMessage,
 }: ActivityRouterProps) {
@@ -186,6 +189,7 @@ export function ActivityRouter({
       nextLessonId={nextLessonId}
       nextLessonTitle={nextLessonTitle}
       milestoneNudge={milestoneNudge}
+      playAgainUrl={playAgainUrl}
     >
       {/* Bridge activity feedback to the global Chip FAB via voiceBridge */}
       <ActivityVoiceSync

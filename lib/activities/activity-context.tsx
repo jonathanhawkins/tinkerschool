@@ -58,6 +58,8 @@ interface ActivityContextValue {
   nextLessonTitle?: string;
   /** Milestone nudge data (set after server action returns) */
   milestoneNudge?: MilestoneNudgeData;
+  /** Override "Play Again" URL (e.g. for adventures which aren't at /lessons/) */
+  playAgainUrl?: string;
 }
 
 const ActivityContext = createContext<ActivityContextValue | null>(null);
@@ -185,6 +187,8 @@ interface ActivityProviderProps {
   nextLessonTitle?: string;
   /** Milestone nudge data (parent-facing supporter nudge) */
   milestoneNudge?: MilestoneNudgeData;
+  /** Override "Play Again" URL (e.g. for adventures which aren't at /lessons/) */
+  playAgainUrl?: string;
 }
 
 export function ActivityProvider({
@@ -197,6 +201,7 @@ export function ActivityProvider({
   nextLessonId,
   nextLessonTitle,
   milestoneNudge,
+  playAgainUrl,
 }: ActivityProviderProps) {
   const [state, setState] = useState<ActivityState>(createInitialState);
 
@@ -423,6 +428,7 @@ export function ActivityProvider({
       nextLessonId,
       nextLessonTitle,
       milestoneNudge,
+      playAgainUrl,
     }),
     [
       config,
@@ -440,6 +446,7 @@ export function ActivityProvider({
       nextLessonId,
       nextLessonTitle,
       milestoneNudge,
+      playAgainUrl,
     ],
   );
 

@@ -157,7 +157,7 @@ interface ActivityCompleteProps {
 }
 
 export function ActivityComplete({ onRetry }: ActivityCompleteProps) {
-  const { state, totalQuestions, subjectColor, lessonId, nextLessonId, nextLessonTitle, milestoneNudge } = useActivity();
+  const { state, totalQuestions, subjectColor, lessonId, nextLessonId, nextLessonTitle, milestoneNudge, playAgainUrl } = useActivity();
   const prefersReducedMotion = useReducedMotion();
   const confettiFired = useRef(false);
   const { play } = useSound();
@@ -345,7 +345,7 @@ export function ActivityComplete({ onRetry }: ActivityCompleteProps) {
             variant="outline"
             className="rounded-xl"
           >
-            <Link href={`/lessons/${lessonId}`}>
+            <Link href={playAgainUrl ?? `/lessons/${lessonId}`}>
               <RotateCcw className="size-4" />
               Play Again
             </Link>

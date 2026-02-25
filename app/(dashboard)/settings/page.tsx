@@ -14,6 +14,7 @@ import {
   RotateCcw,
   Heart,
   ArrowRight,
+  MessageSquarePlus,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -409,20 +410,34 @@ export default async function SettingsPage() {
           </StaggerItem>
         )}
 
-        {/* ---- Parent Dashboard link ---- */}
+        {/* ---- Feedback & Parent Dashboard links ---- */}
         {profile.role === "parent" && (
-          <StaggerItem>
-            <Button
-              asChild
-              variant="outline"
-              className="w-full rounded-2xl py-6"
-            >
-              <Link href="/dashboard">
-                <Shield className="size-4" />
-                Open Parent Dashboard
-              </Link>
-            </Button>
-          </StaggerItem>
+          <>
+            <StaggerItem>
+              <Button
+                asChild
+                variant="outline"
+                className="w-full rounded-2xl py-6"
+              >
+                <Link href="/dashboard/feedback">
+                  <MessageSquarePlus className="size-4" />
+                  Send Feedback or Report a Bug
+                </Link>
+              </Button>
+            </StaggerItem>
+            <StaggerItem>
+              <Button
+                asChild
+                variant="outline"
+                className="w-full rounded-2xl py-6"
+              >
+                <Link href="/dashboard">
+                  <Shield className="size-4" />
+                  Open Parent Dashboard
+                </Link>
+              </Button>
+            </StaggerItem>
+          </>
         )}
 
         {/* ---- Dev Tools (development only) ---- */}

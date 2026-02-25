@@ -16,6 +16,23 @@ import { ActivityFeedback } from "./activity-feedback";
 // CountingWidget - Tap plus/minus to count items, visual emoji grid
 // ---------------------------------------------------------------------------
 
+// When there are lots of items, rotate emojis every GROUP_SIZE to create
+// visual landmarks so kids don't lose their place while scrolling.
+const GROUP_SIZE = 25;
+const ALTERNATE_EMOJIS = ["🌟", "🌸", "🔷", "🍀"];
+
+function getEmojiForIndex(
+  baseEmoji: string,
+  index: number,
+  totalItems: number,
+): string {
+  if (totalItems <= GROUP_SIZE) return baseEmoji;
+  const groupIndex = Math.floor(index / GROUP_SIZE);
+  if (groupIndex === 0) return baseEmoji;
+  const alts = ALTERNATE_EMOJIS.filter((e) => e !== baseEmoji);
+  return alts[(groupIndex - 1) % alts.length];
+}
+
 export function CountingWidget() {
   const { currentActivity, state, recordAnswer, subjectColor } = useActivity();
   const { play } = useSound();
@@ -102,7 +119,18 @@ export function CountingWidget() {
       </div>
 
       {/* Emoji grid - tap to count, grouped in rows of 5 */}
+      {/* For large counts (>25), emojis rotate every 25 items with group labels */}
       <div className="space-y-1 rounded-2xl bg-muted/20 p-4 sm:p-6">
+        {/* First group label when there are multiple groups */}
+        {items.length > GROUP_SIZE && (
+          <div className="mb-1 flex items-center gap-2">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs font-medium text-muted-foreground">
+              1 – {Math.min(GROUP_SIZE, items.length)}
+            </span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+        )}
         {Array.from(
           { length: Math.ceil(items.length / 5) },
           (_, rowIdx) => {
@@ -110,56 +138,76 @@ export function CountingWidget() {
             const rowItems = items.slice(rowStart, rowStart + 5);
             // Extra gap between every pair of rows (groups of 10)
             const isGroupBoundary = rowIdx > 0 && rowIdx % 2 === 0;
+            // Show a labeled separator at every 25-item boundary (row 5, 10, 15...)
+            const isEmojiGroupStart =
+              items.length > GROUP_SIZE &&
+              rowStart > 0 &&
+              rowStart % GROUP_SIZE === 0;
 
             return (
-              <div
-                key={rowIdx}
-                className={cn(
-                  "flex justify-center gap-2.5",
-                  isGroupBoundary && "mt-3",
+              <div key={rowIdx}>
+                {isEmojiGroupStart && (
+                  <div className="my-2 flex items-center gap-2">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {rowStart + 1} – {Math.min(rowStart + GROUP_SIZE, items.length)}
+                    </span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
                 )}
-              >
-                {rowItems.map((index) => {
-                  const isTapped = tappedItems.has(index);
-                  return (
-                    <motion.button
-                      key={index}
-                      initial={
-                        prefersReducedMotion
-                          ? { opacity: 1 }
-                          : { opacity: 0, scale: 0.5 }
-                      }
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{
-                        delay: index * 0.03,
-                        duration: 0.2,
-                      }}
-                      whileTap={
-                        prefersReducedMotion ? {} : { scale: 0.85 }
-                      }
-                      onClick={() => handleTapItem(index)}
-                      disabled={
-                        state.showingFeedback &&
-                        state.feedbackType === "correct"
-                      }
-                      className={cn(
-                        "flex size-12 items-center justify-center rounded-xl border-2 text-2xl transition-all duration-200 touch-manipulation sm:size-14 sm:text-3xl",
-                        isTapped
-                          ? "border-primary bg-primary/10 shadow-md"
-                          : "border-transparent bg-card hover:border-border hover:shadow-sm",
-                      )}
-                      aria-label={`${question.emoji} item ${index + 1}${isTapped ? ", counted" : ""}`}
-                    >
-                      <span
+                <div
+                  className={cn(
+                    "flex justify-center gap-2.5",
+                    isGroupBoundary && !isEmojiGroupStart && "mt-3",
+                  )}
+                >
+                  {rowItems.map((index) => {
+                    const isTapped = tappedItems.has(index);
+                    const emoji = getEmojiForIndex(
+                      question.emoji,
+                      index,
+                      items.length,
+                    );
+                    return (
+                      <motion.button
+                        key={index}
+                        initial={
+                          prefersReducedMotion
+                            ? { opacity: 1 }
+                            : { opacity: 0, scale: 0.5 }
+                        }
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{
+                          delay: Math.min(index * 0.03, 1.5),
+                          duration: 0.2,
+                        }}
+                        whileTap={
+                          prefersReducedMotion ? {} : { scale: 0.85 }
+                        }
+                        onClick={() => handleTapItem(index)}
+                        disabled={
+                          state.showingFeedback &&
+                          state.feedbackType === "correct"
+                        }
                         className={cn(
-                          isTapped && "scale-110 transition-transform",
+                          "flex size-12 items-center justify-center rounded-xl border-2 text-2xl transition-all duration-200 touch-manipulation sm:size-14 sm:text-3xl",
+                          isTapped
+                            ? "border-primary bg-primary/10 shadow-md"
+                            : "border-transparent bg-card hover:border-border hover:shadow-sm",
                         )}
+                        aria-label={`${emoji} item ${index + 1}${isTapped ? ", counted" : ""}`}
                       >
-                        {question.emoji}
-                      </span>
-                    </motion.button>
-                  );
-                })}
+                        <span
+                          className={cn(
+                            isTapped && "scale-110 transition-transform",
+                          )}
+                        >
+                          {emoji}
+                        </span>
+                      </motion.button>
+                    );
+                  })}
+                </div>
               </div>
             );
           },

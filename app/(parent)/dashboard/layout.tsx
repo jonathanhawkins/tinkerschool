@@ -14,6 +14,7 @@ import {
   BarChart3,
   TrendingUp,
   MessageSquare,
+  MessageSquarePlus,
   Heart,
   Settings,
   ArrowLeft,
@@ -52,6 +53,11 @@ const parentNavItems: ParentNavItem[] = [
     href: "/dashboard/ai-history",
     label: "AI History",
     icon: <MessageSquare className="size-4" />,
+  },
+  {
+    href: "/dashboard/feedback",
+    label: "Feedback",
+    icon: <MessageSquarePlus className="size-4" />,
   },
   {
     href: "/dashboard/billing",

@@ -14,9 +14,13 @@ import { isValidUUID } from "@/lib/utils";
 // Request body schema & validation constants
 // ---------------------------------------------------------------------------
 
-/** Known subject slugs — reject unknown values to prevent prompt injection. */
+/** Known subject slugs — reject unknown values to prevent prompt injection.
+ * Accept both hyphen and underscore variants since the client may send either. */
 const VALID_SUBJECTS = new Set([
-  "math", "reading", "science", "music", "art", "problem-solving", "coding",
+  "math", "reading", "science", "music", "art",
+  "problem-solving", "problem_solving",
+  "coding",
+  "social-emotional", "social_emotional",
 ]);
 
 /** Max length limits to prevent cost amplification and prompt injection. */
@@ -46,8 +50,8 @@ function parseRequestBody(body: unknown): AiBuddyRequestBody | null {
 
   if (!Array.isArray(b.messages) || b.messages.length > MAX_MESSAGES) return null;
   if (typeof b.kidName !== "string" || b.kidName.length === 0) return null;
-  if (typeof b.age !== "number" || b.age < 4 || b.age > 14) return null;
-  if (typeof b.band !== "number" || b.band < 1 || b.band > 5) return null;
+  if (typeof b.age !== "number" || b.age < 3 || b.age > 14) return null;
+  if (typeof b.band !== "number" || b.band < 0 || b.band > 5) return null;
 
   // Validate currentSubject against whitelist (prevents prompt injection
   // via arbitrary strings being interpolated into the system prompt)

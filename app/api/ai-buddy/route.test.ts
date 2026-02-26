@@ -265,8 +265,8 @@ describe("POST /api/ai-buddy", () => {
       expect(res.status).toBe(400);
     });
 
-    it("returns 400 when age is out of range (< 4)", async () => {
-      const res = await POST(makeRequest(validBody({ age: 3 })));
+    it("returns 400 when age is out of range (< 3)", async () => {
+      const res = await POST(makeRequest(validBody({ age: 2 })));
       expect(res.status).toBe(400);
     });
 
@@ -275,8 +275,13 @@ describe("POST /api/ai-buddy", () => {
       expect(res.status).toBe(400);
     });
 
-    it("returns 400 when band is out of range (0)", async () => {
+    it("accepts band 0 (Pre-K)", async () => {
       const res = await POST(makeRequest(validBody({ band: 0 })));
+      expect(res.status).not.toBe(400);
+    });
+
+    it("returns 400 when band is out of range (-1)", async () => {
+      const res = await POST(makeRequest(validBody({ band: -1 })));
       expect(res.status).toBe(400);
     });
 

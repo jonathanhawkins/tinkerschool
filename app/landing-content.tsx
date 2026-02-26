@@ -45,6 +45,8 @@ import {
   MessageSquare,
   Lock,
   ChevronDown,
+  Sprout,
+  HeartHandshake,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -150,6 +152,19 @@ const subjects = [
       "Drag visual blocks, peek at the Python code underneath, and flash it to your device in one click. Build a Magic 8-Ball, an Etch-a-Sketch, and your own game.",
     standard: "CSTA K-12 Standards",
   },
+  {
+    name: "Social-Emotional",
+    worldName: "Feelings & Friends",
+    icon: HeartHandshake,
+    color: "#F472B6",
+    description: "Learn about emotions, kindness, sharing, and being a good friend",
+    tagline: "Name it, breathe it, share it, grow.",
+    lessonCount: 8,
+    sampleLessons: ["Naming Emotions", "Calm-Down Breathing", "Kindness Actions"],
+    deviceHighlight:
+      "Press buttons to pick how you feel. The screen shows emotion faces. Breathe along with the LED pulse. Practice taking turns with a friend using the buzzer timer.",
+    standard: "CASEL Framework",
+  },
 ] as const;
 
 const features = [
@@ -194,6 +209,14 @@ interface BandInfo {
 }
 
 const bands: BandInfo[] = [
+  {
+    band: 0,
+    name: "Seedling",
+    grades: "Pre-K",
+    ages: "3-5",
+    mode: "Guided play",
+    description: "Sensory exploration and guided play build early learning foundations.",
+  },
   {
     band: 1,
     name: "Explorer",
@@ -1068,7 +1091,7 @@ export function LandingContent() {
             </h2>
           </div>
           <p className="max-w-lg text-sm text-muted-foreground sm:text-base">
-            Five progressive bands take kids from visual blocks to full Python,
+            Six progressive bands take kids from guided play to full Python,
             meeting them exactly where they are.
           </p>
         </motion.div>
@@ -1081,8 +1104,8 @@ export function LandingContent() {
           viewport={{ once: true, margin: "-60px" }}
         >
           {bands.map((band) => {
-            const bandIcons = [Blocks, Wrench, Lightbulb, Rocket, Star];
-            const BandIcon = bandIcons[band.band - 1];
+            const bandIcons = [Sprout, Blocks, Wrench, Lightbulb, Rocket, Star];
+            const BandIcon = bandIcons[band.band];
 
             return (
               <motion.div
@@ -1433,7 +1456,7 @@ export function LandingContent() {
               },
               {
                 q: "What ages is TinkerSchool designed for?",
-                a: "TinkerSchool is designed for grades K\u20136 (ages 5\u201312) with five progressive curriculum bands: Explorer (K\u20131), Builder (2\u20133), Inventor (3\u20134), Hacker (4\u20135), and Creator (5\u20136). Each band adapts content and difficulty to the child\u2019s level.",
+                a: "TinkerSchool is designed for Pre-K through 6th grade (ages 3\u201312) with six progressive curriculum bands: Seedling (Pre-K), Explorer (K\u20131), Builder (2\u20133), Inventor (3\u20134), Hacker (4\u20135), and Creator (5\u20136). Each band adapts content and difficulty to the child\u2019s level.",
               },
               {
                 q: "How does the AI tutor Chip work?",

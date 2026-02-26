@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Plus, Minus, Check } from "lucide-react";
 
@@ -33,16 +33,35 @@ function getEmojiForIndex(
   return alts[(groupIndex - 1) % alts.length];
 }
 
-export function CountingWidget() {
+interface CountingWidgetProps {
+  /** Pre-K mode: larger targets, max count 5, no negative feedback */
+  isPreK?: boolean;
+}
+
+export function CountingWidget({ isPreK = false }: CountingWidgetProps) {
   const { currentActivity, state, recordAnswer, subjectColor } = useActivity();
   const { play } = useSound();
   const activity = currentActivity as CountingContent;
-  const question = activity.questions[state.currentQuestionIndex];
+  const rawQuestion = activity.questions[state.currentQuestionIndex];
   const prefersReducedMotion = useReducedMotion();
+
+  // Pre-K: cap correctCount and displayCount at 5
+  const question = rawQuestion
+    ? isPreK
+      ? {
+          ...rawQuestion,
+          correctCount: Math.min(rawQuestion.correctCount, 5),
+          displayCount: Math.min(rawQuestion.displayCount, 5),
+        }
+      : rawQuestion
+    : null;
 
   const [count, setCount] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [tappedItems, setTappedItems] = useState<Set<number>>(new Set());
+  const [isEditingCount, setIsEditingCount] = useState(false);
+  const [editValue, setEditValue] = useState("");
+  const countInputRef = useRef<HTMLInputElement>(null);
 
   const questionKey = question?.id ?? state.currentQuestionIndex;
 
@@ -92,8 +111,21 @@ export function CountingWidget() {
   });
 
   function handleSubmit() {
+    if (!question) return;
     setSubmitted(true);
     const isCorrect = count === question.correctCount;
+
+    if (isPreK && !isCorrect) {
+      // Pre-K: no failure state — just encourage and reset gently
+      play("tap");
+      setTimeout(() => {
+        setSubmitted(false);
+        setCount(0);
+        setTappedItems(new Set());
+      }, 2000);
+      return;
+    }
+
     recordAnswer(String(count), isCorrect);
 
     if (!isCorrect) {
@@ -113,7 +145,10 @@ export function CountingWidget() {
         <h3 className="text-lg font-semibold text-foreground">
           {question.prompt}
         </h3>
-        <p className="text-sm text-muted-foreground">
+        <p className={cn(
+          "text-muted-foreground",
+          isPreK ? "text-base" : "text-sm",
+        )}>
           Tap each {question.emoji} to count them!
         </p>
       </div>
@@ -190,7 +225,10 @@ export function CountingWidget() {
                           state.feedbackType === "correct"
                         }
                         className={cn(
-                          "flex size-12 items-center justify-center rounded-xl border-2 text-2xl transition-all duration-200 touch-manipulation sm:size-14 sm:text-3xl",
+                          "flex items-center justify-center rounded-xl border-2 transition-all duration-200 touch-manipulation",
+                          isPreK
+                            ? "size-16 text-3xl sm:size-18 sm:text-4xl"
+                            : "size-12 text-2xl sm:size-14 sm:text-3xl",
                           isTapped
                             ? "border-primary bg-primary/10 shadow-md"
                             : "border-transparent bg-card hover:border-border hover:shadow-sm",
@@ -219,16 +257,19 @@ export function CountingWidget() {
         <Button
           variant="outline"
           size="icon"
-          className="size-12 rounded-full text-lg select-none"
+          className={cn(
+            "rounded-full text-lg select-none",
+            isPreK ? "size-14" : "size-12",
+          )}
           disabled={count <= 0 || isLocked}
           aria-label="Subtract one"
           {...decrementHandlers}
         >
-          <Minus className="size-5" />
+          <Minus className={cn(isPreK ? "size-6" : "size-5")} />
         </Button>
 
         <motion.div
-          key={count}
+          key={isEditingCount ? "editing" : count}
           initial={prefersReducedMotion ? {} : { scale: 1.3 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 400, damping: 15 }}
@@ -238,25 +279,83 @@ export function CountingWidget() {
             backgroundColor: `${subjectColor}10`,
           }}
         >
-          <span
-            className="text-3xl font-bold"
-            style={{ color: subjectColor }}
-          >
-            {count}
-          </span>
+          {isEditingCount ? (
+            <input
+              ref={countInputRef}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={editValue}
+              onChange={(e) => {
+                // Only allow digits
+                const val = e.target.value.replace(/\D/g, "");
+                setEditValue(val);
+              }}
+              onBlur={() => {
+                const parsed = parseInt(editValue, 10);
+                if (!isNaN(parsed) && parsed >= 0) {
+                  setCount(parsed);
+                  setTappedItems(new Set());
+                }
+                setIsEditingCount(false);
+                setEditValue("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  countInputRef.current?.blur();
+                }
+              }}
+              className="w-16 bg-transparent text-center text-3xl font-bold outline-none"
+              style={{ color: subjectColor }}
+              autoComplete="off"
+              aria-label="Type your count"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                if (isLocked) return;
+                setIsEditingCount(true);
+                setEditValue(count > 0 ? String(count) : "");
+                // Focus the input after React renders it
+                setTimeout(() => countInputRef.current?.focus(), 50);
+              }}
+              disabled={isLocked}
+              className="flex size-full items-center justify-center"
+              aria-label={`Count is ${count}, tap to type a number`}
+            >
+              <span
+                className="text-3xl font-bold"
+                style={{ color: subjectColor }}
+              >
+                {count}
+              </span>
+            </button>
+          )}
         </motion.div>
 
         <Button
           variant="outline"
           size="icon"
-          className="size-12 rounded-full text-lg select-none"
+          className={cn(
+            "rounded-full text-lg select-none",
+            isPreK ? "size-14" : "size-12",
+          )}
           disabled={isLocked}
           aria-label="Add one"
           {...incrementHandlers}
         >
-          <Plus className="size-5" />
+          <Plus className={cn(isPreK ? "size-6" : "size-5")} />
         </Button>
       </div>
+
+      {/* Hint: tap the number to type */}
+      {!isLocked && !isEditingCount && (
+        <p className="text-center text-xs text-muted-foreground">
+          Tap the number to type your answer directly
+        </p>
+      )}
 
       {/* Submit button */}
       {!state.showingFeedback && count > 0 && (
@@ -277,8 +376,22 @@ export function CountingWidget() {
         </motion.div>
       )}
 
-      {/* Feedback */}
-      <ActivityFeedback hint={question.hint} />
+      {/* Pre-K: encouraging message instead of error feedback */}
+      {isPreK && submitted && count !== question.correctCount && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center text-base font-semibold text-amber-600"
+        >
+          Keep counting! You&apos;re doing great! 🌟
+        </motion.p>
+      )}
+
+      {/* Feedback (hidden for Pre-K wrong answers — handled above) */}
+      {!isPreK && <ActivityFeedback hint={question.hint} />}
+      {isPreK && state.feedbackType === "correct" && (
+        <ActivityFeedback hint={question.hint} />
+      )}
     </div>
   );
 }

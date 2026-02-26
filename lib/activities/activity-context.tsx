@@ -115,6 +115,24 @@ function countTotalQuestions(activities: ActivityContent[]): number {
       case "rekenrek":
         total += activity.questions.length;
         break;
+      case "emotion_picker":
+        total += activity.questions.length;
+        break;
+      case "tap_and_reveal":
+        total += activity.questions.length;
+        break;
+      case "listen_and_find":
+        total += activity.questions.length;
+        break;
+      case "drag_to_sort":
+        total += activity.questions.length;
+        break;
+      case "parent_activity":
+        total += 1;
+        break;
+      case "trace_shape":
+        total += activity.questions.length;
+        break;
     }
   }
   return total;
@@ -142,6 +160,18 @@ function questionsInActivity(activity: ActivityContent): number {
     case "number_line":
       return activity.questions.length;
     case "rekenrek":
+      return activity.questions.length;
+    case "emotion_picker":
+      return activity.questions.length;
+    case "tap_and_reveal":
+      return activity.questions.length;
+    case "listen_and_find":
+      return activity.questions.length;
+    case "drag_to_sort":
+      return activity.questions.length;
+    case "parent_activity":
+      return 1;
+    case "trace_shape":
       return activity.questions.length;
   }
 }
@@ -291,6 +321,29 @@ export function ActivityProvider({
         case "rekenrek":
           questionId =
             activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
+          break;
+        case "emotion_picker":
+          questionId =
+            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
+          break;
+        case "tap_and_reveal":
+          questionId =
+            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
+          break;
+        case "listen_and_find":
+          questionId =
+            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
+          break;
+        case "drag_to_sort":
+          questionId =
+            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
+          break;
+        case "trace_shape":
+          questionId =
+            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
+          break;
+        case "parent_activity":
+          questionId = "parent_activity";
           break;
       }
 

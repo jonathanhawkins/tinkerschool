@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 
 const GRADE_OPTIONS = [
+  { value: "-1", label: "Pre-K", ages: "3-5" },
   { value: "0", label: "Kindergarten", ages: "5-6" },
   { value: "1", label: "1st Grade", ages: "6-7" },
   { value: "2", label: "2nd Grade", ages: "7-8" },

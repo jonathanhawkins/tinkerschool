@@ -39,7 +39,8 @@ export type SubjectSlug =
   | "music"
   | "art"
   | "problem_solving"
-  | "coding";
+  | "coding"
+  | "social_emotional";
 
 export type DeviceMode = "usb" | "wifi" | "simulator" | "none";
 

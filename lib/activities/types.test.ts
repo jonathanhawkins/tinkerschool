@@ -133,6 +133,12 @@ describe("parseActivityConfig", () => {
       "ten_frame",
       "number_line",
       "rekenrek",
+      "parent_activity",
+      "emotion_picker",
+      "drag_to_sort",
+      "tap_and_reveal",
+      "listen_and_find",
+      "trace_shape",
     ];
 
     for (const type of validTypes) {

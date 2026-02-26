@@ -56,6 +56,10 @@ vi.mock("framer-motion", () => ({
       const { initial: _i, animate: _a, transition: _t, whileHover: _wh, whileTap: _wt, ...rest } = props;
       return <button {...rest}>{children}</button>;
     },
+    p: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => {
+      const { initial: _i, animate: _a, transition: _t, ...rest } = props;
+      return <p {...rest}>{children}</p>;
+    },
   },
   useReducedMotion: () => false,
   AnimatePresence: ({ children }: React.PropsWithChildren) => <>{children}</>,
@@ -112,18 +116,19 @@ describe("CountingWidget", () => {
     expect(countElements.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("increments count when + button is clicked", () => {
+  it("increments count when + button is pressed", () => {
     render(<CountingWidget />);
-    fireEvent.click(screen.getByRole("button", { name: "Add one" }));
+    // useRepeatPress fires on pointerDown, not click
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Add one" }));
     expect(screen.getByText("1")).toBeDefined();
   });
 
-  it("decrements count when - button is clicked", () => {
+  it("decrements count when - button is pressed", () => {
     render(<CountingWidget />);
-    fireEvent.click(screen.getByRole("button", { name: "Add one" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add one" }));
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Add one" }));
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Add one" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "Subtract one" }));
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Subtract one" }));
     expect(screen.getByText("1")).toBeDefined();
   });
 
@@ -154,14 +159,14 @@ describe("CountingWidget", () => {
     render(<CountingWidget />);
     expect(screen.queryByText("Check My Answer")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Add one" }));
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Add one" }));
     expect(screen.getByText("Check My Answer")).toBeDefined();
   });
 
   it("calls recordAnswer with correct=true for right count", () => {
     render(<CountingWidget />);
     for (let i = 0; i < 3; i++) {
-      fireEvent.click(screen.getByRole("button", { name: "Add one" }));
+      fireEvent.pointerDown(screen.getByRole("button", { name: "Add one" }));
     }
 
     fireEvent.click(screen.getByText("Check My Answer"));
@@ -170,9 +175,49 @@ describe("CountingWidget", () => {
 
   it("calls recordAnswer with correct=false for wrong count", () => {
     render(<CountingWidget />);
-    fireEvent.click(screen.getByRole("button", { name: "Add one" }));
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Add one" }));
 
     fireEvent.click(screen.getByText("Check My Answer"));
     expect(mockRecordAnswer).toHaveBeenCalledWith("1", false);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Pre-K mode tests
+  // ---------------------------------------------------------------------------
+
+  describe("isPreK mode", () => {
+    it("caps displayCount at 5 when isPreK is true", () => {
+      // Default mock has displayCount=5, correctCount=3 — both within cap
+      render(<CountingWidget isPreK />);
+      const items = screen.getAllByRole("button", { name: /🍎 item/ });
+      expect(items).toHaveLength(5);
+    });
+
+    it("does not call recordAnswer on wrong answer in Pre-K mode", () => {
+      render(<CountingWidget isPreK />);
+      fireEvent.pointerDown(screen.getByRole("button", { name: "Add one" }));
+
+      fireEvent.click(screen.getByText("Check My Answer"));
+      // In Pre-K mode, wrong answers should NOT call recordAnswer
+      expect(mockRecordAnswer).not.toHaveBeenCalled();
+    });
+
+    it("shows encouraging message on wrong answer in Pre-K mode", () => {
+      render(<CountingWidget isPreK />);
+      fireEvent.pointerDown(screen.getByRole("button", { name: "Add one" }));
+
+      fireEvent.click(screen.getByText("Check My Answer"));
+      expect(screen.getByText(/Keep counting/)).toBeDefined();
+    });
+
+    it("still calls recordAnswer on correct answer in Pre-K mode", () => {
+      render(<CountingWidget isPreK />);
+      for (let i = 0; i < 3; i++) {
+        fireEvent.pointerDown(screen.getByRole("button", { name: "Add one" }));
+      }
+
+      fireEvent.click(screen.getByText("Check My Answer"));
+      expect(mockRecordAnswer).toHaveBeenCalledWith("3", true);
+    });
   });
 });

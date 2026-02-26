@@ -6,6 +6,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // Analyzes a student's past activity_sessions for a given subject and
 // computes a difficulty adjustment. The lesson page calls this server-side
 // before passing the config to the InteractiveLesson client component.
+//
+// Pre-K Philosophy (band 0, ages 3-5):
+// All Pre-K children should feel successful. At this age, the goal is
+// exposure and positive association with learning -- not mastery-based
+// progression. Thresholds are much more forgiving, time pressure is
+// removed entirely, and the system requires more sessions before
+// advancing to harder content. Hints are always shown proactively.
 // ---------------------------------------------------------------------------
 
 export type DifficultyLevel = "supportive" | "standard" | "challenge";
@@ -25,6 +32,60 @@ export interface DifficultyAdjustment {
   sessionsAnalyzed: number;
 }
 
+// ---------------------------------------------------------------------------
+// Band-specific threshold configuration
+// ---------------------------------------------------------------------------
+
+interface DifficultyThresholds {
+  /** Minimum sessions before the system can recommend "challenge" */
+  minSessionsForChallenge: number;
+  /** Avg score above this → challenge */
+  challengeScoreThreshold: number;
+  /** Avg score below this → supportive */
+  supportiveScoreThreshold: number;
+  /** Hint usage rate above this → more supportive */
+  highHintRate: number;
+  /** Whether to factor in time-per-question */
+  useTimePenalty: boolean;
+  /** Passing scores for each tier */
+  passingScores: Record<DifficultyLevel, number>;
+}
+
+/**
+ * Default thresholds for Band 1+ (K-6, ages 5-12).
+ */
+const DEFAULT_THRESHOLDS: DifficultyThresholds = {
+  minSessionsForChallenge: 1,
+  challengeScoreThreshold: 85,
+  supportiveScoreThreshold: 50,
+  highHintRate: 0.5,
+  useTimePenalty: true,
+  passingScores: { supportive: 50, standard: 60, challenge: 70 },
+};
+
+/**
+ * Pre-K thresholds (Band 0, ages 3-5).
+ *
+ * Much more forgiving: lower bars for "standard" and "challenge", slower
+ * progression (need 8+ sessions before any challenge bump), no time
+ * penalties, and a very generous hint-rate tolerance. The supportive
+ * passing score of 30 means virtually every child can "pass" and
+ * feel good about their effort.
+ */
+const PREK_THRESHOLDS: DifficultyThresholds = {
+  minSessionsForChallenge: 8,
+  challengeScoreThreshold: 90,
+  supportiveScoreThreshold: 35,
+  highHintRate: 0.75,
+  useTimePenalty: false,
+  passingScores: { supportive: 30, standard: 40, challenge: 50 },
+};
+
+/** Look up thresholds by band number. Band 0 = Pre-K, everything else = default. */
+function getThresholds(band: number): DifficultyThresholds {
+  return band === 0 ? PREK_THRESHOLDS : DEFAULT_THRESHOLDS;
+}
+
 const DEFAULT_ADJUSTMENT: DifficultyAdjustment = {
   level: "standard",
   passingScore: 60,
@@ -38,20 +99,20 @@ const DEFAULT_ADJUSTMENT: DifficultyAdjustment = {
 /** How many recent sessions to consider */
 const LOOKBACK_COUNT = 10;
 
-/** Thresholds for difficulty classification */
-const CHALLENGE_SCORE_THRESHOLD = 85; // avg score above this → challenge
-const SUPPORTIVE_SCORE_THRESHOLD = 50; // avg score below this → supportive
-const HIGH_HINT_RATE = 0.5; // >50% of questions used hints → more supportive
-
 /**
  * Compute difficulty adjustments based on a student's past performance.
  *
  * Runs server-side in the lesson page before passing config to the client.
+ *
+ * @param band - The student's curriculum band (0 = Pre-K, 1-5 = K-6). When
+ *   provided, band-specific thresholds are used. Pre-K (band 0) uses much
+ *   more forgiving thresholds so every child feels successful.
  */
 export async function computeDifficulty(
   supabase: SupabaseClient,
   profileId: string,
   subjectId: string | null,
+  band?: number,
 ): Promise<DifficultyAdjustment> {
   // Build query for recent sessions
   let query = supabase
@@ -94,7 +155,19 @@ export async function computeDifficulty(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: sessions, error } = await (query as any);
 
+  const thresholds = getThresholds(band ?? 1);
+
+  // Pre-K default: always show hints early and use a lower passing score
   if (error || !sessions || sessions.length === 0) {
+    if (band === 0) {
+      return {
+        ...DEFAULT_ADJUSTMENT,
+        passingScore: thresholds.passingScores.standard,
+        showHintsEarly: true,
+        encouragementMessage:
+          "You are doing amazing! Let's play and learn together!",
+      };
+    }
     return DEFAULT_ADJUSTMENT;
   }
 
@@ -114,7 +187,7 @@ export async function computeDifficulty(
   );
   const hintRate = totalQuestions > 0 ? totalHints / totalQuestions : 0;
 
-  // Average time per question
+  // Average time per question (ignored for Pre-K)
   const totalTime = sessions.reduce(
     (sum: number, s: { time_seconds: number }) => sum + (s.time_seconds ?? 0),
     0,
@@ -122,14 +195,21 @@ export async function computeDifficulty(
   const avgTimePerQuestion =
     totalQuestions > 0 ? totalTime / totalQuestions : 0;
 
-  // Classify difficulty
-  const level = classifyDifficulty(avgScore, hintRate, avgTimePerQuestion);
+  // Classify difficulty using band-appropriate thresholds
+  const level = classifyDifficulty(
+    avgScore,
+    hintRate,
+    avgTimePerQuestion,
+    sessions.length,
+    thresholds,
+  );
 
   return {
     level,
-    passingScore: getPassingScore(level),
-    encouragementMessage: getEncouragementMessage(level, avgScore),
-    showHintsEarly: level === "supportive",
+    passingScore: thresholds.passingScores[level],
+    encouragementMessage: getEncouragementMessage(level, avgScore, band ?? 1),
+    // Pre-K always shows hints early; for other bands, only in supportive mode
+    showHintsEarly: band === 0 || level === "supportive",
     recentAverageScore: Math.round(avgScore),
     sessionsAnalyzed: sessions.length,
   };
@@ -139,35 +219,46 @@ function classifyDifficulty(
   avgScore: number,
   hintRate: number,
   _avgTimePerQuestion: number,
+  sessionCount: number,
+  thresholds: DifficultyThresholds,
 ): DifficultyLevel {
-  // Strong performance → challenge mode
-  if (avgScore >= CHALLENGE_SCORE_THRESHOLD && hintRate < 0.2) {
+  // Strong performance → challenge mode (only if enough sessions observed)
+  if (
+    avgScore >= thresholds.challengeScoreThreshold &&
+    hintRate < 0.2 &&
+    sessionCount >= thresholds.minSessionsForChallenge
+  ) {
     return "challenge";
   }
 
   // Struggling → supportive mode
-  if (avgScore < SUPPORTIVE_SCORE_THRESHOLD || hintRate > HIGH_HINT_RATE) {
+  if (
+    avgScore < thresholds.supportiveScoreThreshold ||
+    hintRate > thresholds.highHintRate
+  ) {
     return "supportive";
   }
 
   return "standard";
 }
 
-function getPassingScore(level: DifficultyLevel): number {
-  switch (level) {
-    case "supportive":
-      return 50; // Lower bar so struggling kids can still progress
-    case "standard":
-      return 60;
-    case "challenge":
-      return 70; // Higher bar for kids who are excelling
-  }
-}
-
 function getEncouragementMessage(
   level: DifficultyLevel,
   avgScore: number,
+  band: number,
 ): string {
+  // Pre-K gets warmer, simpler encouragement messages
+  if (band === 0) {
+    switch (level) {
+      case "supportive":
+        return "You are doing so great just by trying! Let's play some more!";
+      case "challenge":
+        return "Wow, you are a superstar! Let's try something a little trickier!";
+      case "standard":
+        return "You are doing amazing! Let's play and learn together!";
+    }
+  }
+
   switch (level) {
     case "supportive":
       return "Take your time -- I'll give you extra hints if you need them! You're doing great just by trying.";

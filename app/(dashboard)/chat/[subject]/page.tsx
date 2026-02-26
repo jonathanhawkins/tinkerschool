@@ -31,6 +31,7 @@ const VALID_SUBJECTS = [
   "art",
   "problem-solving",
   "coding",
+  "social-emotional",
 ] as const;
 
 // ---------------------------------------------------------------------------

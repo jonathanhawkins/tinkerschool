@@ -28,6 +28,8 @@ interface InteractiveLessonProps {
   isFirstLesson?: boolean;
   nextLessonId?: string | null;
   nextLessonTitle?: string | null;
+  /** Curriculum band (0 = Pre-K, 1+ = K-6) */
+  band?: number;
 }
 
 export function InteractiveLesson({
@@ -41,6 +43,7 @@ export function InteractiveLesson({
   isFirstLesson = false,
   nextLessonId,
   nextLessonTitle,
+  band = 1,
 }: InteractiveLessonProps) {
   const [earnedBadges, setEarnedBadges] = useState<EarnedBadge[]>([]);
   const [milestoneNudge, setMilestoneNudge] = useState<MilestoneNudgeData | undefined>(undefined);
@@ -112,6 +115,8 @@ export function InteractiveLesson({
         milestoneNudge={milestoneNudge}
         difficultyLevel={difficultyLevel}
         encouragementMessage={encouragementMessage}
+        isPreK={band === 0}
+        band={band}
       />
 
       {/* Badge celebration overlay */}

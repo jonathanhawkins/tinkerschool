@@ -150,4 +150,40 @@ describe("MultipleChoice", () => {
     render(<MultipleChoice />);
     expect(screen.getByTestId("activity-feedback")).toBeDefined();
   });
+
+  // ---------------------------------------------------------------------------
+  // Pre-K mode tests
+  // ---------------------------------------------------------------------------
+
+  describe("isPreK mode", () => {
+    it("renders all options (up to 3) in Pre-K mode", () => {
+      render(<MultipleChoice isPreK />);
+      expect(screen.getByText("Three")).toBeDefined();
+      expect(screen.getByText("Four")).toBeDefined();
+      expect(screen.getByText("Five")).toBeDefined();
+    });
+
+    it("does not call recordAnswer on wrong answer in Pre-K mode", () => {
+      render(<MultipleChoice isPreK />);
+      fireEvent.click(screen.getByText("Three"));
+
+      expect(mockPlay).toHaveBeenCalledWith("tap");
+      // Pre-K: wrong answers should NOT call recordAnswer
+      expect(mockRecordAnswer).not.toHaveBeenCalled();
+    });
+
+    it("shows gentle hint on wrong answer in Pre-K mode", () => {
+      render(<MultipleChoice isPreK />);
+      fireEvent.click(screen.getByText("Three"));
+
+      expect(screen.getByText("Hmm, try this one!")).toBeDefined();
+    });
+
+    it("still calls recordAnswer on correct answer in Pre-K mode", () => {
+      render(<MultipleChoice isPreK />);
+      fireEvent.click(screen.getByText("Four"));
+
+      expect(mockRecordAnswer).toHaveBeenCalledWith("b", true);
+    });
+  });
 });

@@ -200,6 +200,33 @@ function extractQuestions(
       return extractNumberLine(activity);
     case "rekenrek":
       return extractRekenrek(activity);
+    case "emotion_picker":
+      return activity.questions.map((q) => ({
+        prompt: q.scenario,
+        correctAnswer: q.validEmotions.join(", "),
+      }));
+    case "tap_and_reveal":
+      return activity.questions.map((q) => ({
+        prompt: q.prompt,
+        correctAnswer: q.items.map((i) => i.revealLabel).join(", "),
+      }));
+    case "listen_and_find":
+      return activity.questions.map((q) => ({
+        prompt: q.prompt,
+        correctAnswer: q.options.find((o) => o.id === q.correctOptionId)?.label ?? "",
+      }));
+    case "drag_to_sort":
+      return activity.questions.map((q) => ({
+        prompt: q.prompt,
+        correctAnswer: q.buckets.map((b) => b.label).join(", "),
+      }));
+    case "trace_shape":
+      return activity.questions.map((q) => ({
+        prompt: q.prompt,
+        correctAnswer: q.shape,
+      }));
+    case "parent_activity":
+      return [{ prompt: activity.prompt, correctAnswer: activity.completionPrompt }];
   }
 }
 

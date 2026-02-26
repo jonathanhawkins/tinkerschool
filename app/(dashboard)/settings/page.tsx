@@ -46,6 +46,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 
 const BAND_DESCRIPTIONS: Record<number, string> = {
+  0: "Guided play & sensory exploration",
   1: "UIFlow2 blocks & templates",
   2: "Blocks + peek at Python",
   3: "MicroPython + block hints",
@@ -209,9 +210,11 @@ export default async function SettingsPage() {
                               label="Grade"
                               value={
                                 kid.grade_level !== null
-                                  ? kid.grade_level === 0
-                                    ? "Kindergarten"
-                                    : `Grade ${kid.grade_level}`
+                                  ? kid.grade_level === -1
+                                    ? "Pre-K"
+                                    : kid.grade_level === 0
+                                      ? "Kindergarten"
+                                      : `Grade ${kid.grade_level}`
                                   : "Not set"
                               }
                             />

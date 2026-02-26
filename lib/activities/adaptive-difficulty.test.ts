@@ -141,4 +141,100 @@ describe("adaptive-difficulty", () => {
     const challenge = await computeDifficulty(createMockSupabase(highSessions) as any, "p1", null);
     expect(challenge.encouragementMessage).toContain("challenge");
   });
+
+  // ---------------------------------------------------------------------------
+  // Pre-K (band 0) adaptive difficulty tests
+  // ---------------------------------------------------------------------------
+
+  it("returns Pre-K defaults with lower passing score when no sessions exist (band 0)", async () => {
+    const computeDifficulty = await getComputeDifficulty();
+    const supabase = createMockSupabase([]);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await computeDifficulty(supabase as any, "profile-1", null, 0);
+
+    expect(result.level).toBe("standard");
+    expect(result.passingScore).toBe(40); // Pre-K standard = 40 (vs 60 for K-6)
+    expect(result.showHintsEarly).toBe(true); // Pre-K always shows hints
+    expect(result.encouragementMessage).toContain("play and learn");
+  });
+
+  it("uses forgiving supportive threshold for Pre-K (band 0)", async () => {
+    const computeDifficulty = await getComputeDifficulty();
+    // Score of 40 would be supportive for K-6 (< 50) but standard for Pre-K (>= 35)
+    const sessions = [
+      { score: 40, hints_used: 1, total_questions: 5, time_seconds: 120, created_at: "2026-02-01" },
+      { score: 38, hints_used: 1, total_questions: 5, time_seconds: 100, created_at: "2026-02-02" },
+      { score: 42, hints_used: 1, total_questions: 5, time_seconds: 130, created_at: "2026-02-03" },
+    ];
+    const supabase = createMockSupabase(sessions);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await computeDifficulty(supabase as any, "profile-1", null, 0);
+
+    expect(result.level).toBe("standard"); // Would be supportive for K-6
+    expect(result.passingScore).toBe(40);
+  });
+
+  it("requires more sessions before advancing Pre-K to challenge (band 0)", async () => {
+    const computeDifficulty = await getComputeDifficulty();
+    // Only 3 sessions with high scores - enough for K-6 challenge, NOT for Pre-K
+    const sessions = [
+      { score: 95, hints_used: 0, total_questions: 5, time_seconds: 60, created_at: "2026-02-01" },
+      { score: 92, hints_used: 0, total_questions: 5, time_seconds: 50, created_at: "2026-02-02" },
+      { score: 98, hints_used: 0, total_questions: 5, time_seconds: 55, created_at: "2026-02-03" },
+    ];
+    const supabase = createMockSupabase(sessions);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const resultPreK = await computeDifficulty(supabase as any, "profile-1", null, 0);
+    expect(resultPreK.level).toBe("standard"); // Not enough sessions (need 8)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const resultK6 = await computeDifficulty(supabase as any, "profile-1", null, 1);
+    expect(resultK6.level).toBe("challenge"); // 3 sessions is enough for K-6
+  });
+
+  it("always shows hints early for Pre-K (band 0) even at standard level", async () => {
+    const computeDifficulty = await getComputeDifficulty();
+    const sessions = [
+      { score: 70, hints_used: 1, total_questions: 5, time_seconds: 80, created_at: "2026-02-01" },
+      { score: 75, hints_used: 0, total_questions: 5, time_seconds: 90, created_at: "2026-02-02" },
+    ];
+    const supabase = createMockSupabase(sessions);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await computeDifficulty(supabase as any, "profile-1", null, 0);
+
+    expect(result.level).toBe("standard");
+    expect(result.showHintsEarly).toBe(true); // Pre-K always shows hints
+  });
+
+  it("uses Pre-K encouragement messages (band 0)", async () => {
+    const computeDifficulty = await getComputeDifficulty();
+
+    // Supportive for Pre-K
+    const lowSessions = [
+      { score: 20, hints_used: 4, total_questions: 5, time_seconds: 120, created_at: "2026-02-01" },
+    ];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supportive = await computeDifficulty(createMockSupabase(lowSessions) as any, "p1", null, 0);
+    expect(supportive.encouragementMessage).toContain("so great just by trying");
+    // Should NOT contain the K-6 message
+    expect(supportive.encouragementMessage).not.toContain("Take your time");
+  });
+
+  it("uses lower supportive passing score for Pre-K (band 0)", async () => {
+    const computeDifficulty = await getComputeDifficulty();
+    const sessions = [
+      { score: 20, hints_used: 3, total_questions: 5, time_seconds: 120, created_at: "2026-02-01" },
+    ];
+    const supabase = createMockSupabase(sessions);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await computeDifficulty(supabase as any, "profile-1", null, 0);
+
+    expect(result.level).toBe("supportive");
+    expect(result.passingScore).toBe(30); // Pre-K supportive = 30 (vs 50 for K-6)
+  });
 });

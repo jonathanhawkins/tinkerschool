@@ -131,7 +131,7 @@ export default async function LessonPage({
 
   // Compute adaptive difficulty for interactive lessons
   const difficulty = isInteractive
-    ? await computeDifficulty(supabase, activeProfile.id, safeLesson.subject_id)
+    ? await computeDifficulty(supabase, activeProfile.id, safeLesson.subject_id, activeProfile.current_band)
     : null;
 
   // Apply difficulty adjustments to config
@@ -361,6 +361,7 @@ export default async function LessonPage({
                 isFirstLesson={isFirstLesson}
                 nextLessonId={nextLessonId}
                 nextLessonTitle={nextLessonTitle}
+                band={activeProfile.current_band}
               />
             </CardContent>
           </Card>

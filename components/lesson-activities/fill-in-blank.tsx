@@ -42,6 +42,14 @@ function normalizeQuestion(raw: RawFillInBlankQuestion) {
   return { ...raw, template: templateText, correctAnswer, acceptableAnswers };
 }
 
+/** Check if the expected answer is purely numeric (digits only) */
+function isNumericAnswer(correctAnswer: string, acceptableAnswers: string[]): boolean {
+  const isDigits = (s: string) => /^\d+$/.test(s.trim());
+  if (!isDigits(correctAnswer)) return false;
+  // If all acceptable alternatives are also numeric, treat as numeric
+  return acceptableAnswers.every((a) => isDigits(a));
+}
+
 export function FillInBlank() {
   const { currentActivity, state, recordAnswer, subjectColor } = useActivity();
   const { play } = useSound();
@@ -75,6 +83,10 @@ export function FillInBlank() {
   if (!rawQuestion) return null;
 
   const question = normalizeQuestion(rawQuestion);
+  const numericInput = isNumericAnswer(
+    question.correctAnswer,
+    question.acceptableAnswers ?? [],
+  );
 
   // Split template on "___" to render the blank inline
   const parts = question.template.split("___");
@@ -132,6 +144,8 @@ export function FillInBlank() {
                 <input
                   ref={i === 0 ? inputRef : undefined}
                   type="text"
+                  inputMode={numericInput ? "numeric" : "text"}
+                  pattern={numericInput ? "[0-9]*" : undefined}
                   name={`answer-${questionKey}`}
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}

@@ -1,17 +1,20 @@
 "use client";
 
-import { Component, useCallback, useState, type ErrorInfo, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
 import { ActivityProvider, useActivity, type MilestoneNudgeData } from "@/lib/activities/activity-context";
 import type { LessonActivityConfig, ActivitySessionMetrics } from "@/lib/activities/types";
 import type { DifficultyLevel } from "@/lib/activities/adaptive-difficulty";
+import { getParentPrompt } from "@/lib/activities/parent-prompts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ActivityVoiceSync } from "@/components/activity-voice-sync";
+import { ParentPromptBar } from "@/components/parent-prompt-bar";
 
 import { SessionTimer } from "@/lib/activities/session-timer";
+import { CoolDownPrompt } from "./cool-down-prompt";
 
 import { ActivityProgress } from "./activity-progress";
 import { ActivityComplete } from "./activity-complete";
@@ -25,6 +28,12 @@ import { NumberBond } from "./number-bond";
 import { TenFrame } from "./ten-frame";
 import { NumberLine } from "./number-line";
 import { Rekenrek } from "./rekenrek";
+import { ParentActivity } from "./parent-activity";
+import { EmotionPicker } from "./emotion-picker";
+import { DragToSort } from "./drag-to-sort";
+import { ListenAndFind } from "./listen-and-find";
+import { TapAndReveal } from "./tap-and-reveal";
+import { TraceShape } from "./trace-shape";
 import { SoundToggle } from "./sound-toggle";
 
 // ---------------------------------------------------------------------------
@@ -89,7 +98,7 @@ class ActivityErrorBoundary extends Component<ActivityErrorBoundaryProps, Activi
 // ActivityRenderer - renders the current activity widget based on type
 // ---------------------------------------------------------------------------
 
-function ActivityRenderer() {
+function ActivityRenderer({ isPreK = false }: { isPreK?: boolean }) {
   const { currentActivity, state } = useActivity();
 
   if (state.isComplete) {
@@ -100,39 +109,72 @@ function ActivityRenderer() {
   // resetting all internal useState hooks (selected answer, shuffle, etc.)
   const questionKey = `${state.currentActivityIndex}-${state.currentQuestionIndex}`;
 
-  switch (currentActivity.type) {
-    case "multiple_choice":
-      return <MultipleChoice key={questionKey} />;
-    case "counting":
-      return <CountingWidget key={questionKey} />;
-    case "matching_pairs":
-      return <MatchingPairs key={questionKey} />;
-    case "sequence_order":
-      return <SequenceOrder key={questionKey} />;
-    case "flash_card":
-      return <FlashCard key={questionKey} />;
-    case "fill_in_blank":
-      return <FillInBlank key={questionKey} />;
-    case "number_bond":
-      return <NumberBond key={questionKey} />;
-    case "ten_frame":
-      return <TenFrame key={questionKey} />;
-    case "number_line":
-      return <NumberLine key={questionKey} />;
-    case "rekenrek":
-      return <Rekenrek key={questionKey} />;
-    default:
-      return (
-        <p className="text-center text-sm text-muted-foreground">
-          Unknown activity type
-        </p>
-      );
-  }
+  // Parent co-play prompt (Pre-K only)
+  const parentPrompt = isPreK
+    ? getParentPrompt(currentActivity, state.currentQuestionIndex)
+    : "";
+
+  const widget = (() => {
+    switch (currentActivity.type) {
+      case "multiple_choice":
+        return <MultipleChoice key={questionKey} isPreK={isPreK} />;
+      case "counting":
+        return <CountingWidget key={questionKey} isPreK={isPreK} />;
+      case "matching_pairs":
+        return <MatchingPairs key={questionKey} isPreK={isPreK} />;
+      case "sequence_order":
+        return <SequenceOrder key={questionKey} isPreK={isPreK} />;
+      case "flash_card":
+        return <FlashCard key={questionKey} isPreK={isPreK} />;
+      case "fill_in_blank":
+        return <FillInBlank key={questionKey} />;
+      case "number_bond":
+        return <NumberBond key={questionKey} />;
+      case "ten_frame":
+        return <TenFrame key={questionKey} />;
+      case "number_line":
+        return <NumberLine key={questionKey} />;
+      case "rekenrek":
+        return <Rekenrek key={questionKey} />;
+      case "parent_activity":
+        return <ParentActivity key={questionKey} />;
+      case "emotion_picker":
+        return <EmotionPicker key={questionKey} />;
+      case "drag_to_sort":
+        return <DragToSort key={questionKey} />;
+      case "listen_and_find":
+        return <ListenAndFind key={questionKey} />;
+      case "tap_and_reveal":
+        return <TapAndReveal key={questionKey} />;
+      case "trace_shape":
+        return <TraceShape key={questionKey} />;
+      default:
+        return (
+          <p className="text-center text-sm text-muted-foreground">
+            Unknown activity type
+          </p>
+        );
+    }
+  })();
+
+  return (
+    <div className="space-y-4">
+      {widget}
+      <ParentPromptBar
+        key={`parent-${questionKey}`}
+        prompt={parentPrompt}
+        isPreK={isPreK}
+      />
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
 // ActivityRouter - wraps provider + progress + renderer
 // ---------------------------------------------------------------------------
+
+/** Number of activities between cool-down prompts for Pre-K */
+const PRE_K_COOL_DOWN_INTERVAL = 2;
 
 interface ActivityRouterProps {
   config: LessonActivityConfig;
@@ -152,6 +194,10 @@ interface ActivityRouterProps {
   difficultyLevel?: DifficultyLevel;
   /** Encouragement message from adaptive difficulty */
   encouragementMessage?: string;
+  /** Pre-K mode: larger touch targets, simplified content, no failure states */
+  isPreK?: boolean;
+  /** Curriculum band (0 = Pre-K, 1+ = K-6). Determines session timer defaults. */
+  band?: number;
 }
 
 export function ActivityRouter({
@@ -166,6 +212,8 @@ export function ActivityRouter({
   playAgainUrl,
   difficultyLevel,
   encouragementMessage,
+  isPreK = false,
+  band = 1,
 }: ActivityRouterProps) {
   const [key, setKey] = useState(0);
 
@@ -203,15 +251,64 @@ export function ActivityRouter({
           <div className="min-w-0 flex-1">
             <ActivityProgress />
           </div>
-          <SessionTimer limitMinutes={30} />
+          <SessionTimer band={band} />
           <SoundToggle />
         </div>
 
-        {/* Current activity widget */}
+        {/* Current activity widget (with cool-down interstitials for Pre-K) */}
         <ActivityErrorBoundary>
-          <ActivityRenderer />
+          {isPreK ? (
+            <PreKActivityRenderer />
+          ) : (
+            <ActivityRenderer isPreK={false} />
+          )}
         </ActivityErrorBoundary>
       </div>
     </ActivityProvider>
   );
+}
+
+// ---------------------------------------------------------------------------
+// PreKActivityRenderer - wraps ActivityRenderer with cool-down prompts
+// ---------------------------------------------------------------------------
+// Shows a CoolDownPrompt interstitial after every PRE_K_COOL_DOWN_INTERVAL
+// activities before rendering the next activity.
+// ---------------------------------------------------------------------------
+
+function PreKActivityRenderer() {
+  const { state } = useActivity();
+  const [showCoolDown, setShowCoolDown] = useState(false);
+  const [lastCoolDownAt, setLastCoolDownAt] = useState(0);
+
+  const activityIndex = state.currentActivityIndex;
+
+  // Show a cool-down prompt after every PRE_K_COOL_DOWN_INTERVAL activities.
+  // We track the last activity index where we showed a cool-down to avoid
+  // re-triggering on re-renders.
+  useEffect(() => {
+    if (
+      activityIndex > 0 &&
+      activityIndex % PRE_K_COOL_DOWN_INTERVAL === 0 &&
+      activityIndex !== lastCoolDownAt &&
+      !state.isComplete
+    ) {
+      setShowCoolDown(true);
+      setLastCoolDownAt(activityIndex);
+    }
+  }, [activityIndex, lastCoolDownAt, state.isComplete]);
+
+  const handleCoolDownContinue = useCallback(() => {
+    setShowCoolDown(false);
+  }, []);
+
+  if (showCoolDown) {
+    return (
+      <CoolDownPrompt
+        onContinue={handleCoolDownContinue}
+        seed={activityIndex}
+      />
+    );
+  }
+
+  return <ActivityRenderer isPreK />;
 }

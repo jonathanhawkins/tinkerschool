@@ -21,7 +21,13 @@ export type ActivityWidgetType =
   | "number_bond"
   | "ten_frame"
   | "number_line"
-  | "rekenrek";
+  | "rekenrek"
+  | "parent_activity"
+  | "emotion_picker"
+  | "drag_to_sort"
+  | "trace_shape"
+  | "tap_and_reveal"
+  | "listen_and_find";
 
 // ---------------------------------------------------------------------------
 // Shared primitives
@@ -288,6 +294,170 @@ export interface RekenrekContent {
   questions: RekenrekQuestion[];
 }
 
+/** Emotion Picker: Identify the emotion that matches a scenario (Pre-K SEL) */
+export interface EmotionPickerQuestion {
+  /** Unique question ID */
+  id: string;
+  /** Description of the scenario read aloud (e.g., "The puppy is lost...") */
+  scenario: string;
+  /** Emoji illustration for the scenario */
+  scenarioEmoji?: string;
+  /** One or more valid emotions for this scenario */
+  validEmotions: string[];
+  /** The emotion face options to choose from */
+  options: Array<{
+    /** Emotion key (e.g., "happy", "sad", "angry", "scared", "surprised") */
+    emotion: string;
+    /** Emoji face for the emotion */
+    emoji: string;
+    /** Display label (e.g., "Happy", "Sad") */
+    label: string;
+  }>;
+}
+
+export interface EmotionPickerContent {
+  type: "emotion_picker";
+  /** Array of scenario questions in order */
+  questions: EmotionPickerQuestion[];
+}
+
+/** Drag to Sort: Drag items into 2-3 category buckets for classification */
+export interface DragToSortItem {
+  /** Unique item ID */
+  id: string;
+  /** Display label (e.g., "Elephant") */
+  label: string;
+  /** Emoji for the item */
+  emoji: string;
+  /** ID of the bucket this item belongs in */
+  correctBucket: string;
+}
+
+export interface DragToSortBucket {
+  /** Unique bucket ID */
+  id: string;
+  /** Display label (e.g., "Big" or "Small") */
+  label: string;
+  /** Optional emoji icon for the bucket */
+  emoji?: string;
+}
+
+export interface DragToSortQuestion {
+  /** Unique question ID */
+  id: string;
+  /** Instruction prompt (e.g., "Sort the animals by size!") */
+  prompt: string;
+  /** Items to sort into buckets */
+  items: DragToSortItem[];
+  /** Category buckets (2-3) */
+  buckets: DragToSortBucket[];
+  /** Hint text */
+  hint?: string;
+}
+
+export interface DragToSortContent {
+  type: "drag_to_sort";
+  /** Array of sorting questions in order */
+  questions: DragToSortQuestion[];
+}
+
+/** Trace Shape: Follow a dotted path to trace shapes, letters, or numbers */
+export interface TraceShapeQuestion {
+  /** Unique question ID */
+  id: string;
+  /** Instruction prompt (e.g., "Trace the circle!") */
+  prompt: string;
+  /** Shape key: "circle" | "square" | "triangle" | "A"-"Z" | "0"-"9" */
+  shape: string;
+  /** Color of the guide path (defaults to subject color) */
+  strokeColor?: string;
+  /** Color of the user's trace (defaults to primary orange) */
+  traceColor?: string;
+}
+
+export interface TraceShapeContent {
+  type: "trace_shape";
+  /** Array of shapes/letters/numbers to trace in order */
+  questions: TraceShapeQuestion[];
+}
+
+/** Tap and Reveal: Tap covered items to discover what's underneath */
+export interface TapAndRevealItem {
+  /** Unique item ID */
+  id: string;
+  /** Emoji covering the item (e.g., "cloud", "bush") */
+  coverEmoji: string;
+  /** Emoji revealed underneath (e.g., "cat", "circle") */
+  revealEmoji: string;
+  /** Label displayed on reveal (e.g., "Cat") */
+  revealLabel: string;
+  /** In "find" mode, whether this item is a target to find */
+  isTarget?: boolean;
+}
+
+export interface TapAndRevealQuestion {
+  /** Unique question ID */
+  id: string;
+  /** Instruction prompt (e.g., "Find all the animals hiding!") */
+  prompt: string;
+  /** Items hidden under covers */
+  items: TapAndRevealItem[];
+  /** explore = no right/wrong, find = find specific items */
+  mode: "explore" | "find";
+  /** For find mode: what to look for (e.g., "Find all the circles!") */
+  targetPrompt?: string;
+  /** Grid columns (default 3) */
+  gridCols?: number;
+}
+
+export interface TapAndRevealContent {
+  type: "tap_and_reveal";
+  /** Array of reveal questions in order */
+  questions: TapAndRevealQuestion[];
+}
+
+/** Listen and Find: Hear a sound/prompt, tap the matching image from options */
+export interface ListenAndFindQuestion {
+  /** Unique question ID */
+  id: string;
+  /** Text prompt displayed below the speaker button */
+  prompt: string;
+  /** What to speak via TTS (e.g., "Moo! Which animal says moo?") */
+  spokenText: string;
+  /** ID of the correct option */
+  correctOptionId: string;
+  /** Image/emoji options to choose from (3-4) */
+  options: Array<{
+    /** Unique option ID */
+    id: string;
+    /** Emoji displayed as the option image */
+    emoji: string;
+    /** Label shown below emoji and spoken on selection */
+    label: string;
+  }>;
+}
+
+export interface ListenAndFindContent {
+  type: "listen_and_find";
+  /** Array of listen-and-find questions in order */
+  questions: ListenAndFindQuestion[];
+}
+
+/** Parent Activity: Off-screen, parent-guided real-world activity */
+export interface ParentActivityContent {
+  type: "parent_activity";
+  /** Title for the activity card (e.g. "Off-Screen Fun!") */
+  prompt: string;
+  /** What to do — parent-facing instructions */
+  instructions: string;
+  /** Extra guidance for the parent */
+  parentTip?: string;
+  /** Completion confirmation prompt (e.g. "Did you count your toys together?") */
+  completionPrompt: string;
+  /** Optional emoji or image path for the illustration area */
+  illustration?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Union of all activity content types
 // ---------------------------------------------------------------------------
@@ -302,7 +472,13 @@ export type ActivityContent =
   | NumberBondContent
   | TenFrameContent
   | NumberLineContent
-  | RekenrekContent;
+  | RekenrekContent
+  | ParentActivityContent
+  | EmotionPickerContent
+  | DragToSortContent
+  | TraceShapeContent
+  | TapAndRevealContent
+  | ListenAndFindContent;
 
 /** A lesson may contain one or more activity steps */
 export interface LessonActivityConfig {
@@ -407,6 +583,12 @@ export function parseActivityConfig(
       "ten_frame",
       "number_line",
       "rekenrek",
+      "parent_activity",
+      "emotion_picker",
+      "drag_to_sort",
+      "trace_shape",
+      "tap_and_reveal",
+      "listen_and_find",
     ];
 
     if (!validTypes.includes(activity.type as ActivityWidgetType)) return null;

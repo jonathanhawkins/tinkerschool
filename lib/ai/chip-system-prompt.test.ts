@@ -344,7 +344,13 @@ describe("getChipSystemPrompt", () => {
         "art",
         "problem_solving",
         "coding",
+        "social_emotional",
       ];
+
+      const displayNames: Record<string, string> = {
+        problem_solving: "Problem Solving",
+        social_emotional: "Social-Emotional Learning",
+      };
 
       for (const subject of subjects) {
         const result = getChipSystemPrompt({
@@ -353,7 +359,7 @@ describe("getChipSystemPrompt", () => {
         });
 
         const displayName =
-          subject === "problem_solving" ? "Problem Solving" : subject.charAt(0).toUpperCase() + subject.slice(1);
+          displayNames[subject] ?? subject.charAt(0).toUpperCase() + subject.slice(1);
 
         expect(result).toContain(`Socratic Questions for ${displayName}`);
         expect(result).toContain(`NEVER Do This in ${displayName}`);
@@ -920,6 +926,150 @@ describe("getChipSystemPrompt", () => {
       // Should appear at least 3 times across different sections
       expect(matches).not.toBeNull();
       expect(matches!.length).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  describe("Pre-K mode", () => {
+    const preKParams: ChipContext = {
+      childName: "Mila",
+      age: 3,
+      gradeLevel: -1,
+    };
+
+    it("includes Pre-K language guidance for age 3 / gradeLevel -1", () => {
+      const result = getChipSystemPrompt(preKParams);
+
+      expect(result).toContain("1-2 syllable words");
+      expect(result).toContain("1 SHORT sentence");
+      expect(result).toContain("sound words");
+    });
+
+    it("includes Pre-K language guidance for age 4 / gradeLevel -1", () => {
+      const result = getChipSystemPrompt({
+        childName: "Eli",
+        age: 4,
+        gradeLevel: -1,
+      });
+
+      expect(result).toContain("1-2 syllable words");
+      expect(result).toContain("1 SHORT sentence");
+    });
+
+    it("includes Pre-K dual-audience section with parent prompts", () => {
+      const result = getChipSystemPrompt(preKParams);
+
+      expect(result).toContain("Pre-K Dual-Audience Mode");
+      expect(result).toContain("[Parent:");
+      expect(result).toContain("parent or caregiver");
+      expect(result).toContain("co-teacher");
+    });
+
+    it("includes Pre-K math subject guidance", () => {
+      const result = getChipSystemPrompt({
+        ...preKParams,
+        age: 4,
+        currentSubject: "math",
+      });
+
+      expect(result).toContain("Subject: Math (Pre-K)");
+      expect(result).toContain("fingers");
+      expect(result).toContain("shapes");
+      expect(result).toContain("counting");
+    });
+
+    it("includes Pre-K social-emotional subject guidance", () => {
+      const result = getChipSystemPrompt({
+        ...preKParams,
+        currentSubject: "social_emotional",
+      });
+
+      expect(result).toContain("Social-Emotional Learning (Pre-K)");
+      expect(result).toContain("feelings");
+      expect(result).toContain("calm");
+    });
+
+    it("includes Pre-K reading subject guidance with sounds and stories", () => {
+      const result = getChipSystemPrompt({
+        ...preKParams,
+        currentSubject: "reading",
+      });
+
+      expect(result).toContain("Subject: Reading (Pre-K)");
+      expect(result).toContain("pre-readers");
+      expect(result).toContain("stories");
+    });
+
+    it("includes Pre-K coding subject guidance without real code", () => {
+      const result = getChipSystemPrompt({
+        ...preKParams,
+        currentSubject: "coding",
+      });
+
+      expect(result).toContain("Subject: Coding (Pre-K)");
+      expect(result).toContain("NEVER show actual code");
+      expect(result).toContain("sequencing");
+    });
+
+    it("uses Seedling band name for gradeLevel -1", () => {
+      const result = getChipSystemPrompt(preKParams);
+
+      expect(result).toContain("Seedling");
+    });
+
+    it("does NOT include Pre-K dual-audience section for age 7 / gradeLevel 1", () => {
+      const result = getChipSystemPrompt({
+        childName: "Cassidy",
+        age: 7,
+        gradeLevel: 1,
+      });
+
+      expect(result).not.toContain("Pre-K Dual-Audience Mode");
+      expect(result).not.toContain("[Parent:");
+    });
+
+    it("does NOT trigger Pre-K mode for age 5 / gradeLevel 0 (Kindergarten)", () => {
+      const result = getChipSystemPrompt({
+        childName: "Kai",
+        age: 5,
+        gradeLevel: 0,
+      });
+
+      expect(result).not.toContain("Pre-K Dual-Audience Mode");
+      expect(result).not.toContain("1-2 syllable words ONLY");
+      expect(result).toContain("very simple words");
+      expect(result).toContain("Explorer");
+    });
+
+    it("every Pre-K subject includes parent prompt and Socratic questions", () => {
+      const subjects = [
+        "math",
+        "reading",
+        "science",
+        "music",
+        "art",
+        "problem_solving",
+        "coding",
+        "social_emotional",
+      ];
+
+      for (const subject of subjects) {
+        const result = getChipSystemPrompt({
+          ...preKParams,
+          currentSubject: subject,
+        });
+
+        expect(result).toContain("[Parent:");
+        expect(result).toContain("Socratic Questions for");
+        expect(result).toContain("NEVER Do This in");
+      }
+    });
+
+    it("Pre-K prompt includes the child name in dual-audience context", () => {
+      const result = getChipSystemPrompt(preKParams);
+
+      expect(result).toContain("Mila");
+      expect(result).toContain("age 3");
+      expect(result).toContain("grade -1");
     });
   });
 

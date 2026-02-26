@@ -9,10 +9,11 @@ export function cn(...inputs: ClassValue[]) {
 // Grade / curriculum band utilities
 // ---------------------------------------------------------------------------
 
-/** Valid grade level values: 0 = Kindergarten, 1-6 = grades 1-6. */
-export const VALID_GRADES = [0, 1, 2, 3, 4, 5, 6] as const;
+/** Valid grade level values: -1 = Pre-K, 0 = Kindergarten, 1-6 = grades 1-6. */
+export const VALID_GRADES = [-1, 0, 1, 2, 3, 4, 5, 6] as const;
 
 export const GRADE_LABELS: Record<number, string> = {
+  [-1]: "Pre-K",
   0: "Kindergarten",
   1: "1st Grade",
   2: "2nd Grade",
@@ -24,6 +25,7 @@ export const GRADE_LABELS: Record<number, string> = {
 
 /** Human-readable names for each curriculum band. */
 export const BAND_NAMES: Record<number, string> = {
+  0: "Seedling",
   1: "Explorer",
   2: "Builder",
   3: "Inventor",
@@ -34,6 +36,7 @@ export const BAND_NAMES: Record<number, string> = {
 /**
  * Maps a grade level to its curriculum band number.
  *
+ * Band 0 (Seedling):  Pre-K
  * Band 1 (Explorer):  K-1
  * Band 2 (Builder):   2-3
  * Band 3 (Inventor):  4
@@ -41,10 +44,11 @@ export const BAND_NAMES: Record<number, string> = {
  * Band 5 (Creator):   6
  */
 export function bandForGrade(grade: number): number {
-  if (grade <= 1) return 1; // Explorer: K-1
-  if (grade <= 3) return 2; // Builder: 2-3
-  if (grade <= 4) return 3; // Inventor: 3-4
-  if (grade <= 5) return 4; // Hacker: 4-5
+  if (grade < 0) return 0;  // Seedling: Pre-K
+  if (grade <= 1) return 1;  // Explorer: K-1
+  if (grade <= 3) return 2;  // Builder: 2-3
+  if (grade <= 4) return 3;  // Inventor: 3-4
+  if (grade <= 5) return 4;  // Hacker: 4-5
   return 5; // Creator: 5-6
 }
 

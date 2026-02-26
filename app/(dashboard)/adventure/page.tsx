@@ -51,6 +51,7 @@ export default async function AdventurePage({ searchParams }: AdventurePageProps
     supabase,
     activeProfile.id,
     adventure.subject_id,
+    activeProfile.current_band,
   );
 
   // Apply adaptive passing score

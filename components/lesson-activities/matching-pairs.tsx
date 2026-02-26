@@ -24,11 +24,21 @@ function shuffle<T>(arr: T[]): T[] {
   return copy;
 }
 
-export function MatchingPairs() {
+interface MatchingPairsProps {
+  /** Pre-K mode: max 4 pairs, larger items, images only, no wrong animation */
+  isPreK?: boolean;
+}
+
+export function MatchingPairs({ isPreK = false }: MatchingPairsProps) {
   const { currentActivity, state, recordAnswer, subjectColor } = useActivity();
   const { play } = useSound();
-  const activity = currentActivity as MatchingPairsContent;
+  const rawActivity = currentActivity as MatchingPairsContent;
   const prefersReducedMotion = useReducedMotion();
+
+  // Pre-K: limit to 4 pairs max
+  const activity: MatchingPairsContent = isPreK
+    ? { ...rawActivity, pairs: rawActivity.pairs.slice(0, 4) }
+    : rawActivity;
 
   // Shuffled right-side items (only shuffled once on mount)
   const [shuffledRight] = useState(() =>
@@ -72,6 +82,10 @@ export function MatchingPairs() {
         if (newMatches.size === totalPairs) {
           recordAnswer("all_matched", true);
         }
+      } else if (isPreK) {
+        // Pre-K: gentle deselect, no shake — just clear selection
+        play("tap");
+        setSelectedLeftId(null);
       } else {
         // Shake animation for wrong match
         setShakeId(rightId);
@@ -151,7 +165,10 @@ export function MatchingPairs() {
                   onClick={() => handleLeftSelect(pair.left.id)}
                   disabled={isMatched || allMatched}
                   className={cn(
-                    "flex min-h-[56px] w-full items-center gap-2.5 rounded-2xl border-2 p-3.5 text-left transition-all duration-200 touch-manipulation",
+                    "flex w-full items-center gap-2.5 rounded-2xl border-2 text-left transition-all duration-200 touch-manipulation",
+                    isPreK
+                      ? "min-h-[64px] p-4"
+                      : "min-h-[56px] p-3.5",
                     isMatched &&
                       "opacity-80",
                     isSelected &&
@@ -176,11 +193,16 @@ export function MatchingPairs() {
                   }}
                 >
                   {pair.left.emoji && (
-                    <span className="text-xl">{pair.left.emoji}</span>
+                    <span className={cn(isPreK ? "text-3xl" : "text-xl")}>
+                      {pair.left.emoji}
+                    </span>
                   )}
-                  <span className="flex-1 text-sm font-medium">
-                    {pair.left.text}
-                  </span>
+                  {/* Pre-K: hide text labels, show emoji/images only */}
+                  {!isPreK && (
+                    <span className="flex-1 text-sm font-medium">
+                      {pair.left.text}
+                    </span>
+                  )}
                   {isMatched && (
                     <CheckCircle2
                       className="size-4 shrink-0"
@@ -227,7 +249,10 @@ export function MatchingPairs() {
                   onClick={() => handleRightSelect(right.id)}
                   disabled={isMatched || !selectedLeftId || allMatched}
                   className={cn(
-                    "flex min-h-[56px] w-full items-center gap-2.5 rounded-2xl border-2 p-3.5 text-left transition-all duration-200 touch-manipulation",
+                    "flex w-full items-center gap-2.5 rounded-2xl border-2 text-left transition-all duration-200 touch-manipulation",
+                    isPreK
+                      ? "min-h-[64px] p-4"
+                      : "min-h-[56px] p-3.5",
                     isMatched && "opacity-80",
                     !isMatched &&
                       selectedLeftId &&
@@ -246,11 +271,16 @@ export function MatchingPairs() {
                   }
                 >
                   {right.emoji && (
-                    <span className="text-xl">{right.emoji}</span>
+                    <span className={cn(isPreK ? "text-3xl" : "text-xl")}>
+                      {right.emoji}
+                    </span>
                   )}
-                  <span className="flex-1 text-sm font-medium">
-                    {right.text}
-                  </span>
+                  {/* Pre-K: hide text labels, show emoji/images only */}
+                  {!isPreK && (
+                    <span className="flex-1 text-sm font-medium">
+                      {right.text}
+                    </span>
+                  )}
                   {isMatched && (
                     <CheckCircle2
                       className="size-4 shrink-0"

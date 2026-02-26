@@ -39,8 +39,8 @@ const MAX_KID_NAME_LENGTH = 30;
  */
 const NAME_PATTERN = /^[\p{L}\p{N}\s'-]+$/u;
 
-/** Valid grade level values sent by the form (0 = Kindergarten, 1-6 = grades). */
-const VALID_GRADE_LEVELS = new Set(["0", "1", "2", "3", "4", "5", "6"]);
+/** Valid grade level values sent by the form (-1 = Pre-K, 0 = Kindergarten, 1-6 = grades). */
+const VALID_GRADE_LEVELS = new Set(["-1", "0", "1", "2", "3", "4", "5", "6"]);
 
 /** Allowed avatar IDs -- must match AVATAR_OPTIONS in onboarding-form.tsx. */
 const VALID_AVATAR_IDS = new Set([

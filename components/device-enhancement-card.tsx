@@ -69,6 +69,11 @@ const DEVICE_SUGGESTIONS: Record<
     description:
       "Take what you learned and run it on real hardware! Open the workshop to write code that lights up the display.",
   },
+  "social-emotional": {
+    title: "Feelings on M5Stick!",
+    description:
+      "Display emotion faces on your M5Stick screen! Build a mood check-in tool with buttons to pick how you feel and watch the LED pulse as you practice calm breathing.",
+  },
 };
 
 const DEFAULT_SUGGESTION = {

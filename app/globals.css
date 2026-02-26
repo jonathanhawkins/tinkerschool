@@ -45,6 +45,7 @@
   --color-subject-art: var(--subject-art);
   --color-subject-problem-solving: var(--subject-problem-solving);
   --color-subject-coding: var(--subject-coding);
+  --color-subject-social-emotional: var(--subject-social-emotional);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -100,6 +101,7 @@
   --subject-art: #EC4899;
   --subject-problem-solving: #EAB308;
   --subject-coding: #14B8A6;
+  --subject-social-emotional: #F472B6;
 }
 
 .dark {

@@ -148,9 +148,13 @@ function buildPrompt(
   subject: { subjectSlug: string; subjectName: string },
   targetSkillIds: string[],
 ): string {
-  const gradeText = context.gradeLevel
+  const isPreK = context.gradeLevel != null && context.gradeLevel < 0;
+
+  const gradeText = context.gradeLevel != null && context.gradeLevel >= 0
     ? `grade ${context.gradeLevel}`
-    : `band ${context.currentBand}`;
+    : isPreK
+      ? "Pre-K (ages 3-5)"
+      : `band ${context.currentBand}`;
 
   const targetSkills = context.skills
     .filter((s) => targetSkillIds.includes(s.skillId))
@@ -179,12 +183,22 @@ function buildPrompt(
 ## Recent Scores: ${recentScores || "no recent data"}${chipContext}
 
 ## Instructions
-Create an engaging mini-lesson with 3-4 interactive activities. The lesson should:
-1. Tell a short story that connects the activities (2-3 sentences, themed around the child's interests if possible)
+Create an engaging mini-lesson with ${isPreK ? "2-3" : "3-4"} interactive activities. The lesson should:
+1. Tell a short story that connects the activities (${isPreK ? "1-2 very simple sentences with animal sounds and familiar objects" : "2-3 sentences, themed around the child's interests if possible"})
 2. Mix different widget types for variety (don't repeat the same widget type)
 3. Be age-appropriate for ${gradeText}
 4. Include helpful hints for harder questions
 5. Use emojis to make it fun and visual
+${isPreK ? `
+## Pre-K Special Rules
+- Use ONLY 1-2 syllable words in all prompts and options
+- Keep numbers to 1-5 maximum (counting to 10 at most)
+- Use lots of animal sounds, colors, and familiar objects (toys, food, family)
+- Every prompt should be something a parent can read aloud to their 3-year-old
+- Prefer flash_card, counting (1-5 items), matching_pairs (2-3 pairs), and multiple_choice (2 options only)
+- AVOID fill_in_blank, number_bond, number_line, rekenrek, and sequence_order (too complex for Pre-K)
+- Make it feel like play, NOT school -- use silly themes and fun sounds
+` : ""}
 
 ## Activity Widget Types Available
 - multiple_choice: Pick the right answer from 2-4 options

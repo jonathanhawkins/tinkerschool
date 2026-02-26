@@ -379,6 +379,7 @@ const VOICE_SUBJECT_GUIDANCE: Record<string, string> = {
   art: `Celebrate creativity — there's no wrong answer. Guide with shapes and colors: "What if we added a triangle?" Ask "What colors make you think of this?" Never tell them what to draw.`,
   problem_solving: `Ask "What's the first step?" and "Do you see a pattern?" Break big problems into small ones. Celebrate the process of trying. Never give the solution — ask what approach THEY would try.`,
   coding: `Guide with hints: "What do you think this line does?" Celebrate debugging: "A bug is just a puzzle!" Point to the right area when stuck. Never write code for them.`,
+  social_emotional: `Use a warm, gentle tone. Ask "How do you think they feel?" and "What could we do to help?" Practice calm-down strategies together: "Let's breathe in... and out." Never dismiss feelings or tell them how they should feel.`,
 };
 
 function buildLessonTeachingSection(

@@ -55,6 +55,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { WorkshopDemo } from "@/components/workshop-demo";
 import { TryChipDemo } from "@/components/try-chip-demo";
+import { EmailCapture } from "@/components/email-capture";
 
 // ---------------------------------------------------------------------------
 // Data
@@ -1500,6 +1501,24 @@ export function LandingContent() {
           </div>
         </motion.div>
 
+      </section>
+
+      {/* ================================================================= */}
+      {/* Section 8b: Email Capture */}
+      {/* ================================================================= */}
+      <section className="px-6 py-16">
+        <motion.div
+          className="mx-auto max-w-xl"
+          {...motionProps(fadeInUp)}
+        >
+          <EmailCapture
+            source="landing_page"
+            heading="Stay in the loop"
+            description="Free schedule templates, STEM activity ideas, and learning tips for kids ages 5-12. Join our growing community of homeschool families."
+            buttonText="Subscribe"
+            variant="card"
+          />
+        </motion.div>
       </section>
 
       </main>

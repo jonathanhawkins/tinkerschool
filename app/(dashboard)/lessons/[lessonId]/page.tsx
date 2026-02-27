@@ -37,7 +37,9 @@ import { Badge } from "@/components/ui/badge";
 import { SubjectIcon } from "@/components/subject-icon";
 import {
   isInteractiveLesson,
+  isNarrativeLesson,
   parseActivityConfig,
+  parseNarrativeConfig,
 } from "@/lib/activities/types";
 import { computeDifficulty } from "@/lib/activities/adaptive-difficulty";
 import { DeviceEnhancementCard } from "@/components/device-enhancement-card";
@@ -45,6 +47,7 @@ import { FullscreenToggle } from "@/components/fullscreen-toggle";
 import { LessonVoiceSync } from "@/components/lesson-voice-sync";
 import { buildVoiceLessonContext } from "@/lib/hume/lesson-context-builder";
 import { InteractiveLesson } from "./interactive-lesson";
+import { NarrativeLesson } from "@/components/narrative-lesson";
 import { ConceptIntro } from "@/components/concept-intro";
 import { CodingLessonIntro } from "@/components/coding-lesson-intro";
 import { detectConceptsForLesson } from "@/lib/tutorials/detect-concepts";
@@ -120,13 +123,22 @@ export default async function LessonPage({
     .eq("status", "completed");
   const isFirstLesson = (completedCount ?? 0) === 0;
 
-  // Check if this is an interactive lesson
+  // Check if this is an interactive lesson (activities-based)
   const isInteractive = isInteractiveLesson(
     safeLesson.lesson_type,
     safeLesson.content,
   );
   const activityConfig = isInteractive
     ? parseActivityConfig(safeLesson.content)
+    : null;
+
+  // Check if this is a narrative lesson (old sections-based format)
+  const isNarrative = !isInteractive && isNarrativeLesson(
+    safeLesson.lesson_type,
+    safeLesson.content,
+  );
+  const narrativeConfig = isNarrative
+    ? parseNarrativeConfig(safeLesson.content)
     : null;
 
   // Compute adaptive difficulty for interactive lessons
@@ -381,9 +393,34 @@ export default async function LessonPage({
       )}
 
       {/* ================================================================= */}
+      {/* NARRATIVE LESSON: Old sections-based format (60 non-coding)        */}
+      {/* ================================================================= */}
+      {isNarrative && narrativeConfig && (
+        <FadeIn delay={0.15}>
+          <Card
+            className="rounded-2xl border-2"
+            style={{ borderColor: `${subjectColor}40` }}
+          >
+            <CardContent className="p-5 sm:p-6">
+              <NarrativeLesson
+                sections={narrativeConfig.sections}
+                lessonId={lessonId}
+                profileId={activeProfile.id}
+                subjectColor={subjectColor}
+                lessonTitle={safeLesson.title}
+                isCompleted={isCompleted}
+                nextLessonId={nextLessonId}
+                nextLessonTitle={nextLessonTitle}
+              />
+            </CardContent>
+          </Card>
+        </FadeIn>
+      )}
+
+      {/* ================================================================= */}
       {/* CODING LESSON: Show workshop CTA and coding-specific content       */}
       {/* ================================================================= */}
-      {!isInteractive && (
+      {!isInteractive && !isNarrative && (
         <>
           {/* ----- First-time coding lesson walkthrough ----- */}
           <CodingLessonIntro />

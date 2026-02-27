@@ -609,3 +609,80 @@ export function isInteractiveLesson(
   if (lessonType !== "interactive" && lessonType !== "quiz") return false;
   return parseActivityConfig(content) !== null;
 }
+
+// ---------------------------------------------------------------------------
+// Narrative (old-format sections) lesson types
+// ---------------------------------------------------------------------------
+
+/** Structure of the old-format "sections" content used in 78 Band 2 lessons */
+export interface NarrativeSections {
+  story?: {
+    title: string;
+    narrative: string;
+    character_emotion?: string;
+  };
+  explore?: {
+    title: string;
+    instructions: string;
+    activity_type?: string;
+    device_interaction?: string;
+    simulator_fallback?: string;
+  };
+  practice?: {
+    title: string;
+    problems: Array<Record<string, unknown>>;
+  };
+  create?: {
+    title: string;
+    prompt: string;
+    share_enabled?: boolean;
+  };
+  celebrate?: {
+    title: string;
+    summary: string;
+    parent_note?: string;
+  };
+}
+
+export interface NarrativeLessonConfig {
+  sections: NarrativeSections;
+  standards?: string[];
+  cross_subject_connections?: string[];
+}
+
+/**
+ * Attempt to parse a lesson's `content` field as a NarrativeLessonConfig.
+ * Returns null if the content does not contain valid narrative sections data.
+ */
+export function parseNarrativeConfig(
+  content: Record<string, unknown>,
+): NarrativeLessonConfig | null {
+  if (!content || typeof content !== "object") return null;
+
+  const sections = content.sections;
+  if (!sections || typeof sections !== "object") return null;
+
+  // Must have at least a story or explore section to qualify
+  const s = sections as Record<string, unknown>;
+  if (!s.story && !s.explore) return null;
+
+  return content as unknown as NarrativeLessonConfig;
+}
+
+/**
+ * Check if a lesson should render the narrative (sections-based) layout.
+ * A narrative lesson has `content.sections` but NOT valid `content.activities`.
+ */
+export function isNarrativeLesson(
+  lessonType: string,
+  content: Record<string, unknown>,
+): boolean {
+  // Narrative lessons can have these lesson types
+  const narrativeTypes = ["interactive", "quiz", "capstone"];
+  if (!narrativeTypes.includes(lessonType)) return false;
+
+  // If it has valid activities, it's an interactive lesson, not narrative
+  if (parseActivityConfig(content) !== null) return false;
+
+  return parseNarrativeConfig(content) !== null;
+}

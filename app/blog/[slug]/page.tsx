@@ -8,6 +8,8 @@ import { getAllPosts, getPostBySlug } from "@/lib/blog/posts";
 import { markdownToHtml } from "@/lib/blog/markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmailCapture } from "@/components/email-capture";
+import { BlogShareButtons } from "@/components/blog-share-buttons";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -244,7 +246,15 @@ export default async function BlogPostPage({ params }: Props) {
             </div>
           )}
 
-          <hr className="border-border" />
+          {/* Share buttons */}
+          <div className="flex items-center justify-between">
+            <hr className="flex-1 border-border" />
+            <BlogShareButtons
+              url={`https://tinkerschool.ai/blog/${post.slug}`}
+              title={post.title}
+              className="ml-4"
+            />
+          </div>
         </header>
 
         {/* Post body */}
@@ -253,13 +263,28 @@ export default async function BlogPostPage({ params }: Props) {
           dangerouslySetInnerHTML={{ __html: contentHtml }}
         />
 
-        {/* Post footer */}
-        <footer className="mt-12 border-t border-border pt-8">
+        {/* Share + Subscribe */}
+        <footer className="mt-12 flex flex-col gap-8 border-t border-border pt-8">
+          {/* Share buttons (bottom) */}
+          <BlogShareButtons
+            url={`https://tinkerschool.ai/blog/${post.slug}`}
+            title={post.title}
+          />
+
+          {/* Email capture */}
+          <EmailCapture
+            source="blog_footer"
+            heading="Get free homeschool resources"
+            description="Schedule templates, STEM activity ideas, and learning tips for kids ages 5-12. Join our community of homeschool families."
+            buttonText="Subscribe"
+            variant="card"
+          />
+
           <Button
             asChild
             variant="outline"
             size="sm"
-            className="rounded-xl text-sm"
+            className="w-fit rounded-xl text-sm"
           >
             <Link href="/blog">
               <ArrowLeft className="size-4" />

@@ -382,3 +382,113 @@ export async function completeActivity(
 
   return { success: true, xpAwarded: 0 };
 }
+
+// ---------------------------------------------------------------------------
+// Complete a narrative (sections-based) lesson
+// ---------------------------------------------------------------------------
+
+interface CompleteNarrativeResult {
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Mark a narrative (old-format sections) lesson as completed.
+ * Simpler than completeActivity -- no scoring or activity sessions needed.
+ */
+export async function completeNarrativeLesson(
+  lessonId: string,
+): Promise<CompleteNarrativeResult> {
+  if (!isValidUUID(lessonId)) {
+    return { success: false, error: "Invalid lesson ID" };
+  }
+
+  const { userId } = await auth();
+  if (!userId) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  const supabase = await getSupabase();
+
+  const profileId = await resolveKidProfileId(supabase, userId);
+  if (!profileId) {
+    return { success: false, error: "Profile not found" };
+  }
+
+  // Fetch existing progress to correctly increment attempts
+  const { data: existingProgress } = (await supabase
+    .from("progress")
+    .select("attempts, status")
+    .eq("profile_id", profileId)
+    .eq("lesson_id", lessonId)
+    .maybeSingle()) as { data: { attempts: number; status: string } | null };
+
+  // Already completed — nothing to do
+  if (existingProgress?.status === "completed") {
+    return { success: true };
+  }
+
+  const currentAttempts = existingProgress?.attempts ?? 0;
+  const now = new Date().toISOString();
+
+  // Mark as completed
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: progressError } = await (supabase.from("progress") as any).upsert(
+    {
+      profile_id: profileId,
+      lesson_id: lessonId,
+      status: "completed",
+      started_at: now,
+      completed_at: now,
+      attempts: currentAttempts + 1,
+    },
+    {
+      onConflict: "profile_id, lesson_id",
+      ignoreDuplicates: false,
+    },
+  );
+
+  if (progressError) {
+    console.error(
+      "[completeNarrativeLesson] Failed to update progress:",
+      progressError instanceof Error ? progressError.message : "unknown error",
+    );
+    return { success: false, error: "Failed to update progress" };
+  }
+
+  // Award XP and update streak
+  await awardXP(supabase, profileId, "lesson_completed");
+  await updateStreak(supabase, profileId);
+  await evaluateBadges(supabase, profileId);
+
+  // Track lesson completed (fire-and-forget)
+  const { data: kidForEvent } = (await supabase
+    .from("profiles")
+    .select("family_id")
+    .eq("id", profileId)
+    .single()) as { data: { family_id: string } | null };
+
+  if (kidForEvent) {
+    trackEventDirect(profileId, kidForEvent.family_id, EVENT_LESSON_COMPLETED, {
+      lesson_id: lessonId,
+      score: 100,
+      attempts: currentAttempts + 1,
+    }).catch(() => {});
+  }
+
+  // Notify parent(s) about lesson completion (fire-and-forget)
+  sendLessonCompletionNotification(
+    supabase,
+    profileId,
+    lessonId,
+    100,
+  ).catch((err) => {
+    console.error("[completeNarrativeLesson] Parent notification failed:", err);
+  });
+
+  revalidatePath("/home");
+  revalidatePath("/achievements");
+  revalidatePath(`/lessons/${lessonId}`);
+
+  return { success: true };
+}

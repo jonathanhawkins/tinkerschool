@@ -7,6 +7,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { hashPin } from "@/lib/auth/pin";
+import { EVENT_ONBOARDING_COMPLETE } from "@/lib/analytics/events";
+import { trackEvent } from "@/lib/analytics/track-event";
 import { sendCoppaConsentConfirmation } from "@/lib/notifications/send-parent-notification";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type { DeviceMode, FamilyInsert, LearningProfileInsert, ProfileInsert } from "@/lib/supabase/types";
@@ -306,6 +308,12 @@ export async function completeOnboarding(
   // server component to re-render, which detects the new profile and redirects
   // to /home before the client can show Steps 5-7. The /home page will fetch
   // fresh data on its own when the user eventually navigates there.
+
+  // Track onboarding completion (fire-and-forget)
+  trackEvent(EVENT_ONBOARDING_COMPLETE, {
+    grade_level: gradeLevel,
+    device_mode: "pending",
+  }).catch(() => {});
 
   return { success: true, kidProfileId: kidProfile.id };
 }

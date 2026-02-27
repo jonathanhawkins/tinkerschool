@@ -220,40 +220,48 @@ const bands: BandInfo[] = [
   {
     band: 1,
     name: "Explorer",
-    grades: "K-1",
+    grades: "K",
     ages: "5-6",
-    mode: "UIFlow2 blocks",
-    description: "Drag-and-drop visual blocks introduce foundational concepts.",
+    mode: "Interactive activities",
+    description: "Hands-on counting, letters, and discovery through playful activities.",
   },
   {
     band: 2,
     name: "Builder",
-    grades: "2-3",
-    ages: "7-8",
-    mode: 'Blocks + "peek at Python"',
-    description:
-      "Build with blocks and peek at the Python code underneath.",
+    grades: "1",
+    ages: "6-7",
+    mode: "UIFlow2 blocks",
+    description: "Drag-and-drop visual blocks introduce foundational concepts.",
     highlight: true,
   },
   {
     band: 3,
     name: "Inventor",
-    grades: "3-4",
-    ages: "8-9",
-    mode: "MicroPython + block hints",
-    description: "Transition to text-based coding with block scaffolding.",
+    grades: "2-3",
+    ages: "7-9",
+    mode: 'Blocks + "peek at Python"',
+    description:
+      "Build with blocks and peek at the Python code underneath.",
   },
   {
     band: 4,
     name: "Hacker",
-    grades: "4-5",
-    ages: "9-10",
-    mode: "MicroPython + AI assist",
-    description: "Write Python with AI-powered coding assistance.",
+    grades: "3-4",
+    ages: "8-10",
+    mode: "MicroPython + block hints",
+    description: "Transition to text-based coding with block scaffolding.",
   },
   {
     band: 5,
     name: "Creator",
+    grades: "4-5",
+    ages: "9-11",
+    mode: "MicroPython + AI assist",
+    description: "Write Python with AI-powered coding assistance.",
+  },
+  {
+    band: 6,
+    name: "Innovator",
     grades: "5-6",
     ages: "10-12",
     mode: "Full MicroPython + AI",
@@ -1091,7 +1099,7 @@ export function LandingContent() {
             </h2>
           </div>
           <p className="max-w-lg text-sm text-muted-foreground sm:text-base">
-            Six progressive bands take kids from guided play to full Python,
+            Seven progressive bands take kids from guided play to full Python,
             meeting them exactly where they are.
           </p>
         </motion.div>
@@ -1104,7 +1112,7 @@ export function LandingContent() {
           viewport={{ once: true, margin: "-60px" }}
         >
           {bands.map((band) => {
-            const bandIcons = [Sprout, Blocks, Wrench, Lightbulb, Rocket, Star];
+            const bandIcons = [Sprout, Blocks, Wrench, Lightbulb, Rocket, Star, Sparkles];
             const BandIcon = bandIcons[band.band];
 
             return (
@@ -1456,7 +1464,7 @@ export function LandingContent() {
               },
               {
                 q: "What ages is TinkerSchool designed for?",
-                a: "TinkerSchool is designed for Pre-K through 6th grade (ages 3\u201312) with six progressive curriculum bands: Seedling (Pre-K), Explorer (K\u20131), Builder (2\u20133), Inventor (3\u20134), Hacker (4\u20135), and Creator (5\u20136). Each band adapts content and difficulty to the child\u2019s level.",
+                a: "TinkerSchool is designed for Pre-K through 6th grade (ages 3\u201312) with seven progressive curriculum bands: Seedling (Pre-K), Explorer (K), Builder (1st), Inventor (2\u20133), Hacker (3\u20134), Creator (4\u20135), and Innovator (5\u20136). Each band adapts content and difficulty to the child\u2019s level.",
               },
               {
                 q: "How does the AI tutor Chip work?",

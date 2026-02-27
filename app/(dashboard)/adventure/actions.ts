@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 
 import { synthesizeChipNotes } from "@/lib/ai/chip-memory-synthesizer";
 import { updateSkillProficiencyDirect } from "@/lib/ai/skill-proficiency-writer";
+import { EVENT_DAILY_ADVENTURE_STARTED } from "@/lib/analytics/events";
+import { trackEventDirect } from "@/lib/analytics/track-event";
 import {
   evaluateBadges,
   type EarnedBadgeInfo,
@@ -121,6 +123,20 @@ export async function getOrGenerateAdventure(): Promise<GetOrGenerateResult> {
 
     if (!saved) {
       return { success: false, error: "Failed to save adventure" };
+    }
+
+    // Track adventure generation (fire-and-forget)
+    const { data: kidForEvent } = (await adminClient
+      .from("profiles")
+      .select("family_id")
+      .eq("id", profileId)
+      .single()) as { data: { family_id: string } | null };
+
+    if (kidForEvent) {
+      trackEventDirect(profileId, kidForEvent.family_id, EVENT_DAILY_ADVENTURE_STARTED, {
+        adventure_id: saved.id,
+        subject_id: generated.subjectId,
+      }).catch(() => {});
     }
 
     revalidatePath("/home");

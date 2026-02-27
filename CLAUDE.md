@@ -316,11 +316,13 @@ RLS policies scope data by family -- kids see their own data, parents see all fa
 
 | Band | Name | Grades | Ages | Programming Mode |
 |---|---|---|---|---|
-| 1 | Explorer | K-1 | 5-6 | UIFlow2 blocks (templates) |
-| 2 | Builder | 2-3 | 7-8 | Blocks + "peek at Python" |
-| 3 | Inventor | 3-4 | 8-9 | MicroPython + block hints |
-| 4 | Hacker | 4-5 | 9-10 | MicroPython + vibe coding |
-| 5 | Creator | 5-6 | 10-12 | Full MicroPython + AI |
+| 0 | Seedling | Pre-K | 3-5 | Guided play |
+| 1 | Explorer | K | 5-6 | Interactive activities |
+| 2 | Builder | 1 | 6-7 | UIFlow2 blocks (templates) |
+| 3 | Inventor | 2-3 | 7-9 | Blocks + "peek at Python" |
+| 4 | Hacker | 3-4 | 8-10 | MicroPython + block hints |
+| 5 | Creator | 4-5 | 9-11 | MicroPython + vibe coding |
+| 6 | Innovator | 5-6 | 10-12 | Full MicroPython + AI |
 
 Cassidy starts at **Band 2 (Builder)**.
 

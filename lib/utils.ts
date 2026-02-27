@@ -31,25 +31,28 @@ export const BAND_NAMES: Record<number, string> = {
   3: "Inventor",
   4: "Hacker",
   5: "Creator",
+  6: "Innovator",
 };
 
 /**
  * Maps a grade level to its curriculum band number.
  *
- * Band 0 (Seedling):  Pre-K
- * Band 1 (Explorer):  K-1
- * Band 2 (Builder):   2-3
- * Band 3 (Inventor):  4
- * Band 4 (Hacker):    5
- * Band 5 (Creator):   6
+ * Band 0 (Seedling):   Pre-K
+ * Band 1 (Explorer):   Kindergarten
+ * Band 2 (Builder):    1st Grade
+ * Band 3 (Inventor):   2-3
+ * Band 4 (Hacker):     3-4
+ * Band 5 (Creator):    4-5
+ * Band 6 (Innovator):  5-6
  */
 export function bandForGrade(grade: number): number {
-  if (grade < 0) return 0;  // Seedling: Pre-K
-  if (grade <= 1) return 1;  // Explorer: K-1
-  if (grade <= 3) return 2;  // Builder: 2-3
-  if (grade <= 4) return 3;  // Inventor: 3-4
-  if (grade <= 5) return 4;  // Hacker: 4-5
-  return 5; // Creator: 5-6
+  if (grade < 0) return 0;   // Seedling: Pre-K
+  if (grade === 0) return 1;  // Explorer: Kindergarten
+  if (grade === 1) return 2;  // Builder: 1st Grade
+  if (grade <= 3) return 3;   // Inventor: 2-3
+  if (grade <= 4) return 4;   // Hacker: 3-4
+  if (grade <= 5) return 5;   // Creator: 4-5
+  return 6; // Innovator: 5-6
 }
 
 /**

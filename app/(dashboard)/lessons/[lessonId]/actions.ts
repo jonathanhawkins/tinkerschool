@@ -6,6 +6,12 @@ import { revalidatePath } from "next/cache";
 import { synthesizeChipNotes } from "@/lib/ai/chip-memory-synthesizer";
 import { updateSkillProficiency } from "@/lib/ai/skill-proficiency-writer";
 import {
+  EVENT_LESSON_STARTED,
+  EVENT_LESSON_COMPLETED,
+  EVENT_BADGE_EARNED,
+} from "@/lib/analytics/events";
+import { trackEventDirect } from "@/lib/analytics/track-event";
+import {
   evaluateBadges,
   type EarnedBadgeInfo,
 } from "@/lib/badges/evaluate-badges";
@@ -106,6 +112,19 @@ export async function startLesson(lessonId: string): Promise<{ success: boolean 
       ignoreDuplicates: true,
     },
   );
+
+  // Track lesson started (fire-and-forget)
+  const { data: profileForEvent } = (await supabase
+    .from("profiles")
+    .select("family_id")
+    .eq("id", profileId)
+    .single()) as { data: { family_id: string } | null };
+
+  if (profileForEvent) {
+    trackEventDirect(profileId, profileForEvent.family_id, EVENT_LESSON_STARTED, {
+      lesson_id: lessonId,
+    }).catch(() => {});
+  }
 
   return { success: true };
 }
@@ -287,6 +306,30 @@ export async function completeActivity(
     } catch (err) {
       // Non-critical — don't fail activity completion
       console.error("[completeActivity] Milestone check failed:", err);
+    }
+
+    // Track lesson completed and any new badges (fire-and-forget)
+    const { data: kidForEvent } = (await supabase
+      .from("profiles")
+      .select("family_id")
+      .eq("id", profileId)
+      .single()) as { data: { family_id: string } | null };
+
+    if (kidForEvent) {
+      trackEventDirect(profileId, kidForEvent.family_id, EVENT_LESSON_COMPLETED, {
+        lesson_id: input.lessonId,
+        score: input.score,
+        attempts: currentAttempts + 1,
+      }).catch(() => {});
+
+      // Track each badge earned
+      if (newBadges && newBadges.length > 0) {
+        for (const badge of newBadges) {
+          trackEventDirect(profileId, kidForEvent.family_id, EVENT_BADGE_EARNED, {
+            badge_name: badge.name,
+          }).catch(() => {});
+        }
+      }
     }
 
     // Notify parent(s) about lesson completion (fire-and-forget)

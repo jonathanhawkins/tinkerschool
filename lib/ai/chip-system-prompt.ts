@@ -43,8 +43,9 @@ function bandName(band: number): string {
     3: "Inventor",
     4: "Hacker",
     5: "Creator",
+    6: "Innovator",
   };
-  return names[band] ?? "Builder";
+  return names[band] ?? "Explorer";
 }
 
 /**
@@ -749,12 +750,13 @@ GOOD: Keep it short. Ask a question. Let THEM do the thinking.`;
  * Infers a coding band from grade level for backward compatibility.
  */
 function gradeToBand(gradeLevel: number): number {
-  if (gradeLevel < 0) return 0;
-  if (gradeLevel <= 1) return 1;
-  if (gradeLevel <= 2) return 2;
-  if (gradeLevel <= 3) return 3;
-  if (gradeLevel <= 4) return 4;
-  return 5;
+  if (gradeLevel < 0) return 0;   // Pre-K
+  if (gradeLevel === 0) return 1;  // Kindergarten
+  if (gradeLevel === 1) return 2;  // 1st Grade
+  if (gradeLevel <= 3) return 3;   // 2-3
+  if (gradeLevel <= 4) return 4;   // 3-4
+  if (gradeLevel <= 5) return 5;   // 4-5
+  return 6;                        // 5-6
 }
 
 /**

@@ -285,8 +285,8 @@ describe("POST /api/ai-buddy", () => {
       expect(res.status).toBe(400);
     });
 
-    it("returns 400 when band is out of range (6)", async () => {
-      const res = await POST(makeRequest(validBody({ band: 6 })));
+    it("returns 400 when band is out of range (7)", async () => {
+      const res = await POST(makeRequest(validBody({ band: 7 })));
       expect(res.status).toBe(400);
     });
   });

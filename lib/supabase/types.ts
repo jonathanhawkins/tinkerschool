@@ -348,6 +348,15 @@ export interface Feedback {
   updated_at: string;
 }
 
+export interface UserEvent {
+  id: string;
+  profile_id: string;
+  family_id: string;
+  event_name: string;
+  event_data: Record<string, unknown> | null;
+  created_at: string;
+}
+
 // ---------------------------------------------------------------------------
 // Insert types (what you pass to INSERT — omit server-generated fields)
 // ---------------------------------------------------------------------------
@@ -615,6 +624,15 @@ export interface FeedbackInsert {
   user_agent?: string | null;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface UserEventInsert {
+  id?: string;
+  profile_id: string;
+  family_id: string;
+  event_name: string;
+  event_data?: Record<string, unknown> | null;
+  created_at?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -897,6 +915,7 @@ export interface Database {
         NotificationUpdate
       >;
       feedback: TableDefinition<Feedback, FeedbackInsert, FeedbackUpdate>;
+      user_events: TableDefinition<UserEvent, UserEventInsert>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

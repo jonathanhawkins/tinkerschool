@@ -23,6 +23,8 @@ import type { ConnectionStatus } from "@/lib/serial/types";
 import { MicroPythonREPL } from "@/lib/serial/micropython-repl";
 import { WebSerialManager } from "@/lib/serial/web-serial";
 import { WebREPLManager } from "@/lib/serial/webrepl-client";
+import { EVENT_DEVICE_CONNECTED } from "@/lib/analytics/events";
+import { trackEvent } from "@/lib/analytics/track-event";
 import { recordDeviceFlash } from "./actions";
 
 // ---------------------------------------------------------------------------
@@ -173,6 +175,10 @@ export default function DevicePanel({ code = "" }: DevicePanelProps) {
     transport.onConnect = () => {
       setStatus("connected");
       setError(null);
+      // Track device connection (fire-and-forget server action)
+      trackEvent(EVENT_DEVICE_CONNECTED, {
+        connection_mode: connectionMode,
+      }).catch(() => {});
     };
     transport.onDisconnect = () => {
       setStatus("disconnected");
@@ -186,7 +192,7 @@ export default function DevicePanel({ code = "" }: DevicePanelProps) {
         return next.length > 4_000 ? next.slice(-4_000) : next;
       });
     };
-  }, []);
+  }, [connectionMode]);
 
   const getTransport = useCallback((): DeviceTransport => {
     if (!transportRef.current) {

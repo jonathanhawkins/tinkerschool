@@ -781,7 +781,7 @@ describe("completeOnboarding", () => {
     expect((kidPayload as Record<string, unknown>).grade_level).toBe(0);
   });
 
-  it("assigns band 2 (Builder) for grade 2", async () => {
+  it("assigns band 3 (Inventor) for grade 2", async () => {
     let kidPayload: Record<string, unknown> | null = null;
 
     mockAdminSelectClient.from.mockImplementation((table: string) => {
@@ -835,10 +835,10 @@ describe("completeOnboarding", () => {
       makeFormData({ ...validOnboardingData, grade_level: "2" }),
     );
 
-    expect((kidPayload as Record<string, unknown> | null)?.current_band).toBe(2);
+    expect((kidPayload as Record<string, unknown> | null)?.current_band).toBe(3);
   });
 
-  it("assigns band 5 (Creator) for grade 6", async () => {
+  it("assigns band 6 (Innovator) for grade 6", async () => {
     let kidPayload: Record<string, unknown> | null = null;
 
     mockAdminSelectClient.from.mockImplementation((table: string) => {
@@ -892,7 +892,7 @@ describe("completeOnboarding", () => {
       makeFormData({ ...validOnboardingData, grade_level: "6" }),
     );
 
-    expect((kidPayload as Record<string, unknown> | null)?.current_band).toBe(5);
+    expect((kidPayload as Record<string, unknown> | null)?.current_band).toBe(6);
   });
 
   // ---- Learning profile failure does not fail onboarding ----

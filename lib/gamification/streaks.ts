@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { EVENT_STREAK_CONTINUED } from "@/lib/analytics/events";
+import { recordEvent } from "@/lib/analytics/record-event";
+
 export interface StreakResult {
   currentStreak: number;
   longestStreak: number;
@@ -76,6 +79,22 @@ export async function updateStreak(
       last_activity_date: today,
     })
     .eq("id", profileId);
+
+  // Track streak continuation (fire-and-forget)
+  if (newStreak > 1) {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("family_id")
+      .eq("id", profileId)
+      .single();
+
+    if (prof) {
+      recordEvent(profileId, (prof as { family_id: string }).family_id, EVENT_STREAK_CONTINUED, {
+        streak_length: newStreak,
+        longest_streak: newLongest,
+      }).catch(() => {});
+    }
+  }
 
   return {
     currentStreak: newStreak,

@@ -32,6 +32,8 @@ import {
   MessageCircle,
 } from "lucide-react";
 
+import { EVENT_PARENT_DASHBOARD_VIEWED } from "@/lib/analytics/events";
+import { trackEvent } from "@/lib/analytics/track-event";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { FadeIn, Stagger, StaggerItem } from "@/components/motion";
 import { formatDate, formatShortDate } from "@/lib/format-date";
@@ -84,6 +86,9 @@ export default async function ParentDashboardPage({
 }) {
   const { profile, supabase } = await requireAuth();
   const { kid: selectedKidId } = await searchParams;
+
+  // Track parent dashboard view (fire-and-forget)
+  trackEvent(EVENT_PARENT_DASHBOARD_VIEWED).catch(() => {});
 
   // Fetch kid profiles in the family
   const { data: kidProfiles } = await supabase

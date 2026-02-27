@@ -20,10 +20,10 @@ describe("usePreKMode", () => {
     expect(result.current.band).toBe(1);
   });
 
-  it("returns isPreK: false and band: 2 for gradeLevel = 2", () => {
+  it("returns isPreK: false and band: 3 for gradeLevel = 2", () => {
     const { result } = renderHook(() => usePreKMode(2));
     expect(result.current.isPreK).toBe(false);
-    expect(result.current.band).toBe(2);
+    expect(result.current.band).toBe(3);
   });
 
   it("returns isPreK: false and band: 1 for gradeLevel = null", () => {

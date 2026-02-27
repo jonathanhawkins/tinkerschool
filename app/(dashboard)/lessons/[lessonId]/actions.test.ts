@@ -73,6 +73,10 @@ vi.mock("@/lib/ai/chip-memory-synthesizer", () => ({
   synthesizeChipNotes: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("@/lib/analytics/track-event", () => ({
+  trackEventDirect: vi.fn().mockResolvedValue(undefined),
+}));
+
 let mockServerSupabase: ChainableMock;
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -144,9 +148,22 @@ describe("startLesson", () => {
         };
       }
 
-      // progress upsert
+      if (fromCallCount === 2) {
+        // progress upsert
+        return {
+          upsert: vi.fn().mockResolvedValue({ error: null }),
+        };
+      }
+
+      // Event tracking profile lookup (fire-and-forget)
       return {
-        upsert: vi.fn().mockResolvedValue({ error: null }),
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: { family_id: "fam-001" },
+            }),
+          }),
+        }),
       };
     });
 
@@ -189,9 +206,22 @@ describe("startLesson", () => {
         };
       }
 
-      // progress upsert
+      if (fromCallCount === 3) {
+        // progress upsert
+        return {
+          upsert: vi.fn().mockResolvedValue({ error: null }),
+        };
+      }
+
+      // Event tracking profile lookup (fire-and-forget)
       return {
-        upsert: vi.fn().mockResolvedValue({ error: null }),
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: { family_id: "fam-001" },
+            }),
+          }),
+        }),
       };
     });
 

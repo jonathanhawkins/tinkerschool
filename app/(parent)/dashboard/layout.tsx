@@ -18,6 +18,7 @@ import {
   Heart,
   Settings,
   ArrowLeft,
+  Activity,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,11 @@ const parentNavItems: ParentNavItem[] = [
     href: "/dashboard/ai-history",
     label: "AI History",
     icon: <MessageSquare className="size-4" />,
+  },
+  {
+    href: "/dashboard/events",
+    label: "Events",
+    icon: <Activity className="size-4" />,
   },
   {
     href: "/dashboard/feedback",

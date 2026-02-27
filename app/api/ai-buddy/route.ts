@@ -5,6 +5,11 @@ import { auth } from "@clerk/nextjs/server";
 import { getChipSystemPrompt } from "@/lib/ai/chip-system-prompt";
 import type { ChipContext } from "@/lib/ai/chip-system-prompt";
 import { discoverInterests } from "@/lib/ai/interest-discovery";
+import {
+  EVENT_CHIP_CHAT_OPENED,
+  EVENT_CHIP_MESSAGE_SENT,
+} from "@/lib/analytics/events";
+import { recordEvent } from "@/lib/analytics/record-event";
 import { evaluateBadges } from "@/lib/badges/evaluate-badges";
 import { checkAiBuddyRateLimit } from "@/lib/rate-limit";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -51,7 +56,7 @@ function parseRequestBody(body: unknown): AiBuddyRequestBody | null {
   if (!Array.isArray(b.messages) || b.messages.length > MAX_MESSAGES) return null;
   if (typeof b.kidName !== "string" || b.kidName.length === 0) return null;
   if (typeof b.age !== "number" || b.age < 3 || b.age > 14) return null;
-  if (typeof b.band !== "number" || b.band < 0 || b.band > 5) return null;
+  if (typeof b.band !== "number" || b.band < 0 || b.band > 6) return null;
 
   // Validate currentSubject against whitelist (prevents prompt injection
   // via arbitrary strings being interpolated into the system prompt)
@@ -243,6 +248,8 @@ interface ProgressRow {
  */
 async function fetchPersonalizationData(clerkId: string): Promise<{
   /** Server-verified profile fields (never trust client-supplied values) */
+  profileId?: string;
+  familyId?: string;
   displayName?: string;
   gradeLevel?: number;
   currentBand?: number;
@@ -322,6 +329,8 @@ async function fetchPersonalizationData(clerkId: string): Promise<{
       ]);
 
     const result: {
+      profileId?: string;
+      familyId?: string;
       displayName?: string;
       gradeLevel?: number;
       currentBand?: number;
@@ -330,6 +339,8 @@ async function fetchPersonalizationData(clerkId: string): Promise<{
       skillProficiency?: Record<string, string>;
       recentLessons?: string[];
     } = {
+      profileId: profile.id,
+      familyId: profile.family_id,
       displayName: profile.display_name,
       gradeLevel: profile.grade_level ?? undefined,
       currentBand: profile.current_band,
@@ -486,6 +497,25 @@ export async function POST(request: Request) {
   console.log(
     `[ai-buddy] userId=${userId} band=${verifiedBand} subject=${currentSubject ?? "none"} messageCount=${messages.length} personalized=${!!personalization.learningProfile}`
   );
+
+  // 6b. Track chat events (fire-and-forget)
+  if (personalization.profileId && personalization.familyId) {
+    const pid = personalization.profileId;
+    const fid = personalization.familyId;
+
+    // Track chat opened on the first message in the conversation
+    if (messages.filter((m) => m.role === "user").length <= 1) {
+      recordEvent(pid, fid, EVENT_CHIP_CHAT_OPENED, {
+        subject: currentSubject ?? null,
+      }).catch(() => {});
+    }
+
+    // Track every message sent
+    recordEvent(pid, fid, EVENT_CHIP_MESSAGE_SENT, {
+      subject: currentSubject ?? null,
+      lesson_id: currentLessonId ?? null,
+    }).catch(() => {});
+  }
 
   // 7. Extract the latest user message text for persistence
   const latestUserMessage = messages

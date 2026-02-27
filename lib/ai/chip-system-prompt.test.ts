@@ -32,18 +32,18 @@ describe("getChipSystemPrompt", () => {
 
   it("contains the band name derived from grade level", () => {
     const result = getChipSystemPrompt(baseParams);
-    expect(result).toContain("Builder");
+    expect(result).toContain("Inventor");
   });
 
   it("uses correct band names for all grade levels", () => {
     const gradeToExpectedBand: Record<number, string> = {
       0: "Explorer",
-      1: "Explorer",
-      2: "Builder",
+      1: "Builder",
+      2: "Inventor",
       3: "Inventor",
       4: "Hacker",
       5: "Creator",
-      6: "Creator",
+      6: "Innovator",
     };
 
     for (const [grade, expectedBand] of Object.entries(gradeToExpectedBand)) {

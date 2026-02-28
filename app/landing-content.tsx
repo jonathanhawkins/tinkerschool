@@ -47,6 +47,9 @@ import {
   ChevronDown,
   Sprout,
   HeartHandshake,
+  Timer,
+  Tablet,
+  Baby,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -216,7 +219,8 @@ const bands: BandInfo[] = [
     grades: "Pre-K",
     ages: "3-5",
     mode: "Guided play",
-    description: "Sensory exploration and guided play build early learning foundations.",
+    description: "40 interactive lessons across 8 subjects. No device needed — works on any tablet or computer.",
+    highlight: true,
   },
   {
     band: 1,
@@ -584,19 +588,21 @@ export function LandingContent() {
             variant="outline"
             className="rounded-full border-border bg-background px-4 py-1.5 text-xs font-medium text-foreground/70"
           >
-            Ages 5-12 · Free · No App Download
+            Ages 3-12 · Pre-K to 6th Grade · Free
           </Badge>
 
           {/* H1 Tagline -- optimized for SEO */}
           <h1 className="max-w-2xl text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl">
-            AI-Powered Hands-On Learning for Kids — Math, Reading, Science, STEM &amp; More
+            AI-Powered Hands-On Learning for Kids Ages 3-12
+            <br />
+            <span className="text-primary">Math · Reading · Science · Music · Art · Coding</span>
           </h1>
 
           {/* Description */}
           <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
             Where every kid is a genius waiting to bloom. Chip, your AI buddy,
-            guides your child through 7 subjects with hands-on STEM activities
-            and interactive lessons — perfect for homeschooling, afterschooling,
+            guides your child through 8 subjects with hands-on STEM activities
+            and interactive lessons — from Pre-K guided play to 6th grade coding. Perfect for homeschooling, afterschooling,
             or pushing beyond what school teaches.
           </p>
 
@@ -684,6 +690,113 @@ export function LandingContent() {
       </section>
 
       {/* ================================================================= */}
+      {/* Section 1a: Pre-K Spotlight */}
+      {/* ================================================================= */}
+      <section className="flex flex-col items-center gap-8 px-6 py-16">
+        <motion.div
+          className="flex flex-col items-center gap-4 text-center"
+          {...motionProps(fadeInUp)}
+        >
+          <Badge className="rounded-full bg-emerald-100 px-4 py-1.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+            NEW — Now starting at age 3
+          </Badge>
+          <div className="flex items-center gap-2">
+            <Sprout className="size-6 text-emerald-500" />
+            <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
+              Pre-K: Guided Play for Ages 3-5
+            </h2>
+          </div>
+          <p className="max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+            40 interactive lessons across 8 subjects — including social-emotional
+            learning. No hardware needed. Works on any tablet, phone, or computer.
+            Built for little hands and short attention spans.
+          </p>
+        </motion.div>
+
+        <motion.div
+          className="grid w-full max-w-4xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+          variants={prefersReducedMotion ? {} : staggerContainer}
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true, margin: "-60px" }}
+        >
+          {[
+            {
+              icon: Tablet,
+              title: "No Device Needed",
+              desc: "100% browser-based. Works on tablets, phones, and laptops.",
+            },
+            {
+              icon: Users,
+              title: "Parent Co-Play",
+              desc: "Every lesson includes off-screen activities for parents and kids together.",
+            },
+            {
+              icon: Timer,
+              title: "Screen Time Built In",
+              desc: "10-minute sessions with cool-down breaks. Body movement prompts every 2 activities.",
+            },
+            {
+              icon: HeartHandshake,
+              title: "Social-Emotional Learning",
+              desc: "Name emotions, practice kindness, calm-down breathing — a full 8th subject.",
+            },
+          ].map((item) => (
+            <motion.div
+              key={item.title}
+              variants={prefersReducedMotion ? {} : staggerItem}
+            >
+              <Card className="h-full rounded-2xl border shadow-sm">
+                <CardContent className="flex flex-col gap-3 p-5">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10">
+                    <item.icon className="size-5 text-emerald-500" />
+                  </div>
+                  <h3 className="text-base font-semibold text-foreground">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {item.desc}
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Pre-K subject pills */}
+        <motion.div
+          className="flex flex-wrap items-center justify-center gap-2"
+          {...motionProps({
+            ...fadeInUp,
+            transition: { ...fadeInUp.transition, delay: 0.1 },
+          })}
+        >
+          {[
+            { name: "Counting Corner", icon: Calculator, color: "#3B82F6" },
+            { name: "Story Time", icon: BookOpen, color: "#22C55E" },
+            { name: "Wonder Lab", icon: FlaskConical, color: "#F97316" },
+            { name: "Music Garden", icon: Music, color: "#A855F7" },
+            { name: "Color Play", icon: Palette, color: "#EC4899" },
+            { name: "Think & Play", icon: Puzzle, color: "#EAB308" },
+            { name: "Step by Step", icon: Code2, color: "#14B8A6" },
+            { name: "Feelings & Friends", icon: HeartHandshake, color: "#F472B6" },
+          ].map((mod) => (
+            <span
+              key={mod.name}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium"
+              style={{
+                backgroundColor: `${mod.color}14`,
+                color: mod.color,
+              }}
+            >
+              <mod.icon className="size-3.5" />
+              {mod.name}
+            </span>
+          ))}
+        </motion.div>
+      </section>
+
+      {/* ================================================================= */}
       {/* Section 1b: Try Chip Now -- Interactive AI Demo */}
       {/* ================================================================= */}
       <section
@@ -765,12 +878,12 @@ export function LandingContent() {
           <div className="flex items-center gap-2">
             <Sparkles className="size-6 text-primary" />
             <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
-              7 Subjects, Infinite Curiosity
+              8 Subjects, Infinite Curiosity
             </h2>
           </div>
           <p className="max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Every subject is an adventure with 10 hands-on lessons. Kids
-            don&apos;t just watch -- they press buttons, shake sensors, hear
+            Every subject is an adventure. Younger kids explore through
+            interactive play, older kids press buttons, shake sensors, hear
             buzzers, and see results on a real screen.
           </p>
         </motion.div>
@@ -1130,8 +1243,11 @@ export function LandingContent() {
                   )}
                 >
                   {band.highlight && (
-                    <Badge className="absolute -top-2.5 right-4 rounded-full bg-primary px-3 text-xs text-primary-foreground">
-                      Cassidy starts here
+                    <Badge className={cn(
+                      "absolute -top-2.5 right-4 rounded-full px-3 text-xs text-primary-foreground",
+                      band.band === 0 ? "bg-emerald-500" : "bg-primary"
+                    )}>
+                      {band.band === 0 ? "NEW" : "Cassidy starts here"}
                     </Badge>
                   )}
                   <CardContent className="flex flex-col gap-3 p-5">
@@ -1271,10 +1387,10 @@ export function LandingContent() {
           viewport={{ once: true, margin: "-60px" }}
         >
           {[
-            { value: "7", label: "Subjects" },
-            { value: "5", label: "Learning Bands" },
+            { value: "8", label: "Subjects" },
+            { value: "7", label: "Learning Bands" },
             { value: "100%", label: "Free & Open Source" },
-            { value: "K-6", label: "Grade Range" },
+            { value: "Pre-K\u20136", label: "Grade Range" },
           ].map((stat) => (
             <motion.div
               key={stat.label}
@@ -1457,7 +1573,7 @@ export function LandingContent() {
             {[
               {
                 q: "What is TinkerSchool?",
-                a: "TinkerSchool is an open-source, AI-powered education platform for kids ages 5\u201312. It covers math, reading, science, music, art, problem solving, and coding through hands-on projects with real hardware and a personal AI tutor named Chip.",
+                a: "TinkerSchool is an open-source, AI-powered education platform for kids ages 3\u201312. It covers math, reading, science, music, art, problem solving, coding, and social-emotional learning through hands-on projects and a personal AI tutor named Chip. Pre-K kids (ages 3\u20135) learn through guided play on any device, while older kids build with real hardware.",
               },
               {
                 q: "Is TinkerSchool really free?",
@@ -1465,7 +1581,7 @@ export function LandingContent() {
               },
               {
                 q: "What ages is TinkerSchool designed for?",
-                a: "TinkerSchool is designed for Pre-K through 6th grade (ages 3\u201312) with seven progressive curriculum bands: Seedling (Pre-K), Explorer (K), Builder (1st), Inventor (2\u20133), Hacker (3\u20134), Creator (4\u20135), and Innovator (5\u20136). Each band adapts content and difficulty to the child\u2019s level.",
+                a: "TinkerSchool is designed for Pre-K through 6th grade (ages 3\u201312) with seven progressive bands. Pre-K (Seedling) offers 40 interactive lessons across 8 subjects with no hardware needed \u2014 perfect for tablets. Older bands introduce block coding, text coding, and real hardware projects. Each band adapts content and difficulty to the child\u2019s level.",
               },
               {
                 q: "How does the AI tutor Chip work?",
@@ -1514,7 +1630,7 @@ export function LandingContent() {
           <EmailCapture
             source="landing_page"
             heading="Stay in the loop"
-            description="Free schedule templates, STEM activity ideas, and learning tips for kids ages 5-12. Join our growing community of homeschool families."
+            description="Free schedule templates, STEM activity ideas, and learning tips for kids ages 3-12. Join our growing community of homeschool and Pre-K families."
             buttonText="Subscribe"
             variant="card"
           />

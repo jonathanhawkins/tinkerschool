@@ -6,9 +6,9 @@ import { LandingContent } from "./landing-content";
 
 export const metadata: Metadata = {
   title:
-    "TinkerSchool - AI-Powered Learning Platform for Kids Ages 5-12",
+    "TinkerSchool - AI-Powered Learning Platform for Kids Ages 3-12",
   description:
-    "Free, open-source AI tutor for K-6 kids. Hands-on STEM activities, personalized lessons in math, reading, science, music, art, coding and more. Perfect for homeschooling, afterschooling, and supplemental learning.",
+    "Free, open-source AI tutor for Pre-K through 6th grade. Hands-on STEM activities, personalized lessons in math, reading, science, music, art, social-emotional learning, coding and more. Perfect for homeschooling, afterschooling, and supplemental learning.",
   keywords: [
     "AI tutor for kids",
     "homeschool curriculum",
@@ -17,14 +17,18 @@ export const metadata: Metadata = {
     "hands-on learning",
     "coding for kids",
     "supplemental education",
-    "K-6 learning platform",
+    "Pre-K learning platform",
+    "preschool curriculum",
+    "early childhood education",
+    "toddler learning activities",
+    "Pre-K to 6th grade",
     "free education platform",
     "personalized learning",
   ],
   openGraph: {
-    title: "TinkerSchool - AI-Powered Learning Platform for Kids Ages 5-12",
+    title: "TinkerSchool - AI-Powered Learning Platform for Kids Ages 3-12",
     description:
-      "Free, open-source AI tutor for K-6 kids. Hands-on STEM activities, personalized lessons in math, reading, science, music, art, coding and more.",
+      "Free, open-source AI tutor for Pre-K through 6th grade. Hands-on STEM activities, personalized lessons in math, reading, science, music, art, coding and more.",
     type: "website",
     url: "https://tinkerschool.ai",
     siteName: "TinkerSchool",
@@ -34,22 +38,22 @@ export const metadata: Metadata = {
         url: "https://tinkerschool.ai/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "TinkerSchool - AI-Powered Learning Platform for Kids Ages 5-12",
+        alt: "TinkerSchool - AI-Powered Learning Platform for Kids Ages 3-12",
         type: "image/png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "TinkerSchool - AI-Powered Learning Platform for Kids Ages 5-12",
+    title: "TinkerSchool - AI-Powered Learning Platform for Kids Ages 3-12",
     description:
-      "Free, open-source AI tutor for K-6 kids. Hands-on STEM activities and personalized lessons for homeschooling and afterschooling.",
+      "Free, open-source AI tutor for Pre-K through 6th grade. Hands-on STEM activities and personalized lessons for homeschooling and afterschooling.",
     images: [
       {
         url: "https://tinkerschool.ai/twitter-image",
         width: 1200,
         height: 630,
-        alt: "TinkerSchool - AI-Powered Learning Platform for Kids Ages 5-12",
+        alt: "TinkerSchool - AI-Powered Learning Platform for Kids Ages 3-12",
       },
     ],
   },
@@ -67,7 +71,7 @@ const faqStructuredData = {
       name: "What is TinkerSchool?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "TinkerSchool is an open-source, AI-powered education platform for kids ages 5\u201312. It covers math, reading, science, music, art, problem solving, and coding through hands-on projects with real hardware and a personal AI tutor named Chip.",
+        text: "TinkerSchool is an open-source, AI-powered education platform for kids ages 3\u201312. It covers math, reading, science, music, art, problem solving, coding, and social-emotional learning through hands-on projects with real hardware and a personal AI tutor named Chip. Pre-K kids (ages 3\u20135) learn through guided play and interactive activities on any tablet or computer \u2014 no hardware required.",
       },
     },
     {
@@ -83,7 +87,7 @@ const faqStructuredData = {
       name: "What ages is TinkerSchool designed for?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "TinkerSchool is designed for grades K\u20136 (ages 5\u201312) with five progressive curriculum bands: Explorer (K\u20131), Builder (2\u20133), Inventor (3\u20134), Hacker (4\u20135), and Creator (5\u20136). Each band adapts content and difficulty to the child\u2019s level.",
+        text: "TinkerSchool is designed for Pre-K through 6th grade (ages 3\u201312) with seven progressive curriculum bands: Seedling (Pre-K, ages 3\u20135), Explorer (K), Builder (1st), Inventor (2nd\u20133rd), Hacker (3rd\u20134th), Creator (4th\u20135th), and Innovator (5th\u20136th). Pre-K kids learn through guided play and interactive activities on any device, while older kids build with real hardware.",
       },
     },
     {

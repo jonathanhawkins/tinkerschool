@@ -133,16 +133,41 @@ export default async function OGImage() {
               Where every kid is a genius waiting to bloom
             </div>
 
+            {/* Age badge */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginTop: 4,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "6px 16px",
+                  borderRadius: 20,
+                  background: "rgba(255,255,255,0.25)",
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: "white",
+                }}
+              >
+                Ages 3-12 · Pre-K to 6th Grade · Free
+              </div>
+            </div>
+
             {/* Subject pills */}
             <div
               style={{
                 display: "flex",
                 gap: 8,
-                marginTop: 12,
+                marginTop: 8,
                 flexWrap: "wrap",
               }}
             >
-              {["Math", "Reading", "Science", "Music", "Art", "Coding"].map(
+              {["Math", "Reading", "Science", "Music", "Art", "Coding", "SEL"].map(
                 (name) => (
                   <div
                     key={name}

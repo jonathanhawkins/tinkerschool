@@ -47,16 +47,7 @@ const nextConfig: NextConfig = {
         },
       ],
     },
-    {
-      // X-Robots-Tag only on public marketing pages (not auth-gated routes)
-      source: "/((?!home|workshop|lessons|subjects|achievements|gallery|chat|settings|setup|onboarding|sign-in|sign-up|dashboard|api|coppa-confirmed).*)",
-      headers: [
-        {
-          key: "X-Robots-Tag",
-          value: "index, follow, max-image-preview:large, max-snippet:-1",
-        },
-      ],
-    },
+    // X-Robots-Tag is set in middleware.ts for Cloudflare Workers compatibility
   ],
 };
 

@@ -6,6 +6,7 @@ import { SignOutButton } from "@clerk/nextjs";
 
 import { cn } from "@/lib/utils";
 import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
+import { KidSwitcher, type KidSwitcherOption } from "@/components/kid-switcher";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -20,12 +21,16 @@ interface DashboardSidebarProps {
   displayName: string;
   avatarInitial: string;
   email: string;
+  kids?: KidSwitcherOption[];
+  activeKidId?: string | null;
 }
 
 export function DashboardSidebar({
   displayName,
   avatarInitial,
   email,
+  kids = [],
+  activeKidId = null,
 }: DashboardSidebarProps) {
   const { isCollapsed, toggle, isHydrated } = useSidebarCollapse();
 
@@ -57,6 +62,22 @@ export function DashboardSidebar({
       </div>
 
       <Separator />
+
+      {/* Kid switcher (only visible when there are 2+ kids) */}
+      {kids.length > 1 && (
+        <div
+          className={cn(
+            "py-2",
+            isCollapsed ? "flex justify-center px-1.5" : "px-3"
+          )}
+        >
+          <KidSwitcher
+            kids={kids}
+            activeKidId={activeKidId}
+            compact={isCollapsed}
+          />
+        </div>
+      )}
 
       {/* Navigation */}
       <div

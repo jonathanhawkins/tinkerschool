@@ -2,6 +2,7 @@ import {
   Home,
   BookOpen,
   HelpCircle,
+  MessageCircle,
   Wrench,
   Image,
   Trophy,
@@ -19,6 +20,7 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   { href: "/home", label: "Mission Control", icon: Home },
   { href: "/subjects", label: "Subjects", icon: BookOpen },
+  { href: "/chat", label: "Chat with Chip", icon: MessageCircle },
   { href: "/workshop", label: "Workshop", icon: Wrench },
   { href: "/gallery", label: "Gallery", icon: Image },
   { href: "/achievements", label: "Achievements", icon: Trophy },

@@ -19,6 +19,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 
+import { AddChildDialog } from "./add-child-dialog";
 import { DevResetButton } from "./dev-reset-button";
 import { EditKidName } from "./edit-kid-name";
 import { EditKidGrade } from "./edit-kid-grade";
@@ -250,6 +251,9 @@ export default async function SettingsPage() {
                   </p>
                 </div>
               )}
+
+              {/* Add Learner button (parents only) */}
+              {profile.role === "parent" && <AddChildDialog />}
             </CardContent>
           </Card>
         </StaggerItem>

@@ -8,6 +8,7 @@ import { Menu } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { navItems } from "@/lib/nav-items";
+import { KidSwitcher, type KidSwitcherOption } from "@/components/kid-switcher";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -29,7 +30,12 @@ const BOTTOM_NAV_HREFS = new Set([
   "/settings",
 ]);
 
-export function MobileNav() {
+interface MobileNavProps {
+  kids?: KidSwitcherOption[];
+  activeKidId?: string | null;
+}
+
+export function MobileNav({ kids = [], activeKidId = null }: MobileNavProps) {
   const items = navItems;
   // Items not in the bottom tab nav -- these go in the hamburger drawer
   const drawerItems = items.filter((item) => !BOTTOM_NAV_HREFS.has(item.href));
@@ -62,6 +68,13 @@ export function MobileNav() {
           />
           <span className="text-xl font-bold text-primary">TinkerSchool</span>
         </div>
+
+        {/* Kid switcher -- right side of mobile header */}
+        {kids.length > 1 && (
+          <div className="ml-auto">
+            <KidSwitcher kids={kids} activeKidId={activeKidId} />
+          </div>
+        )}
       </header>
 
       {/* Sheet drawer for overflow items not in bottom nav */}

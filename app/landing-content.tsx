@@ -219,7 +219,7 @@ const bands: BandInfo[] = [
     grades: "Pre-K",
     ages: "3-5",
     mode: "Guided play",
-    description: "40 interactive lessons across 8 subjects. No device needed — works on any tablet or computer.",
+    description: "Start with counting and patterns — new subjects added weekly. No device needed — works on any tablet or computer.",
     highlight: true,
   },
   {
@@ -407,13 +407,7 @@ export function LandingContent() {
           </Link>
 
           {/* Desktop nav links */}
-          <div className="hidden items-center gap-6 md:flex">
-            <Link
-              href="/demo"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Try Demo
-            </Link>
+          <div className="hidden items-center gap-5 lg:flex">
             <a
               href="#subjects"
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -447,7 +441,15 @@ export function LandingContent() {
           </div>
 
           {/* CTA buttons */}
-          <div className="hidden items-center gap-3 md:flex">
+          <div className="hidden items-center gap-3 lg:flex">
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="rounded-xl text-sm"
+            >
+              <Link href="/demo">Try Demo</Link>
+            </Button>
             <Button
               asChild
               variant="ghost"
@@ -465,7 +467,7 @@ export function LandingContent() {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="lg:hidden"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle menu"
           >
@@ -479,7 +481,7 @@ export function LandingContent() {
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="border-t border-border bg-background px-6 pb-4 pt-2 md:hidden">
+          <div className="border-t border-border bg-background px-6 pb-4 pt-2 lg:hidden">
             <div className="flex flex-col gap-3">
               <Link
                 href="/demo"
@@ -707,9 +709,9 @@ export function LandingContent() {
             </h2>
           </div>
           <p className="max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            40 interactive lessons across 8 subjects — including social-emotional
-            learning. No hardware needed. Works on any tablet, phone, or computer.
-            Built for little hands and short attention spans.
+            Start with counting, patterns, and early math — with new subjects
+            launching every week. No hardware needed. Works on any tablet, phone,
+            or computer. Built for little hands and short attention spans.
           </p>
         </motion.div>
 
@@ -729,7 +731,7 @@ export function LandingContent() {
             {
               icon: Users,
               title: "Parent Co-Play",
-              desc: "Every lesson includes off-screen activities for parents and kids together.",
+              desc: "Lessons include off-screen activity ideas for parents and kids to explore together.",
             },
             {
               icon: Timer,
@@ -739,7 +741,7 @@ export function LandingContent() {
             {
               icon: HeartHandshake,
               title: "Social-Emotional Learning",
-              desc: "Name emotions, practice kindness, calm-down breathing — a full 8th subject.",
+              desc: "Name emotions, practice kindness, calm-down breathing — coming soon alongside math and reading.",
             },
           ].map((item) => (
             <motion.div
@@ -765,34 +767,49 @@ export function LandingContent() {
 
         {/* Pre-K subject pills */}
         <motion.div
-          className="flex flex-wrap items-center justify-center gap-2"
+          className="flex flex-col items-center gap-3"
           {...motionProps({
             ...fadeInUp,
             transition: { ...fadeInUp.transition, delay: 0.1 },
           })}
         >
-          {[
-            { name: "Counting Corner", icon: Calculator, color: "#3B82F6" },
-            { name: "Story Time", icon: BookOpen, color: "#22C55E" },
-            { name: "Wonder Lab", icon: FlaskConical, color: "#F97316" },
-            { name: "Music Garden", icon: Music, color: "#A855F7" },
-            { name: "Color Play", icon: Palette, color: "#EC4899" },
-            { name: "Think & Play", icon: Puzzle, color: "#EAB308" },
-            { name: "Step by Step", icon: Code2, color: "#14B8A6" },
-            { name: "Feelings & Friends", icon: HeartHandshake, color: "#F472B6" },
-          ].map((mod) => (
-            <span
-              key={mod.name}
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium"
-              style={{
-                backgroundColor: `${mod.color}14`,
-                color: mod.color,
-              }}
-            >
-              <mod.icon className="size-3.5" />
-              {mod.name}
-            </span>
-          ))}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {[
+              { name: "Counting Corner", icon: Calculator, color: "#3B82F6" },
+              { name: "Story Time", icon: BookOpen, color: "#22C55E" },
+            ].map((mod) => (
+              <span
+                key={mod.name}
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium"
+                style={{
+                  backgroundColor: `${mod.color}14`,
+                  color: mod.color,
+                }}
+              >
+                <mod.icon className="size-3.5" />
+                {mod.name}
+              </span>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {[
+              { name: "Wonder Lab", icon: FlaskConical, color: "#F97316" },
+              { name: "Music Garden", icon: Music, color: "#A855F7" },
+              { name: "Color Play", icon: Palette, color: "#EC4899" },
+              { name: "Think & Play", icon: Puzzle, color: "#EAB308" },
+              { name: "Step by Step", icon: Code2, color: "#14B8A6" },
+              { name: "Feelings & Friends", icon: HeartHandshake, color: "#F472B6" },
+            ].map((mod) => (
+              <span
+                key={mod.name}
+                className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-3 py-1.5 text-xs font-medium text-muted-foreground"
+              >
+                <mod.icon className="size-3.5" />
+                {mod.name}
+                <span className="text-[10px] opacity-70">soon</span>
+              </span>
+            ))}
+          </div>
         </motion.div>
       </section>
 
@@ -1581,7 +1598,7 @@ export function LandingContent() {
               },
               {
                 q: "What ages is TinkerSchool designed for?",
-                a: "TinkerSchool is designed for Pre-K through 6th grade (ages 3\u201312) with seven progressive bands. Pre-K (Seedling) offers 40 interactive lessons across 8 subjects with no hardware needed \u2014 perfect for tablets. Older bands introduce block coding, text coding, and real hardware projects. Each band adapts content and difficulty to the child\u2019s level.",
+                a: "TinkerSchool is designed for Pre-K through 6th grade (ages 3\u201312) with seven progressive bands. Pre-K (Seedling) starts with counting and patterns, with new subjects added regularly \u2014 no hardware needed, perfect for tablets. Older bands introduce block coding, text coding, and real hardware projects. Each band adapts content and difficulty to the child\u2019s level.",
               },
               {
                 q: "How does the AI tutor Chip work?",

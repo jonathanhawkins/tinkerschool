@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import confetti from "canvas-confetti";
-import { Star, Trophy, Clock, Lightbulb, Sparkles, ArrowLeft, ArrowRight, RotateCcw, Heart, X } from "lucide-react";
+import { Star, Trophy, Clock, Lightbulb, MessageCircle, Sparkles, ArrowLeft, ArrowRight, RotateCcw, Heart, X } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { triggerChipNudge } from "@/components/chip-text-fab";
 import { useActivity } from "@/lib/activities/activity-context";
 import { useSound } from "@/lib/activities/use-sound";
 
@@ -148,6 +149,25 @@ function SupporterNudge({ kidName, totalCompleted }: SupporterNudgeProps) {
 }
 
 // ---------------------------------------------------------------------------
+// Proactive Chip nudge messages (module-level to avoid recreation per render)
+// ---------------------------------------------------------------------------
+
+const NUDGE_MESSAGES_PASS = [
+  "You did amazing! Want to tell me about what you learned?",
+  "Wow, great job! I'm so proud of you! Want to chat?",
+  "You're a superstar! Want to explore more together?",
+  "That was awesome! Ask me anything about what we just learned!",
+  "Look at you go! Want me to help you with the next lesson?",
+];
+
+const NUDGE_MESSAGES_FAIL = [
+  "You did your best and that's what counts! Want to practice together?",
+  "Don't worry, I can help you! Want to chat about it?",
+  "You're learning so much! Want me to explain anything?",
+  "Every try makes you smarter! Want to talk about what was tricky?",
+];
+
+// ---------------------------------------------------------------------------
 // ActivityComplete - celebration screen shown when all questions are done
 // ---------------------------------------------------------------------------
 
@@ -199,6 +219,18 @@ export function ActivityComplete({ onRetry }: ActivityCompleteProps) {
       }, 300);
     }
   }, [hasPassed, prefersReducedMotion]);
+
+  // Proactive Chip nudge -- after the celebration, Chip pops up with encouragement
+  useEffect(() => {
+    const messages = hasPassed ? NUDGE_MESSAGES_PASS : NUDGE_MESSAGES_FAIL;
+
+    const timer = setTimeout(() => {
+      const message = messages[Math.floor(Math.random() * messages.length)];
+      triggerChipNudge(message);
+    }, 2500); // Wait for celebration animation to finish
+
+    return () => clearTimeout(timer);
+  }, [hasPassed]);
 
   // Format time
   const totalSeconds = Math.round(metrics.totalTimeMs / 1000);
@@ -335,6 +367,19 @@ export function ActivityComplete({ onRetry }: ActivityCompleteProps) {
           <Link href="/">
             <ArrowLeft className="size-4" />
             Back to Mission Control
+          </Link>
+        </Button>
+
+        {/* Chat with Chip CTA */}
+        <Button
+          asChild
+          size="lg"
+          variant="outline"
+          className="rounded-xl border-primary/30 text-primary hover:bg-primary/10"
+        >
+          <Link href="/chat">
+            <MessageCircle className="size-4" />
+            Chat with Chip
           </Link>
         </Button>
 

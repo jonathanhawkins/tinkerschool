@@ -1,9 +1,13 @@
 import { auth } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/supabase/types";
+
+/** Cookie name used to persist the active kid profile across navigations. */
+export const ACTIVE_KID_COOKIE = "tinkerschool_active_kid";
 
 interface AuthResult {
   userId: string;
@@ -57,9 +61,13 @@ export async function requireAuth(): Promise<AuthResult> {
 }
 
 /**
- * Given a parent profile, resolves the first kid profile in the same family.
+ * Given a parent profile, resolves the active kid profile in the same family.
  * If the profile is already a kid, returns it as-is. Returns null if no kid
  * profiles exist in the family.
+ *
+ * The active kid is determined by the `tinkerschool_active_kid` cookie. If
+ * the cookie is not set or references a kid not in this family, falls back
+ * to the first kid by creation date.
  *
  * Used by kid-facing dashboard pages (Mission Control, Subjects, etc.) that
  * need the kid's display_name, current_band, and profile.id for progress
@@ -73,14 +81,44 @@ export async function getActiveKidProfile(
     return profile;
   }
 
+  // Fetch all kid profiles in this family (ordered by creation date)
   const { data: kids } = await supabase
     .from("profiles")
     .select("*")
     .eq("family_id", profile.family_id)
     .eq("role", "kid")
-    .order("created_at")
-    .limit(1);
+    .order("created_at");
 
-  const firstKid = (kids as Profile[] | null)?.[0] ?? null;
-  return firstKid;
+  const safeKids = (kids as Profile[] | null) ?? [];
+  if (safeKids.length === 0) return null;
+
+  // Check if a specific kid is selected via cookie
+  const cookieStore = await cookies();
+  const activeKidId = cookieStore.get(ACTIVE_KID_COOKIE)?.value;
+
+  if (activeKidId) {
+    const selected = safeKids.find((k) => k.id === activeKidId);
+    if (selected) return selected;
+  }
+
+  // Fall back to the first kid
+  return safeKids[0];
+}
+
+/**
+ * Fetch all kid profiles in the current user's family. Useful for building
+ * kid-switcher UIs. Returns an empty array if no kids exist.
+ */
+export async function getFamilyKids(
+  profile: Profile,
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+): Promise<Profile[]> {
+  const { data: kids } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("family_id", profile.family_id)
+    .eq("role", "kid")
+    .order("created_at");
+
+  return (kids as Profile[] | null) ?? [];
 }

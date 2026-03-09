@@ -26,6 +26,13 @@ vi.mock("@/lib/supabase/server", () => ({
   createServerSupabaseClient: vi.fn(),
 }));
 
+// Mock next/headers cookies() for getActiveKidProfile
+const mockCookieGet = vi.fn();
+const mockCookieStore = { get: (...args: unknown[]) => mockCookieGet(...args) };
+vi.mock("next/headers", () => ({
+  cookies: vi.fn(() => Promise.resolve(mockCookieStore)),
+}));
+
 // ---------------------------------------------------------------------------
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
@@ -184,48 +191,82 @@ describe("requireAuth", () => {
 describe("getActiveKidProfile", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    // Default: no active kid cookie
+    mockCookieGet.mockReturnValue(undefined);
   });
 
+  function buildKidQueryMock(kidsData: unknown[] | null) {
+    const chain: Record<string, unknown> = {};
+    chain.from = vi.fn().mockReturnValue(chain);
+    chain.select = vi.fn().mockReturnValue(chain);
+    chain.eq = vi.fn().mockReturnValue(chain);
+    chain.order = vi.fn().mockResolvedValue({ data: kidsData, error: null });
+
+    return { from: vi.fn().mockReturnValue(chain) } as unknown as Awaited<
+      ReturnType<typeof createServerSupabaseClient>
+    >;
+  }
+
   it("returns the profile as-is if role is kid", async () => {
-    const kidProfile = { ...MOCK_PROFILE, role: "kid" as const };
+    const kidProfile = { ...MOCK_PROFILE, role: "kid" as const, created_at: "2024-01-01" };
     const fakeClient = {} as Awaited<ReturnType<typeof createServerSupabaseClient>>;
 
     const result = await getActiveKidProfile(kidProfile, fakeClient);
     expect(result).toBe(kidProfile);
   });
 
-  it("queries for first kid in family when profile is parent", async () => {
+  it("returns first kid when no cookie is set", async () => {
     const parentProfile = {
       ...MOCK_PROFILE,
       id: "parent-profile",
       role: "parent" as const,
       family_id: "family-1",
+      created_at: "2024-01-01",
     };
-    const kidProfile = {
-      ...MOCK_PROFILE,
-      id: "kid-profile",
-      role: "kid" as const,
-      family_id: "family-1",
-    };
+    const kid1 = { ...MOCK_PROFILE, id: "kid-1", role: "kid" as const, created_at: "2024-01-01" };
+    const kid2 = { ...MOCK_PROFILE, id: "kid-2", role: "kid" as const, created_at: "2024-01-02" };
 
-    const chain: Record<string, unknown> = {};
-    chain.from = vi.fn().mockReturnValue(chain);
-    chain.select = vi.fn().mockReturnValue(chain);
-    chain.eq = vi.fn().mockReturnValue(chain);
-    chain.order = vi.fn().mockReturnValue(chain);
-    chain.limit = vi.fn().mockResolvedValue({ data: [kidProfile], error: null });
-
-    const fakeClient = { from: vi.fn().mockReturnValue(chain) } as unknown as Awaited<
-      ReturnType<typeof createServerSupabaseClient>
-    >;
-
+    const fakeClient = buildKidQueryMock([kid1, kid2]);
     const result = await getActiveKidProfile(parentProfile, fakeClient);
 
-    expect(result).toEqual(kidProfile);
-    expect(chain.eq).toHaveBeenCalledWith("family_id", "family-1");
-    expect(chain.eq).toHaveBeenCalledWith("role", "kid");
-    expect(chain.order).toHaveBeenCalledWith("created_at");
-    expect(chain.limit).toHaveBeenCalledWith(1);
+    expect(result).toEqual(kid1);
+  });
+
+  it("returns selected kid when cookie matches a family kid", async () => {
+    const parentProfile = {
+      ...MOCK_PROFILE,
+      id: "parent-profile",
+      role: "parent" as const,
+      family_id: "family-1",
+      created_at: "2024-01-01",
+    };
+    const kid1 = { ...MOCK_PROFILE, id: "kid-1", role: "kid" as const, created_at: "2024-01-01" };
+    const kid2 = { ...MOCK_PROFILE, id: "kid-2", role: "kid" as const, created_at: "2024-01-02" };
+
+    mockCookieGet.mockReturnValue({ value: "kid-2" });
+
+    const fakeClient = buildKidQueryMock([kid1, kid2]);
+    const result = await getActiveKidProfile(parentProfile, fakeClient);
+
+    expect(result).toEqual(kid2);
+  });
+
+  it("falls back to first kid when cookie references unknown kid", async () => {
+    const parentProfile = {
+      ...MOCK_PROFILE,
+      id: "parent-profile",
+      role: "parent" as const,
+      family_id: "family-1",
+      created_at: "2024-01-01",
+    };
+    const kid1 = { ...MOCK_PROFILE, id: "kid-1", role: "kid" as const, created_at: "2024-01-01" };
+
+    mockCookieGet.mockReturnValue({ value: "nonexistent-kid-id" });
+
+    const fakeClient = buildKidQueryMock([kid1]);
+    const result = await getActiveKidProfile(parentProfile, fakeClient);
+
+    expect(result).toEqual(kid1);
   });
 
   it("returns null when no kid profiles exist in family", async () => {
@@ -233,19 +274,10 @@ describe("getActiveKidProfile", () => {
       ...MOCK_PROFILE,
       id: "parent-profile",
       role: "parent" as const,
+      created_at: "2024-01-01",
     };
 
-    const chain: Record<string, unknown> = {};
-    chain.from = vi.fn().mockReturnValue(chain);
-    chain.select = vi.fn().mockReturnValue(chain);
-    chain.eq = vi.fn().mockReturnValue(chain);
-    chain.order = vi.fn().mockReturnValue(chain);
-    chain.limit = vi.fn().mockResolvedValue({ data: [], error: null });
-
-    const fakeClient = { from: vi.fn().mockReturnValue(chain) } as unknown as Awaited<
-      ReturnType<typeof createServerSupabaseClient>
-    >;
-
+    const fakeClient = buildKidQueryMock([]);
     const result = await getActiveKidProfile(parentProfile, fakeClient);
     expect(result).toBeNull();
   });
@@ -255,19 +287,10 @@ describe("getActiveKidProfile", () => {
       ...MOCK_PROFILE,
       id: "parent-profile",
       role: "parent" as const,
+      created_at: "2024-01-01",
     };
 
-    const chain: Record<string, unknown> = {};
-    chain.from = vi.fn().mockReturnValue(chain);
-    chain.select = vi.fn().mockReturnValue(chain);
-    chain.eq = vi.fn().mockReturnValue(chain);
-    chain.order = vi.fn().mockReturnValue(chain);
-    chain.limit = vi.fn().mockResolvedValue({ data: null, error: null });
-
-    const fakeClient = { from: vi.fn().mockReturnValue(chain) } as unknown as Awaited<
-      ReturnType<typeof createServerSupabaseClient>
-    >;
-
+    const fakeClient = buildKidQueryMock(null);
     const result = await getActiveKidProfile(parentProfile, fakeClient);
     expect(result).toBeNull();
   });

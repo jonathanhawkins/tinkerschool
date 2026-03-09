@@ -14,7 +14,7 @@ import { usePathname } from "next/navigation";
 import {
   Home,
   BookOpen,
-  Wrench,
+  MessageCircle,
   Trophy,
   Settings,
 } from "lucide-react";
@@ -32,7 +32,7 @@ interface TabItem {
 const TAB_ITEMS: TabItem[] = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/subjects", label: "Subjects", icon: BookOpen },
-  { href: "/workshop", label: "Workshop", icon: Wrench },
+  { href: "/chat", label: "Chip", icon: MessageCircle },
   { href: "/achievements", label: "Awards", icon: Trophy },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

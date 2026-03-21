@@ -495,4 +495,39 @@ describe("buildVoiceLessonContext", () => {
 
     expect(result.activities).toEqual([]);
   });
+
+  it("sets voiceAutoConnect true for band 0 (Pre-K)", () => {
+    const result = buildVoiceLessonContext(
+      baseLessonData,
+      baseSubject,
+      null,
+      true,
+      0, // band 0 = Pre-K
+    );
+
+    expect(result.voiceAutoConnect).toBe(true);
+  });
+
+  it("sets voiceAutoConnect false for non-PreK bands", () => {
+    const result = buildVoiceLessonContext(
+      baseLessonData,
+      baseSubject,
+      null,
+      true,
+      2, // band 2 = Builder
+    );
+
+    expect(result.voiceAutoConnect).toBe(false);
+  });
+
+  it("sets voiceAutoConnect false when band is not provided", () => {
+    const result = buildVoiceLessonContext(
+      baseLessonData,
+      baseSubject,
+      null,
+      true,
+    );
+
+    expect(result.voiceAutoConnect).toBe(false);
+  });
 });

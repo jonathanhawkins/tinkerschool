@@ -141,11 +141,23 @@ export async function checkVoiceBudget(): Promise<VoiceBudgetResult> {
  * Log a completed voice session for cost tracking.
  * Called from the client when the voice connection ends.
  */
+/** Maximum allowed voice session duration (2 hours). Prevents abuse from
+ * malicious clients sending inflated values to skew cost tracking. */
+const MAX_SESSION_DURATION_SECONDS = 2 * 60 * 60;
+
 export async function logVoiceSession(
   chatGroupId: string | null,
   durationSeconds: number,
 ): Promise<void> {
   if (durationSeconds <= 0) return;
+
+  // Cap at a reasonable maximum to prevent cost tracking manipulation
+  if (durationSeconds > MAX_SESSION_DURATION_SECONDS) {
+    console.warn(
+      `[voice] Duration ${durationSeconds}s exceeds max ${MAX_SESSION_DURATION_SECONDS}s, capping.`,
+    );
+    durationSeconds = MAX_SESSION_DURATION_SECONDS;
+  }
 
   try {
     const { profile } = await requireAuth();
@@ -223,6 +235,7 @@ async function fetchVoicePageContext(): Promise<VoicePageContext> {
     childName: "friend",
     age: 7,
     gradeLevel: 1,
+    band: 2,
     currentStreak: 0,
     xp: 0,
     deviceMode: "none",
@@ -306,6 +319,7 @@ async function fetchVoicePageContext(): Promise<VoicePageContext> {
       childName: kidProfile.display_name,
       age,
       gradeLevel,
+      band: kidProfile.current_band ?? gradeLevel,
       currentStreak: kidProfile.current_streak,
       xp: kidProfile.xp ?? 0,
       deviceMode: kidProfile.device_mode,

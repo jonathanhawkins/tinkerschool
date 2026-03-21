@@ -25,6 +25,8 @@ export interface VoicePageContext {
   childName: string;
   age: number;
   gradeLevel: number;
+  /** Curriculum band (0 = Pre-K Seedling, 1 = K Explorer, 2+ = higher). */
+  band: number;
   currentStreak: number;
   xp: number;
   deviceMode: "usb" | "wifi" | "simulator" | "none";
@@ -70,6 +72,11 @@ export interface VoiceLessonContext {
   activities: VoiceActivitySummary[];
   codingHints: string[];
   isInteractive: boolean;
+  /**
+   * When true, the Chip voice FAB should auto-expand and auto-connect
+   * when this lesson is opened. Used for Pre-K (band 0) voice-led lessons.
+   */
+  voiceAutoConnect?: boolean;
 }
 
 // ---------------------------------------------------------------------------

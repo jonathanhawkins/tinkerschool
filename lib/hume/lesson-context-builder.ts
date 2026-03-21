@@ -289,6 +289,8 @@ export function buildVoiceLessonContext(
   subject: SubjectData | null,
   activityConfig: LessonActivityConfig | null,
   isInteractive: boolean,
+  /** Pass the kid's current band so we can flag voice-led lessons. */
+  band?: number,
 ): VoiceLessonContext {
   const activities = activityConfig
     ? summarizeActivities(activityConfig)
@@ -314,5 +316,6 @@ export function buildVoiceLessonContext(
     activities,
     codingHints,
     isInteractive,
+    voiceAutoConnect: band === 0,
   };
 }

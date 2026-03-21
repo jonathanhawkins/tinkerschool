@@ -65,18 +65,9 @@ export async function checkVoiceBudget(): Promise<VoiceBudgetResult> {
     const dailyLimit = DAILY_LIMIT[tier] ?? DAILY_LIMIT.free;
     const monthlyLimit = MONTHLY_LIMIT[tier] ?? MONTHLY_LIMIT.free;
 
-    // Resolve the kid profile (if parent, get first kid)
-    let kidProfileId = profile.id;
-    if (profile.role === "parent") {
-      const { data: kids } = (await supabase
-        .from("profiles")
-        .select("id")
-        .eq("family_id", profile.family_id)
-        .eq("role", "kid")
-        .order("created_at")
-        .limit(1)) as { data: { id: string }[] | null };
-      if (kids?.[0]) kidProfileId = kids[0].id;
-    }
+    // Resolve the active kid profile (respects kid-switcher cookie)
+    const activeKid = await getActiveKidProfile(profile, supabase);
+    const kidProfileId = activeKid?.id ?? profile.id;
 
     // Query daily and monthly usage in parallel
     // RPC functions added by 026_voice_sessions migration — cast because
@@ -163,18 +154,9 @@ export async function logVoiceSession(
     const { profile } = await requireAuth();
     const supabase = createAdminSupabaseClient();
 
-    // Resolve kid profile (same logic as budget check)
-    let kidProfileId = profile.id;
-    if (profile.role === "parent") {
-      const { data: kids } = (await supabase
-        .from("profiles")
-        .select("id")
-        .eq("family_id", profile.family_id)
-        .eq("role", "kid")
-        .order("created_at")
-        .limit(1)) as { data: { id: string }[] | null };
-      if (kids?.[0]) kidProfileId = kids[0].id;
-    }
+    // Resolve the active kid profile (respects kid-switcher cookie)
+    const activeKid = await getActiveKidProfile(profile, supabase);
+    const kidProfileId = activeKid?.id ?? profile.id;
 
     const costCents = Math.round(durationSeconds * COST_CENTS_PER_SECOND);
 

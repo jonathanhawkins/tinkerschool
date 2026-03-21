@@ -13,6 +13,7 @@ import {
 } from "@/lib/badges/evaluate-badges";
 import { updateStreak } from "@/lib/gamification/streaks";
 import { awardXP } from "@/lib/gamification/xp";
+import { getActiveKidProfile } from "@/lib/auth/require-auth";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { isValidUUID } from "@/lib/utils";
@@ -29,13 +30,23 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Get a Supabase client, falling back to admin if Clerk JWT is unavailable.
+ * SECURITY NOTE: The admin client bypasses RLS. This fallback exists for
+ * local development when the Clerk "supabase" JWT template isn't configured.
+ * In production, logs an error so operators know RLS is being bypassed. */
 async function getSupabase() {
   try {
     return await createServerSupabaseClient();
   } catch {
-    console.warn(
-      "[adventure/actions] Supabase JWT unavailable, falling back to admin client.",
-    );
+    if (process.env.NODE_ENV === "production") {
+      console.error(
+        "[adventure/actions] SECURITY: Supabase JWT unavailable in production, falling back to admin client. Configure the Clerk 'supabase' JWT template.",
+      );
+    } else {
+      console.warn(
+        "[adventure/actions] Supabase JWT unavailable, falling back to admin client.",
+      );
+    }
     return createAdminSupabaseClient();
   }
 }
@@ -46,23 +57,14 @@ async function resolveKidProfileId(
 ): Promise<string | null> {
   const { data: profile } = (await supabase
     .from("profiles")
-    .select("id, role, family_id")
+    .select("*")
     .eq("clerk_id", userId)
-    .single()) as { data: { id: string; role: string; family_id: string } | null };
+    .single()) as { data: import("@/lib/supabase/types").Profile | null };
 
   if (!profile) return null;
 
-  if (profile.role === "kid") return profile.id;
-
-  const { data: kids } = (await supabase
-    .from("profiles")
-    .select("id")
-    .eq("family_id", profile.family_id)
-    .eq("role", "kid")
-    .order("created_at")
-    .limit(1)) as { data: { id: string }[] | null };
-
-  return kids?.[0]?.id ?? profile.id;
+  const kid = await getActiveKidProfile(profile, supabase);
+  return kid?.id ?? profile.id;
 }
 
 // ---------------------------------------------------------------------------
@@ -199,14 +201,21 @@ export async function completeAdventure(
 
   const adminClient = createAdminSupabaseClient();
 
-  // Fetch the adventure to get skill_ids
+  // Fetch the adventure and verify it belongs to the authenticated user.
+  // Without this check, a user could complete another user's adventure by
+  // guessing/enumerating adventure IDs.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: adventure } = (await (adminClient.from("daily_adventures") as any)
-    .select("id, skill_ids")
+    .select("id, skill_ids, profile_id")
     .eq("id", input.adventureId)
-    .single()) as { data: { id: string; skill_ids: string[] } | null };
+    .single()) as { data: { id: string; skill_ids: string[]; profile_id: string } | null };
 
   if (!adventure) {
+    return { success: false, error: "Adventure not found" };
+  }
+
+  // Authorization: ensure the adventure belongs to the authenticated kid profile
+  if (adventure.profile_id !== profileId) {
     return { success: false, error: "Adventure not found" };
   }
 

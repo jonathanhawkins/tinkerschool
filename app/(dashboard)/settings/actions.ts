@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
 import { hashPin } from "@/lib/auth/pin";
-import { requireAuth, ACTIVE_KID_COOKIE } from "@/lib/auth/require-auth";
+import { requireAuth, getActiveKidProfile, ACTIVE_KID_COOKIE } from "@/lib/auth/require-auth";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { bandForGrade, GRADE_LABELS, isValidUUID, VALID_GRADES } from "@/lib/utils";
 import type { Profile, ProfileInsert, ProfileUpdate, LearningProfileInsert } from "@/lib/supabase/types";
@@ -28,7 +28,7 @@ const NAME_PATTERN = /^[\p{L}\p{N}\s'-]+$/u;
  * Resets the kid's progress: clears all lesson progress rows,
  * earned badges, and resets XP/streak on the profile. Dev-only.
  *
- * If logged in as a parent, finds the first kid in the family.
+ * If logged in as a parent, finds the active kid via the kid-switcher cookie.
  */
 export async function resetProgress() {
   if (process.env.NODE_ENV === "production") {
@@ -37,19 +37,9 @@ export async function resetProgress() {
 
   const { profile, supabase } = await requireAuth();
 
-  // Find the kid profile to reset
-  let target = profile;
-  if (profile.role === "parent") {
-    const { data: kids } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("family_id", profile.family_id)
-      .eq("role", "kid")
-      .order("created_at")
-      .limit(1);
-    const firstKid = (kids as Profile[] | null)?.[0];
-    if (firstKid) target = firstKid;
-  }
+  // Find the active kid profile to reset (respects kid-switcher cookie)
+  const activeKid = await getActiveKidProfile(profile, supabase);
+  const target = activeKid ?? profile;
 
   // Delete progress rows, earned badges, and chat sessions
   await Promise.all([

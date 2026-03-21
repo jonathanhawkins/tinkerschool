@@ -3,6 +3,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
+import { requireAuth, getActiveKidProfile } from "@/lib/auth/require-auth";
+
 import { synthesizeChipNotes } from "@/lib/ai/chip-memory-synthesizer";
 import { updateSkillProficiency } from "@/lib/ai/skill-proficiency-writer";
 import {
@@ -33,20 +35,30 @@ import { isValidUUID } from "@/lib/utils";
 // generic plumbing is off. TODO: replace hand-written types with
 // `npx supabase gen types` output to eliminate these casts.
 
+/** Get a Supabase client, falling back to admin if Clerk JWT is unavailable.
+ * SECURITY NOTE: The admin client bypasses RLS. This fallback exists for
+ * local development when the Clerk "supabase" JWT template isn't configured.
+ * In production, logs an error so operators know RLS is being bypassed. */
 async function getSupabase() {
   try {
     return await createServerSupabaseClient();
   } catch {
-    console.warn(
-      "[lesson/actions] Supabase JWT unavailable, falling back to admin client.",
-    );
+    if (process.env.NODE_ENV === "production") {
+      console.error(
+        "[lesson/actions] SECURITY: Supabase JWT unavailable in production, falling back to admin client. Configure the Clerk 'supabase' JWT template.",
+      );
+    } else {
+      console.warn(
+        "[lesson/actions] Supabase JWT unavailable, falling back to admin client.",
+      );
+    }
     return createAdminSupabaseClient();
   }
 }
 
 /**
  * Resolve the active kid profile for the authenticated user.
- * If the authenticated user is a parent, returns the first kid in the family.
+ * Uses the kid-switcher cookie to pick the correct child.
  * Falls back to the parent's profile ID if no kids exist.
  */
 async function resolveKidProfileId(
@@ -55,25 +67,14 @@ async function resolveKidProfileId(
 ): Promise<string | null> {
   const { data: profile } = (await supabase
     .from("profiles")
-    .select("id, role, family_id")
+    .select("*")
     .eq("clerk_id", userId)
-    .single()) as { data: { id: string; role: string; family_id: string } | null };
+    .single()) as { data: import("@/lib/supabase/types").Profile | null };
 
   if (!profile) return null;
 
-  // If already a kid, return directly
-  if (profile.role === "kid") return profile.id;
-
-  // Parent -- find the first kid in the family
-  const { data: kids } = (await supabase
-    .from("profiles")
-    .select("id")
-    .eq("family_id", profile.family_id)
-    .eq("role", "kid")
-    .order("created_at")
-    .limit(1)) as { data: { id: string }[] | null };
-
-  return kids?.[0]?.id ?? profile.id;
+  const kid = await getActiveKidProfile(profile, supabase);
+  return kid?.id ?? profile.id;
 }
 
 // ---------------------------------------------------------------------------

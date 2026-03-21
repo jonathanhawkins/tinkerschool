@@ -56,6 +56,7 @@ let mockSupabase: ReturnType<typeof createChainableMock>;
 
 vi.mock("@/lib/auth/require-auth", () => ({
   requireAuth: vi.fn(),
+  getActiveKidProfile: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -66,7 +67,7 @@ vi.mock("@/lib/hume/access-token", () => ({
   getHumeAccessToken: vi.fn(),
 }));
 
-import { requireAuth } from "@/lib/auth/require-auth";
+import { requireAuth, getActiveKidProfile } from "@/lib/auth/require-auth";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getHumeAccessToken } from "@/lib/hume/access-token";
 import {
@@ -77,6 +78,7 @@ import {
 } from "./actions";
 
 const mockRequireAuth = vi.mocked(requireAuth);
+const mockGetActiveKidProfile = vi.mocked(getActiveKidProfile);
 const mockCreateAdmin = vi.mocked(createAdminSupabaseClient);
 const mockGetHumeAccessToken = vi.mocked(getHumeAccessToken);
 
@@ -102,16 +104,18 @@ function setupBudgetMocks(opts: {
     supabase: mockSupabase as never,
   });
 
-  // Track call count for .from() to differentiate family vs kids queries
-  let fromCallCount = 0;
-  // Track call count for .eq() within each .from() chain to differentiate the chained .eq() calls
-  let eqCallCount = 0;
-  let currentLimitValue: { data: unknown } = { data: null };
+  // Mock getActiveKidProfile to return the correct kid profile
+  const kidId = opts.kidId ?? "kid-profile-001";
+  if (opts.role === "parent") {
+    mockGetActiveKidProfile.mockResolvedValue({
+      ...mockProfile,
+      id: kidId,
+    } as never);
+  } else {
+    mockGetActiveKidProfile.mockResolvedValue(profile as never);
+  }
 
   mockSupabase.from.mockImplementation((table: string) => {
-    fromCallCount++;
-    eqCallCount = 0; // reset eq count per .from() call
-
     if (table === "families") {
       return {
         select: vi.fn().mockReturnValue({
@@ -119,26 +123,6 @@ function setupBudgetMocks(opts: {
             single: vi.fn().mockResolvedValue({
               data: { id: "family-001", subscription_tier: opts.tier ?? null },
               error: null,
-            }),
-          }),
-        }),
-      };
-    }
-
-    if (table === "profiles") {
-      // This is used when role === "parent" to resolve kid profile
-      return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              order: vi.fn().mockReturnValue({
-                limit: vi.fn().mockReturnValue({
-                  data: opts.kidId
-                    ? [{ id: opts.kidId }]
-                    : [{ id: "kid-profile-001" }],
-                  error: null,
-                }),
-              }),
             }),
           }),
         }),
@@ -409,12 +393,16 @@ describe("logVoiceSession", () => {
     expect(insertMock).not.toHaveBeenCalled();
   });
 
-  it("when profile is a parent, resolves the first kid's profile ID", async () => {
+  it("when profile is a parent, resolves the active kid's profile ID", async () => {
     mockRequireAuth.mockResolvedValue({
       userId: mockParentProfile.clerk_id,
       profile: mockParentProfile,
       supabase: mockSupabase as never,
     });
+    mockGetActiveKidProfile.mockResolvedValue({
+      ...mockProfile,
+      id: "kid-profile-001",
+    } as never);
 
     await logVoiceSession("chat-group-abc", 30);
 

@@ -25,6 +25,18 @@ vi.mock("@/lib/rate-limit", () => ({
   checkAiBuddyRateLimit: vi.fn(),
 }));
 
+// Next.js cookies — returns an async function that resolves to a cookie store
+vi.mock("next/headers", () => ({
+  cookies: vi.fn(async () => ({
+    get: vi.fn().mockReturnValue(undefined),
+  })),
+}));
+
+// Auth helper (for ACTIVE_KID_COOKIE constant)
+vi.mock("@/lib/auth/require-auth", () => ({
+  ACTIVE_KID_COOKIE: "tinkerschool_active_kid",
+}));
+
 // Supabase admin client
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminSupabaseClient: vi.fn(),

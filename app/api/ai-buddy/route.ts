@@ -1,7 +1,9 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { auth } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
 
+import { ACTIVE_KID_COOKIE } from "@/lib/auth/require-auth";
 import { getChipSystemPrompt } from "@/lib/ai/chip-system-prompt";
 import type { ChipContext } from "@/lib/ai/chip-system-prompt";
 import { discoverInterests } from "@/lib/ai/interest-discovery";
@@ -110,6 +112,7 @@ async function persistChat(
   assistantMessage: string,
   chatSessionId: string | undefined,
   lessonId: string | undefined,
+  activeKidId: string | undefined,
 ): Promise<string | null> {
   try {
     const supabase = createAdminSupabaseClient();
@@ -126,15 +129,19 @@ async function persistChat(
 
     let profile = authProfile;
     if (authProfile.role === "parent") {
+      // Use the active kid from the kid-switcher cookie
       const { data: kids } = (await supabase
         .from("profiles")
         .select("id, family_id, role")
         .eq("family_id", authProfile.family_id)
         .eq("role", "kid")
-        .order("created_at")
-        .limit(1)) as { data: typeof authProfile[] | null };
-      if (kids?.[0]) {
-        profile = kids[0];
+        .order("created_at")) as { data: typeof authProfile[] | null };
+
+      if (kids && kids.length > 0) {
+        const selected = activeKidId
+          ? kids.find((k) => k.id === activeKidId)
+          : undefined;
+        profile = selected ?? kids[0];
       }
     }
 
@@ -246,7 +253,7 @@ interface ProgressRow {
  * Uses the admin client (bypasses RLS) since the API route already verifies
  * the user is authenticated via Clerk.
  */
-async function fetchPersonalizationData(clerkId: string): Promise<{
+async function fetchPersonalizationData(clerkId: string, activeKidId: string | undefined): Promise<{
   /** Server-verified profile fields (never trust client-supplied values) */
   profileId?: string;
   familyId?: string;
@@ -270,8 +277,8 @@ async function fetchPersonalizationData(clerkId: string): Promise<{
 
     if (!authProfile) return {};
 
-    // If the authenticated user is a parent, resolve to the first kid profile
-    // so Chip addresses the kid by name with correct grade/band info.
+    // If the authenticated user is a parent, resolve to the active kid profile
+    // using the kid-switcher cookie so Chip addresses the correct child.
     let profile = authProfile;
     if (authProfile.role === "parent") {
       const { data: kids } = (await supabase
@@ -279,10 +286,13 @@ async function fetchPersonalizationData(clerkId: string): Promise<{
         .select("id, display_name, grade_level, current_band, family_id, role")
         .eq("family_id", authProfile.family_id)
         .eq("role", "kid")
-        .order("created_at")
-        .limit(1)) as { data: typeof authProfile[] | null };
-      if (kids?.[0]) {
-        profile = kids[0];
+        .order("created_at")) as { data: typeof authProfile[] | null };
+
+      if (kids && kids.length > 0) {
+        const selected = activeKidId
+          ? kids.find((k) => k.id === activeKidId)
+          : undefined;
+        profile = selected ?? kids[0];
       }
     }
 
@@ -413,9 +423,13 @@ export async function POST(request: Request) {
     });
   }
 
-  // 2. Fetch personalization data (includes tier) before rate limiting
+  // 2. Read the active kid cookie so Chip addresses the correct child
+  const cookieStore = await cookies();
+  const activeKidId = cookieStore.get(ACTIVE_KID_COOKIE)?.value;
+
+  // 3. Fetch personalization data (includes tier) before rate limiting
   //    so we can apply the correct tier-based limit.
-  const personalization = await fetchPersonalizationData(userId);
+  const personalization = await fetchPersonalizationData(userId, activeKidId);
   const tier = (personalization.subscriptionTier === "supporter" ? "supporter" : "free") as import("@/lib/stripe/config").SubscriptionTier;
 
   // 3. Rate limit (distributed via Upstash Redis, tier-aware)
@@ -553,6 +567,7 @@ export async function POST(request: Request) {
           text,
           chatSessionId,
           currentLessonId,
+          activeKidId,
         );
       }
     },

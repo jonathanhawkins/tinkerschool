@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAuth } from "@/lib/auth/require-auth";
+import { requireAuth, getActiveKidProfile } from "@/lib/auth/require-auth";
 import { getHumeAccessToken } from "@/lib/hume/access-token";
 import type { ChipVoiceProps, VoicePageContext } from "@/lib/hume/types";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -246,20 +246,9 @@ async function fetchVoicePageContext(): Promise<VoicePageContext> {
   try {
     const { profile, supabase } = await requireAuth();
 
-    // Chip talks to the kid, not the parent. If the logged-in user is a
-    // parent, find the first kid profile in the same family.
-    let kidProfile = profile;
-    if (profile.role === "parent") {
-      const { data: kids } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("family_id", profile.family_id)
-        .eq("role", "kid")
-        .order("created_at")
-        .limit(1);
-      const firstKid = (kids as Profile[] | null)?.[0];
-      if (firstKid) kidProfile = firstKid;
-    }
+    // Chip talks to the kid, not the parent. Resolve the active kid profile
+    // using the kid-switcher cookie so Chip addresses the correct child.
+    const kidProfile = (await getActiveKidProfile(profile, supabase)) ?? profile;
 
     // Parallel queries: subjects + progress
     const [subjectsResult, progressResult] = await Promise.all([

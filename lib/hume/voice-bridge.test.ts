@@ -209,4 +209,132 @@ describe("VoiceBridge", () => {
     expect(listener).toHaveBeenNthCalledWith(2, "/b");
     expect(listener).toHaveBeenNthCalledWith(3, "/c");
   });
+
+  // -----------------------------------------------------------------------
+  // Lesson context channel
+  // -----------------------------------------------------------------------
+
+  it("lessonContext starts as null", async () => {
+    const bridge = await getBridge();
+    expect(bridge.lessonContext).toBeNull();
+  });
+
+  it("setLessonContext() updates the lesson context", async () => {
+    const bridge = await getBridge();
+    const ctx = {
+      lessonId: "abc-123",
+      title: "Clap Clap Clap!",
+      description: "A music lesson",
+      storyText: null,
+      subjectName: "Music",
+      subjectSlug: "music",
+      subjectColor: "#A855F7",
+      lessonType: "interactive",
+      estimatedMinutes: 5,
+      skillsCovered: ["rhythm"],
+      activities: [],
+      codingHints: [],
+      isInteractive: true,
+      voiceAutoConnect: true,
+    };
+    bridge.setLessonContext(ctx);
+    expect(bridge.lessonContext).toBe(ctx);
+  });
+
+  it("setLessonContext(null) clears the context", async () => {
+    const bridge = await getBridge();
+    bridge.setLessonContext({
+      lessonId: "abc-123",
+      title: "Test",
+      description: "",
+      storyText: null,
+      subjectName: "Math",
+      subjectSlug: "math",
+      subjectColor: "#3B82F6",
+      lessonType: "interactive",
+      estimatedMinutes: 5,
+      skillsCovered: [],
+      activities: [],
+      codingHints: [],
+      isInteractive: true,
+    });
+    expect(bridge.lessonContext).not.toBeNull();
+
+    bridge.setLessonContext(null);
+    expect(bridge.lessonContext).toBeNull();
+  });
+
+  it("subscribeLessonContext() notifies listeners on changes", async () => {
+    const bridge = await getBridge();
+    const listener = vi.fn();
+
+    bridge.subscribeLessonContext(listener);
+    bridge.setLessonContext({
+      lessonId: "abc-123",
+      title: "Test",
+      description: "",
+      storyText: null,
+      subjectName: "Math",
+      subjectSlug: "math",
+      subjectColor: "#3B82F6",
+      lessonType: "interactive",
+      estimatedMinutes: 5,
+      skillsCovered: [],
+      activities: [],
+      codingHints: [],
+      isInteractive: true,
+    });
+
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("unsubscribing from lesson context stops notifications", async () => {
+    const bridge = await getBridge();
+    const listener = vi.fn();
+
+    const unsub = bridge.subscribeLessonContext(listener);
+    unsub();
+    bridge.setLessonContext({
+      lessonId: "abc-123",
+      title: "Test",
+      description: "",
+      storyText: null,
+      subjectName: "Math",
+      subjectSlug: "math",
+      subjectColor: "#3B82F6",
+      lessonType: "interactive",
+      estimatedMinutes: 5,
+      skillsCovered: [],
+      activities: [],
+      codingHints: [],
+      isInteractive: true,
+    });
+
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  // -----------------------------------------------------------------------
+  // Activity feedback channel
+  // -----------------------------------------------------------------------
+
+  it("activityFeedback starts as null", async () => {
+    const bridge = await getBridge();
+    expect(bridge.activityFeedback).toBeNull();
+  });
+
+  it("setActivityFeedback() notifies listeners", async () => {
+    const bridge = await getBridge();
+    const listener = vi.fn();
+
+    bridge.subscribeActivityFeedback(listener);
+    bridge.setActivityFeedback({
+      text: "Great job!",
+      type: "correct",
+      durationMs: 3000,
+      id: 1,
+    });
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(bridge.activityFeedback?.text).toBe("Great job!");
+  });
 });

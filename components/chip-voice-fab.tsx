@@ -450,6 +450,25 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
     }
   }, [chatMetadata]);
 
+  // Reset chat group ID when lesson context changes so that Chip starts a
+  // fresh conversation for each lesson. Without this, `resumedChatGroupId`
+  // would carry over from a previous session (e.g. from the home page),
+  // causing Chip to respond based on that earlier context instead of the
+  // current lesson's teaching content.
+  const prevLessonContextIdRef = useRef(lessonContext?.lessonId ?? null);
+  useEffect(() => {
+    const currentId = lessonContext?.lessonId ?? null;
+    if (currentId !== prevLessonContextIdRef.current) {
+      prevLessonContextIdRef.current = currentId;
+      // Only reset when entering a lesson (not when leaving one).
+      // Leaving a lesson (currentId = null) should keep the group ID
+      // so Chip can reference the conversation if the user returns.
+      if (currentId !== null) {
+        chatGroupIdRef.current = null;
+      }
+    }
+  }, [lessonContext]);
+
   // Is this a brand-new user who hasn't started any lessons?
   const isNewUser = pageContext
     ? pageContext.completedLessonCount === 0 && !pageContext.inProgressLesson
@@ -468,6 +487,9 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
     const timer = setTimeout(() => setIsOpen(true), 1200);
     return () => clearTimeout(timer);
   }, [isNewUser, hasDismissedChat]);
+
+  // Ref for Pre-K auto-connect (used in a useEffect after handleConnect is declared)
+  const hasAutoConnectedForLesson = useRef<string | null>(null);
 
   // Derive status
   const status: ChipVoiceStatus = useMemo(() => {
@@ -592,18 +614,28 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
     return buildVoiceSystemPrompt(pageContext, pathname, lessonContext);
   }, [pageContext, pathname, lessonContext]);
 
-  // Update Chip's context mid-session when pathname or lesson context changes
+  // Update Chip's context mid-session when pathname, lesson context, or
+  // connection status changes. This covers two scenarios:
+  //
+  // 1. User navigates to a different page/lesson while already connected.
+  // 2. Lesson context arrives from the bridge AFTER the connection was
+  //    established (race condition safety net — the prompt was also sent
+  //    at connect time, but the bridge update may arrive slightly late).
   const prevPathnameRef = useRef(pathname);
   const prevLessonIdRef = useRef(lessonContext?.lessonId ?? null);
+  const prevStatusRef = useRef(status);
   useEffect(() => {
     const lessonId = lessonContext?.lessonId ?? null;
     const pathnameChanged = prevPathnameRef.current !== pathname;
     const lessonChanged = prevLessonIdRef.current !== lessonId;
+    const justConnected =
+      prevStatusRef.current !== "connected" && status === "connected";
 
-    if (!pathnameChanged && !lessonChanged) return;
     prevPathnameRef.current = pathname;
     prevLessonIdRef.current = lessonId;
+    prevStatusRef.current = status;
 
+    if (!pathnameChanged && !lessonChanged && !justConnected) return;
     if (status !== "connected" || !systemPrompt) return;
 
     sendSessionSettings({ systemPrompt });
@@ -683,6 +715,29 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
     setShowVoiceConsent(false);
     pendingConnectRef.current = null;
   }, []);
+
+  // ── Pre-K Voice Auto-Connect ──
+  // For Pre-K (band 0) lessons, auto-expand the panel AND auto-connect
+  // to the Hume voice agent so Chip can lead the lesson by voice.
+  useEffect(() => {
+    if (!lessonContext?.voiceAutoConnect) return;
+    // Only auto-connect once per lesson (don't re-trigger on re-renders)
+    if (hasAutoConnectedForLesson.current === lessonContext.lessonId) return;
+    if (status === "connected" || status === "connecting") return;
+
+    hasAutoConnectedForLesson.current = lessonContext.lessonId;
+
+    // Open the panel and auto-connect with a delay
+    const timer = setTimeout(() => {
+      setIsOpen(true);
+      // Give the panel time to render, then connect
+      setTimeout(() => {
+        handleConnect();
+      }, 600);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [lessonContext, status, handleConnect]);
 
   // Toggle mic mute
   const handleToggleMic = useCallback(() => {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 
 import { buildVoiceSystemPrompt } from "./voice-prompt";
-import type { VoicePageContext } from "./types";
+import type { VoiceLessonContext, VoicePageContext } from "./types";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -11,6 +11,7 @@ const baseContext: VoicePageContext = {
   childName: "Cassidy",
   age: 7,
   gradeLevel: 1,
+  band: 2,
   currentStreak: 0,
   xp: 0,
   deviceMode: "none",
@@ -337,6 +338,258 @@ describe("buildVoiceSystemPrompt", () => {
     it("no in-progress lesson link when none is set", () => {
       const prompt = buildVoiceSystemPrompt(newUserCtx, "/home");
       expect(prompt).not.toContain("Continue");
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Lesson context integration — ensures Chip knows about the current lesson
+  // ---------------------------------------------------------------------------
+
+  describe("lesson context integration", () => {
+    const musicLessonCtx: VoiceLessonContext = {
+      lessonId: "49c7c36e-a67d-4c03-beaa-921e57ec204f",
+      title: "Clap Clap Clap!",
+      description: "Learn about rhythm by clapping along to different beats.",
+      storyText: "Chip loves to clap! Can you clap with Chip?",
+      subjectName: "Music",
+      subjectSlug: "music",
+      subjectColor: "#A855F7",
+      lessonType: "interactive",
+      estimatedMinutes: 5,
+      skillsCovered: ["rhythm", "beat"],
+      activities: [
+        {
+          widgetType: "tap_and_reveal",
+          questionCount: 3,
+          questions: [
+            { prompt: "Clap 3 times!", correctAnswer: "3 claps" },
+            { prompt: "Clap fast!", correctAnswer: "fast clapping" },
+            { prompt: "Clap slowly!", correctAnswer: "slow clapping" },
+          ],
+        },
+      ],
+      codingHints: [],
+      isInteractive: true,
+      voiceAutoConnect: true,
+    };
+
+    const mathLessonCtx: VoiceLessonContext = {
+      lessonId: "math-lesson-001",
+      title: "Count to Five",
+      description: "Practice counting from 1 to 5 with fun pictures.",
+      storyText: null,
+      subjectName: "Math",
+      subjectSlug: "math",
+      subjectColor: "#3B82F6",
+      lessonType: "interactive",
+      estimatedMinutes: 5,
+      skillsCovered: ["counting"],
+      activities: [
+        {
+          widgetType: "counting",
+          questionCount: 2,
+          questions: [
+            { prompt: "How many apples?", correctAnswer: "3", hint: "Count each apple" },
+            { prompt: "How many stars?", correctAnswer: "5" },
+          ],
+        },
+      ],
+      codingHints: [],
+      isInteractive: true,
+    };
+
+    it("on a lesson page with lesson context, uses Lesson Teaching Mode", () => {
+      const prompt = buildVoiceSystemPrompt(
+        returningCtx,
+        "/lessons/49c7c36e-a67d-4c03-beaa-921e57ec204f",
+        musicLessonCtx,
+      );
+      expect(prompt).toContain("## YOUR JOB RIGHT NOW");
+      expect(prompt).toContain("Clap Clap Clap!");
+      expect(prompt).toContain("Music");
+    });
+
+    it("lesson teaching mode replaces generic Page Guidance for returning users", () => {
+      const prompt = buildVoiceSystemPrompt(
+        returningCtx,
+        "/lessons/49c7c36e-a67d-4c03-beaa-921e57ec204f",
+        musicLessonCtx,
+      );
+      expect(prompt).toContain("## YOUR JOB RIGHT NOW");
+      expect(prompt).not.toContain("Page Guidance (Lesson)");
+      expect(prompt).not.toContain("## Returning User Context");
+    });
+
+    it("lesson teaching mode replaces generic onboarding for new users", () => {
+      const prompt = buildVoiceSystemPrompt(
+        newUserCtx,
+        "/lessons/49c7c36e-a67d-4c03-beaa-921e57ec204f",
+        musicLessonCtx,
+      );
+      expect(prompt).toContain("## YOUR JOB RIGHT NOW");
+      expect(prompt).not.toContain("First-Time User");
+      expect(prompt).not.toContain("Guided Onboarding");
+    });
+
+    it("includes lesson story text when available", () => {
+      const prompt = buildVoiceSystemPrompt(
+        returningCtx,
+        "/lessons/49c7c36e-a67d-4c03-beaa-921e57ec204f",
+        musicLessonCtx,
+      );
+      expect(prompt).toContain("Chip loves to clap");
+    });
+
+    it("includes activity questions and answers", () => {
+      const prompt = buildVoiceSystemPrompt(
+        returningCtx,
+        "/lessons/49c7c36e-a67d-4c03-beaa-921e57ec204f",
+        musicLessonCtx,
+      );
+      expect(prompt).toContain("Clap 3 times!");
+      expect(prompt).toContain("3 claps");
+    });
+
+    it("includes subject-specific voice teaching guide for music", () => {
+      const prompt = buildVoiceSystemPrompt(
+        returningCtx,
+        "/lessons/49c7c36e-a67d-4c03-beaa-921e57ec204f",
+        musicLessonCtx,
+      );
+      expect(prompt).toContain("Music Teaching Style");
+      expect(prompt).toContain("rhythm");
+    });
+
+    it("includes hints for math activities", () => {
+      const prompt = buildVoiceSystemPrompt(
+        returningCtx,
+        "/lessons/math-lesson-001",
+        mathLessonCtx,
+      );
+      expect(prompt).toContain("Count each apple");
+    });
+
+    it("includes standard teaching rules for non-PreK users", () => {
+      const prompt = buildVoiceSystemPrompt(
+        returningCtx,
+        "/lessons/math-lesson-001",
+        mathLessonCtx,
+      );
+      expect(prompt).toContain("How to Teach This Lesson");
+      expect(prompt).toContain("NEVER reveal them directly");
+      expect(prompt).toContain("Socratic method");
+    });
+
+    it("includes Pre-K teaching rules for band 0 users", () => {
+      const preKCtx: VoicePageContext = {
+        ...baseContext,
+        band: 0,
+        age: 4,
+        gradeLevel: 0,
+        completedLessonCount: 2,
+      };
+      const prompt = buildVoiceSystemPrompt(
+        preKCtx,
+        "/lessons/49c7c36e-a67d-4c03-beaa-921e57ec204f",
+        musicLessonCtx,
+      );
+      expect(prompt).toContain("How to Teach This Lesson");
+      expect(prompt).toContain("CANNOT READ");
+      expect(prompt).toContain("Celebrate EVERYTHING");
+    });
+
+    it("uses Pre-K subject guidance for band 0 users", () => {
+      const preKCtx: VoicePageContext = {
+        ...baseContext,
+        band: 0,
+        age: 4,
+        gradeLevel: 0,
+        completedLessonCount: 2,
+      };
+      const prompt = buildVoiceSystemPrompt(
+        preKCtx,
+        "/lessons/49c7c36e-a67d-4c03-beaa-921e57ec204f",
+        musicLessonCtx,
+      );
+      // Pre-K music guidance says "Let's clap together!"
+      expect(prompt).toContain("Let's clap together");
+    });
+
+    it("Pre-K lesson prompt starts with YOUR JOB RIGHT NOW and teaches immediately", () => {
+      const preKCtx: VoicePageContext = {
+        ...baseContext,
+        band: 0,
+        age: 4,
+        gradeLevel: 0,
+        completedLessonCount: 2,
+      };
+      const prompt = buildVoiceSystemPrompt(
+        preKCtx,
+        "/lessons/49c7c36e-a67d-4c03-beaa-921e57ec204f",
+        musicLessonCtx,
+      );
+      expect(prompt).toContain("## YOUR JOB RIGHT NOW");
+      expect(prompt).toContain("Do NOT introduce yourself");
+      expect(prompt).toContain("Do NOT say \"Hey I'm Chip\"");
+      expect(prompt).toContain("Start teaching the lesson content immediately");
+      // Should NOT contain generic greeting prompt
+      expect(prompt).not.toContain("I'm Chip, your learning buddy");
+    });
+
+    it("does NOT use lesson teaching mode when lessonContext is null", () => {
+      const prompt = buildVoiceSystemPrompt(
+        returningCtx,
+        "/lessons/some-id",
+        null,
+      );
+      expect(prompt).not.toContain("## YOUR JOB RIGHT NOW");
+      expect(prompt).toContain("Page Guidance (Lesson)");
+    });
+
+    it("does NOT use lesson teaching mode on non-lesson pages even with context", () => {
+      const prompt = buildVoiceSystemPrompt(
+        returningCtx,
+        "/home",
+        musicLessonCtx,
+      );
+      expect(prompt).not.toContain("## YOUR JOB RIGHT NOW");
+    });
+
+    it("includes lesson description", () => {
+      const prompt = buildVoiceSystemPrompt(
+        returningCtx,
+        "/lessons/math-lesson-001",
+        mathLessonCtx,
+      );
+      expect(prompt).toContain("Practice counting from 1 to 5");
+    });
+
+    it("works for all subjects (coding)", () => {
+      const codingCtx: VoiceLessonContext = {
+        lessonId: "coding-001",
+        title: "Hello LED",
+        description: "Make the LED say hello!",
+        storyText: null,
+        subjectName: "Coding",
+        subjectSlug: "coding",
+        subjectColor: "#14B8A6",
+        lessonType: "coding",
+        estimatedMinutes: 10,
+        skillsCovered: ["led-control"],
+        activities: [],
+        codingHints: ["Try using Lcd.drawString", "Remember to clear the screen first"],
+        isInteractive: false,
+      };
+      const prompt = buildVoiceSystemPrompt(
+        returningCtx,
+        "/lessons/coding-001",
+        codingCtx,
+      );
+      expect(prompt).toContain("## YOUR JOB RIGHT NOW");
+      expect(prompt).toContain("Hello LED");
+      expect(prompt).toContain("Coding Teaching Style");
+      expect(prompt).toContain("Coding Hints");
+      expect(prompt).toContain("Try using Lcd.drawString");
     });
   });
 });

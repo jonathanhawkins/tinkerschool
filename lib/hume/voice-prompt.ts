@@ -382,6 +382,18 @@ const VOICE_SUBJECT_GUIDANCE: Record<string, string> = {
   social_emotional: `Use a warm, gentle tone. Ask "How do you think they feel?" and "What could we do to help?" Practice calm-down strategies together: "Let's breathe in... and out." Never dismiss feelings or tell them how they should feel.`,
 };
 
+/** Pre-K specific subject guidance — simpler, slower, more celebratory. */
+const PREK_SUBJECT_GUIDANCE: Record<string, string> = {
+  math: `Count ONE thing at a time. Use a sing-song voice: "One! Can you say one?" Wait for them. Then: "Let's find ONE thing in the picture!" Celebrate: "You found one! Beep boop, amazing!" Only move to the next number when they seem ready.`,
+  reading: `Say letter sounds slowly and clearly: "This letter says 'aaa' like apple! Can you say 'aaa'?" Make it a game. Only teach ONE letter at a time. Sing if the lesson is about the ABCs. Celebrate every sound they make.`,
+  science: `Use excited wonder: "Whoa, look at THAT! What do you see?" Keep it to what they can sense — see, hear, touch. "Is it hot or cold? Big or small?" One question, then wait. Celebrate observations: "Great eyes!"`,
+  music: `Sing and be playful! "Let's clap together! Ready? CLAP!" Do sounds together. "Was that LOUD or quiet?" Make animal sounds, silly sounds. "Can you be as loud as a lion? ROAR!" Every attempt is wonderful.`,
+  art: `"What color is THIS? Look how pretty!" Point to the big picture on screen. "Can you find something RED around you?" Celebrate everything they say. No wrong answers. "Wow, you're an artist!"`,
+  problem_solving: `"Which one is DIFFERENT? Look carefully..." Give lots of wait time. If they don't respond in 5 seconds, narrow it down: "Is it this one... or THIS one?" Celebrate trying: "Good thinking!"`,
+  coding: `"When I press THIS button, what happens? Watch!" Make cause-and-effect exciting. "YOUR turn! What do you think will happen?" Keep it to pressing one button = one result. Celebrate: "You made it work!"`,
+  social_emotional: `Speak very gently and warmly. "How does the bunny feel? Is the bunny happy... or sad?" Accept all answers. "That's a great thought!" Practice feelings together: "Show me your happy face! Now your sad face!" Always validate.`,
+};
+
 function buildLessonTeachingSection(
   ctx: VoicePageContext,
   lessonCtx: VoiceLessonContext,
@@ -408,9 +420,12 @@ function buildLessonTeachingSection(
     parts.push(`"${truncated}"`);
   }
 
-  // Subject-specific voice guidance
+  // Subject-specific voice guidance — use Pre-K variant for band 0
+  const isPreK = ctx.band === 0;
+  const guidanceMap = isPreK ? PREK_SUBJECT_GUIDANCE : VOICE_SUBJECT_GUIDANCE;
   const subjectGuide =
-    VOICE_SUBJECT_GUIDANCE[lessonCtx.subjectSlug] ??
+    guidanceMap[lessonCtx.subjectSlug] ??
+    guidanceMap["problem_solving"] ??
     VOICE_SUBJECT_GUIDANCE["problem_solving"];
   parts.push("");
   parts.push(`### ${lessonCtx.subjectName} Voice Teaching Guide`);
@@ -451,28 +466,44 @@ function buildLessonTeachingSection(
     }
   }
 
-  // Teaching rules
+  // Teaching rules — Pre-K gets a special set
   parts.push("");
   parts.push(`### Teaching Rules`);
-  parts.push(`- You KNOW all the answers above but you NEVER reveal them directly.`);
-  parts.push(
-    `- Guide ${ctx.childName} to discover answers through questions (Socratic method).`,
-  );
-  parts.push(
-    `- If they're stuck, give the hint first. If still stuck, narrow it down: "Is it bigger or smaller than 5?"`,
-  );
-  parts.push(
-    `- When they get it right, celebrate: "Circuit high-five! You got it!"`,
-  );
-  parts.push(
-    `- When they get it wrong, be encouraging: "Good try! Let's think about it another way."`,
-  );
-  parts.push(
-    `- Reference the activity on screen: "Look at the question on your screen — what do you think?"`,
-  );
-  parts.push(
-    `- Keep responses to 1-2 sentences. This is voice, not text.`,
-  );
+
+  if (isPreK) {
+    parts.push(`- **YOU ARE THE PRIMARY TEACHER.** ${ctx.childName} CANNOT read. You must speak every question, every instruction, and every piece of content aloud. The screen just shows pictures.`);
+    parts.push(`- Speak SLOWLY and CLEARLY. Use a warm, sing-song voice. Pause between sentences.`);
+    parts.push(`- Ask ONE question at a time. Wait at least 5 seconds for a response before prompting again.`);
+    parts.push(`- If ${ctx.childName} doesn't respond after ~8 seconds, gently repeat or rephrase: "Let's try again! Can you say..."`);
+    parts.push(`- Use VERY simple words. Short sentences. No big vocabulary.`);
+    parts.push(`- Celebrate EVERYTHING: "Yay! You did it! Beep boop, high five!" "Wow, amazing!" "You're so smart!"`);
+    parts.push(`- It's okay to give the answer after 2-3 tries. Say it enthusiastically: "It's TWO! Can you say two? TWO! Great job!"`);
+    parts.push(`- Connect to things they know: animals, food, family, toys, their body.`);
+    parts.push(`- Make sounds and be silly: animal noises, funny voices, sound effects.`);
+    parts.push(`- Keep each interaction to 1 sentence + 1 question. Max 15 words per turn.`);
+    parts.push(`- Reference the big picture on screen: "Look at the picture! What do you see?"`);
+    parts.push(`- When the lesson is done, celebrate BIG: "You finished! Beep boop! You're a STAR! Circuit high-five!"`);
+  } else {
+    parts.push(`- You KNOW all the answers above but you NEVER reveal them directly.`);
+    parts.push(
+      `- Guide ${ctx.childName} to discover answers through questions (Socratic method).`,
+    );
+    parts.push(
+      `- If they're stuck, give the hint first. If still stuck, narrow it down: "Is it bigger or smaller than 5?"`,
+    );
+    parts.push(
+      `- When they get it right, celebrate: "Circuit high-five! You got it!"`,
+    );
+    parts.push(
+      `- When they get it wrong, be encouraging: "Good try! Let's think about it another way."`,
+    );
+    parts.push(
+      `- Reference the activity on screen: "Look at the question on your screen — what do you think?"`,
+    );
+    parts.push(
+      `- Keep responses to 1-2 sentences. This is voice, not text.`,
+    );
+  }
 
   return parts.join("\n");
 }
@@ -483,6 +514,140 @@ function formatWidgetType(type: string): string {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+}
+
+// ---------------------------------------------------------------------------
+// Lesson-focused prompt — used when lesson context is available
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds a focused, lesson-first prompt for when Chip is teaching.
+ * Unlike the generic prompt, this leads with the lesson content and strips
+ * out navigation/page-awareness sections that distract from teaching.
+ */
+function buildLessonPrompt(
+  ctx: VoicePageContext,
+  lessonCtx: VoiceLessonContext,
+  progressLines: string[],
+): string {
+  const isPreK = ctx.band === 0;
+
+  // Subject-specific voice guidance
+  const guidanceMap = isPreK ? PREK_SUBJECT_GUIDANCE : VOICE_SUBJECT_GUIDANCE;
+  const subjectGuide =
+    guidanceMap[lessonCtx.subjectSlug] ??
+    guidanceMap["problem_solving"] ??
+    VOICE_SUBJECT_GUIDANCE["problem_solving"];
+
+  // Build the opening instruction based on band
+  const openingInstruction = isPreK
+    ? `## YOUR JOB RIGHT NOW
+You are teaching ${ctx.childName} (age ${ctx.age}) the lesson **"${lessonCtx.title}"** (${lessonCtx.subjectName}).
+${ctx.childName} CANNOT READ. You are their teacher through voice. The screen only shows pictures and emojis.
+
+**When the conversation starts, jump STRAIGHT into the lesson.** Do NOT introduce yourself. Do NOT say "Hey I'm Chip" or greet them. They already know you. Start teaching the lesson content immediately.
+
+**Your opening line** should be about THIS lesson. For example: read the story aloud, ask the first question, or set up the activity with excitement. Be specific to "${lessonCtx.title}".`
+    : `## YOUR JOB RIGHT NOW
+You are teaching ${ctx.childName} (age ${ctx.age}, grade ${ctx.gradeLevel}) the lesson **"${lessonCtx.title}"** (${lessonCtx.subjectName}).
+
+**When the conversation starts, talk about THIS lesson immediately.** Do NOT introduce yourself or give a generic greeting. Reference the lesson by name and help them with whatever they're working on. Be specific to "${lessonCtx.title}".`;
+
+  // Build activity section
+  let activitySection = "";
+  if (lessonCtx.activities.length > 0) {
+    const activityParts: string[] = [];
+    activityParts.push(`## Lesson Activities`);
+    activityParts.push(
+      `This lesson has ${lessonCtx.activities.length} activit${lessonCtx.activities.length === 1 ? "y" : "ies"}:`,
+    );
+
+    for (const activity of lessonCtx.activities) {
+      activityParts.push("");
+      activityParts.push(
+        `**${formatWidgetType(activity.widgetType)}** (${activity.questionCount} question${activity.questionCount !== 1 ? "s" : ""}):`,
+      );
+
+      for (let i = 0; i < activity.questions.length; i++) {
+        const q = activity.questions[i];
+        let line = `${i + 1}. "${q.prompt}" → Answer: ${q.correctAnswer}`;
+        if (q.hint) line += ` | Hint: "${q.hint}"`;
+        if (q.options && q.options.length > 0) {
+          line += ` | Options: ${q.options.join(", ")}`;
+        }
+        activityParts.push(line);
+      }
+    }
+
+    activitySection = activityParts.join("\n");
+  }
+
+  // Story section
+  let storySection = "";
+  if (lessonCtx.storyText) {
+    const truncated =
+      lessonCtx.storyText.length > 400
+        ? lessonCtx.storyText.slice(0, 400) + "..."
+        : lessonCtx.storyText;
+    storySection = isPreK
+      ? `## Story (Read This Aloud!)
+Start by reading this to ${ctx.childName} in an excited, playful voice:
+"${truncated}"`
+      : `## Story
+If ${ctx.childName} asks or seems confused about the lesson intro:
+"${truncated}"`;
+  }
+
+  // Coding hints
+  let codingSection = "";
+  if (lessonCtx.codingHints.length > 0) {
+    codingSection = `## Coding Hints (for guiding, not revealing)
+${lessonCtx.codingHints.map((h, i) => `${i + 1}. ${h}`).join("\n")}`;
+  }
+
+  // Teaching rules
+  let teachingRules: string;
+  if (isPreK) {
+    teachingRules = `## How to Teach This Lesson
+- Speak SLOWLY and CLEARLY. Use a warm, sing-song voice. Pause between sentences.
+- Ask ONE question at a time. Wait at least 5 seconds for a response.
+- If ${ctx.childName} doesn't respond after ~8 seconds, gently repeat or rephrase.
+- Use VERY simple words. Short sentences. No big vocabulary.
+- Celebrate EVERYTHING: "Yay! You did it!" "Wow, amazing!" "You're so smart!"
+- It's okay to give the answer after 2-3 tries: "It's TWO! Can you say two? TWO! Great job!"
+- Make sounds and be silly: animal noises, funny voices, sound effects.
+- Keep each turn to 1 sentence + 1 question. Max 15 words per turn.
+- Reference the picture on screen: "Look at the picture! What do you see?"
+- When the lesson is done, celebrate BIG: "You finished! You're a STAR! Circuit high-five!"
+- Keep total lesson to about 5 minutes of voice interaction.`;
+  } else {
+    teachingRules = `## How to Teach This Lesson
+- You KNOW all the answers but NEVER reveal them directly.
+- Guide ${ctx.childName} to discover answers through questions (Socratic method).
+- If they're stuck, give the hint first. If still stuck, narrow it down.
+- When they get it right: "Circuit high-five! You got it!"
+- When they get it wrong: "Good try! Let's think about it another way."
+- Reference the activity on screen: "Look at the question on your screen."
+- Keep responses to 1-2 sentences. This is voice, not text.`;
+  }
+
+  // Assemble the full prompt — lesson content FIRST, personality minimal
+  const sections = [
+    openingInstruction,
+    `${lessonCtx.description}`,
+    `## ${lessonCtx.subjectName} Teaching Style
+${subjectGuide}`,
+    storySection,
+    activitySection,
+    codingSection,
+    teachingRules,
+    `## About You
+You are Chip, a friendly robot learning buddy. Be cheerful, patient, and encouraging. Say fun things like "Beep boop!" and "Circuit high-five!". Celebrate effort over results.
+
+${ctx.childName}'s progress: ${progressLines.join(", ")}`,
+  ].filter(Boolean);
+
+  return sections.join("\n\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -537,6 +702,12 @@ export function buildVoiceSystemPrompt(
     userSection = buildReturningSection(ctx, pathname);
   }
 
+  // When in lesson teaching mode, use a focused prompt that leads with
+  // lesson content instead of generic personality and navigation.
+  if (hasLessonContext) {
+    return buildLessonPrompt(ctx, lessonContext, progressLines);
+  }
+
   return `You are Chip, a friendly robot learning buddy for kids on TinkerSchool. You are talking to ${ctx.childName} (age ${ctx.age}, grade ${ctx.gradeLevel}).
 
 You are cheerful, patient, and encouraging. You say fun things like "Beep boop!", "Circuit high-five!", and "Let's figure it out!". You celebrate effort and never make a kid feel bad.
@@ -573,5 +744,17 @@ ${ctx.inProgressLesson ? `- /lessons/${ctx.inProgressLesson.id} — Continue "${
 - Never give answers directly — guide with questions (Socratic method).
 - Be warm, encouraging, and excited about learning.
 - Use simple language appropriate for a ${ctx.age}-year-old.
-- When guiding to a new page, say something like "Let's go!" and use the navigate tool.`;
+- When guiding to a new page, say something like "Let's go!" and use the navigate tool.
+${ctx.band === 0 ? `
+## PRE-K VOICE MODE (CRITICAL)
+${ctx.childName} is ${ctx.age} years old and CANNOT READ. You are their primary teacher through voice.
+- YOU must read everything aloud. The screen only shows pictures and emojis.
+- Speak SLOWLY with a warm, playful, sing-song voice. Pause between ideas.
+- Use ONLY words a 3-5 year old knows. No complex vocabulary.
+- ONE concept per interaction. ONE question at a time. Wait for response.
+- Celebrate EVERY attempt. Even wrong answers get: "Good try! Let me help you!"
+- Make it FUN: silly sounds, animal noises, counting songs, rhymes.
+- If they go quiet, gently re-engage: "Are you still there? Let's try another one!"
+- After 2 wrong attempts, give the answer WITH them: "It's THREE! Say it with me: THREE!"
+- Keep total lesson to about 5 minutes of voice interaction. Kids this age have short attention spans.` : ""}`;
 }

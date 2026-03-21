@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 
+import { getActiveKidProfile } from "@/lib/auth/require-auth";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type { Profile } from "@/lib/supabase/types";
 
@@ -32,20 +33,8 @@ export async function ChipTextFabServer() {
 
     const typedProfile = profile as Profile;
 
-    // If the user is a parent, resolve to the first kid profile
-    let kidProfile = typedProfile;
-    if (typedProfile.role === "parent") {
-      const { data: kids } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("family_id", typedProfile.family_id)
-        .eq("role", "kid")
-        .order("created_at")
-        .limit(1);
-
-      const firstKid = (kids as Profile[] | null)?.[0];
-      if (firstKid) kidProfile = firstKid;
-    }
+    // Resolve the active kid profile (respects kid-switcher cookie)
+    const kidProfile = (await getActiveKidProfile(typedProfile, supabase)) ?? typedProfile;
 
     // Approximate age from grade level (grade + 5), default to 7
     const age =

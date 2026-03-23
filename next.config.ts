@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
             "font-src 'self' https://fonts.gstatic.com",
             "img-src 'self' data: blob: https://img.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://blockly-demo.appspot.com",
             "media-src 'self' blob: https://blockly-demo.appspot.com",
-            "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://*.clerk.accounts.dev https://*.clerk.com https://clerk.tinkerschool.ai https://challenges.cloudflare.com https://api.hume.ai wss://api.hume.ai https://storage.googleapis.com",
+            "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://*.clerk.accounts.dev https://*.clerk.com https://clerk.tinkerschool.ai https://clerk-telemetry.com https://challenges.cloudflare.com https://api.hume.ai wss://api.hume.ai https://storage.googleapis.com",
             "frame-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com",
             "worker-src 'self' blob:",
             "object-src 'none'",

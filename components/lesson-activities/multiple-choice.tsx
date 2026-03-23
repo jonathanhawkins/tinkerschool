@@ -136,7 +136,9 @@ export function MultipleChoice({ isPreK = false }: MultipleChoiceProps) {
                 preKHighlightCorrect
               }
               className={cn(
-                "relative flex items-center gap-3 rounded-2xl border-2 p-4 text-left transition-all duration-200",
+                "relative flex items-center gap-3 rounded-2xl border-2 p-4 transition-all duration-200",
+                // Center emoji-only options, left-align text options
+                option.emoji && !option.text ? "justify-center" : "text-left",
                 "hover:shadow-md active:scale-[0.98]",
                 isPreK ? "min-h-[64px]" : "min-h-[56px]",
                 // Default state
@@ -164,13 +166,15 @@ export function MultipleChoice({ isPreK = false }: MultipleChoiceProps) {
                 </span>
               )}
 
-              {/* Option text — smaller in Pre-K when emoji is available */}
-              <span className={cn(
-                "flex-1 font-medium text-foreground",
-                isPreK && option.emoji ? "text-sm" : "text-base",
-              )}>
-                {option.text}
-              </span>
+              {/* Option text — hidden when emoji-only, smaller in Pre-K */}
+              {option.text && (
+                <span className={cn(
+                  "flex-1 font-medium text-foreground",
+                  isPreK && option.emoji ? "text-sm" : "text-base",
+                )}>
+                  {option.text}
+                </span>
+              )}
 
               {/* Correct check icon */}
               {(showCorrect || preKHint) && (

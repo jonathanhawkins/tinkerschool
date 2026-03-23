@@ -34,6 +34,14 @@ describe("Hume EVI config (setup-hume.ts)", () => {
     expect(source).toMatch(/on_new_chat:\s*\{[^}]*text:\s*""\s*,?\s*\}/s);
   });
 
+  it("base prompt instructs EVI not to self-introduce", () => {
+    // The base CHIP_VOICE_PROMPT must tell EVI to follow sessionSettings
+    // and NOT say "I'm Chip" or "learning buddy" as an opening
+    expect(source).toMatch(/Do NOT introduce yourself/i);
+    expect(source).toContain("Do NOT introduce yourself");
+    expect(source).toContain("sessionSettings");
+  });
+
   it("does not have a hardcoded on_new_chat greeting", () => {
     expect(source).not.toMatch(
       /on_new_chat:\s*\{[^}]*text:\s*"[^"]+I'm Chip/s,

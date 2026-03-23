@@ -3,20 +3,15 @@ import { readFileSync } from "fs";
 import { resolve } from "path";
 
 /**
- * Tests that the Hume EVI config in setup-hume.ts has on_new_chat enabled
- * with EMPTY text so EVI infers what to say from the system prompt.
+ * Tests that the Hume EVI config in setup-hume.ts has on_new_chat DISABLED.
  *
  * Per Hume docs (https://dev.hume.ai/docs/speech-to-speech-evi/configuration/event-messages):
- * - When on_new_chat.enabled is true and text is provided, EVI speaks it verbatim
- * - When on_new_chat.enabled is true and text is EMPTY, EVI infers from context
- * - When on_new_chat.enabled is false, EVI does NOT speak at all (bad for Pre-K)
+ * - When on_new_chat.enabled is true, EVI auto-speaks (ignores lesson context)
+ * - When on_new_chat.enabled is false, EVI stays silent until triggered
  *
- * We use enabled: true with empty text because:
- * 1. Chip needs to speak first (especially Pre-K kids who can't read)
- * 2. The system prompt is lesson-aware and tells Chip to jump straight into
- *    lesson content ("Do NOT introduce yourself", "talk about THIS lesson")
- * 3. With empty text, EVI infers its opening from the system prompt, making
- *    the greeting contextual to whatever page/lesson the kid is on
+ * We disable on_new_chat because Hume's auto-greeting ignores sessionSettings
+ * and always says a generic "I'm Chip" intro. Instead, the client sends a
+ * lesson-aware opening via sendAssistantInput after connecting.
  */
 describe("Hume EVI config (setup-hume.ts)", () => {
   const source = readFileSync(
@@ -24,14 +19,9 @@ describe("Hume EVI config (setup-hume.ts)", () => {
     "utf-8",
   );
 
-  it("has on_new_chat enabled so Chip speaks first", () => {
+  it("has on_new_chat disabled so client controls the opening", () => {
     expect(source).toContain("on_new_chat");
-    expect(source).toMatch(/on_new_chat:\s*\{[^}]*enabled:\s*true/s);
-  });
-
-  it("has empty on_new_chat text so EVI infers from system prompt", () => {
-    // text must be "" so Hume uses the lesson-aware system prompt, not a hardcoded greeting
-    expect(source).toMatch(/on_new_chat:\s*\{[^}]*text:\s*""\s*,?\s*\}/s);
+    expect(source).toMatch(/on_new_chat:\s*\{[^}]*enabled:\s*false/s);
   });
 
   it("base prompt instructs EVI not to self-introduce", () => {

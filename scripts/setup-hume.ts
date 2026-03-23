@@ -229,7 +229,7 @@ async function main() {
     },
     event_messages: {
       on_new_chat: {
-        enabled: true,
+        enabled: false,
         text: "",
       },
     },

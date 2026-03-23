@@ -407,6 +407,7 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
     isError,
     isMicrophoneError,
     sendSessionSettings,
+    sendAssistantInput,
     chatMetadata,
   } = useVoice();
 
@@ -658,6 +659,33 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
 
     sendSessionSettings({ systemPrompt });
   }, [pathname, lessonContext, status, systemPrompt, sendSessionSettings]);
+
+  // Trigger Chip's opening message after connecting.
+  // on_new_chat is disabled in the Hume config because it always sent a
+  // generic greeting. Instead, we send a context-aware opening via
+  // sendAssistantInput after the connection is established.
+  const hasSentOpeningRef = useRef(false);
+  useEffect(() => {
+    if (status !== "connected") {
+      hasSentOpeningRef.current = false;
+      return;
+    }
+    if (hasSentOpeningRef.current) return;
+    hasSentOpeningRef.current = true;
+
+    // Small delay to let sessionSettings propagate before triggering
+    const timer = setTimeout(() => {
+      if (lessonContext) {
+        const opening = `Let's work on "${lessonContext.title}" in ${lessonContext.subjectName}! What do you see on the screen?`;
+        sendAssistantInput(opening);
+      } else if (pageContext?.childName) {
+        const opening = `Hey ${pageContext.childName}! What would you like to do today?`;
+        sendAssistantInput(opening);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [status, lessonContext, pageContext, sendAssistantInput]);
 
   // Connect handler -- checks voice consent + budget, fetches a fresh token, then connects.
   // If we have a previous `chatGroupId`, pass it as `resumedChatGroupId` so Hume

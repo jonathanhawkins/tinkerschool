@@ -592,4 +592,102 @@ describe("buildVoiceSystemPrompt", () => {
       expect(prompt).toContain("Try using Lcd.drawString");
     });
   });
+
+  // -------------------------------------------------------------------------
+  // No self-introduction on lesson pages
+  // -------------------------------------------------------------------------
+  // Per Hume docs, on_new_chat is now disabled so the AI generates its first
+  // message from the system prompt. These tests ensure the system prompt
+  // tells Chip NOT to introduce itself when on a lesson page.
+
+  describe("no self-introduction on lesson pages", () => {
+    const mathCtx: VoiceLessonContext = {
+      lessonId: "math-lesson-001",
+      title: "Count to Five",
+      description: "Practice counting from 1 to 5 with fun pictures.",
+      storyText: null,
+      subjectName: "Math",
+      subjectSlug: "math",
+      subjectColor: "#3B82F6",
+      lessonType: "interactive",
+      estimatedMinutes: 8,
+      skillsCovered: ["counting"],
+      activities: [],
+      codingHints: [],
+      isInteractive: true,
+    };
+
+    const musicCtx: VoiceLessonContext = {
+      lessonId: "49c7c36e-a67d-4c03-beaa-921e57ec204f",
+      title: "Clap Clap Clap!",
+      description: "Learn about rhythm by clapping along to different beats.",
+      storyText: "Chip loves to clap! Can you clap with Chip?",
+      subjectName: "Music",
+      subjectSlug: "music",
+      subjectColor: "#A855F7",
+      lessonType: "interactive",
+      estimatedMinutes: 5,
+      skillsCovered: ["rhythm"],
+      activities: [],
+      codingHints: [],
+      isInteractive: true,
+    };
+
+    it("returning user lesson prompt says do NOT introduce yourself", () => {
+      const prompt = buildVoiceSystemPrompt(
+        returningCtx,
+        "/lessons/math-lesson-001",
+        mathCtx,
+      );
+      expect(prompt).toContain("Do NOT introduce yourself");
+      expect(prompt).toContain("Do NOT introduce yourself or give a generic greeting");
+      expect(prompt).not.toContain("I'm Chip, your learning buddy");
+    });
+
+    it("returning user lesson prompt says talk about THIS lesson immediately", () => {
+      const prompt = buildVoiceSystemPrompt(
+        returningCtx,
+        "/lessons/math-lesson-001",
+        mathCtx,
+      );
+      expect(prompt).toContain("talk about THIS lesson immediately");
+      expect(prompt).toContain("Count to Five");
+    });
+
+    it("Pre-K lesson prompt says do NOT introduce yourself", () => {
+      const preKCtx: VoicePageContext = {
+        ...baseContext,
+        band: 0,
+        age: 4,
+        gradeLevel: 0,
+        completedLessonCount: 2,
+      };
+      const prompt = buildVoiceSystemPrompt(
+        preKCtx,
+        "/lessons/49c7c36e-a67d-4c03-beaa-921e57ec204f",
+        musicCtx,
+      );
+      expect(prompt).toContain("Do NOT introduce yourself");
+      expect(prompt).toContain("Do NOT say \"Hey I'm Chip\"");
+      expect(prompt).toContain("jump STRAIGHT into the lesson");
+    });
+
+    it("new user on lesson page gets lesson mode, not onboarding intro", () => {
+      const prompt = buildVoiceSystemPrompt(
+        newUserCtx,
+        "/lessons/math-lesson-001",
+        mathCtx,
+      );
+      expect(prompt).toContain("## YOUR JOB RIGHT NOW");
+      expect(prompt).toContain("Count to Five");
+      expect(prompt).not.toContain("I'm Chip, your learning buddy");
+      expect(prompt).not.toContain("First-Time User");
+    });
+
+    it("non-lesson page for new user still contains onboarding intro", () => {
+      const prompt = buildVoiceSystemPrompt(newUserCtx, "/home");
+      expect(prompt).toContain("First-Time User");
+      expect(prompt).toContain("I'm Chip");
+    });
+  });
 });

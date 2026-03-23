@@ -227,7 +227,7 @@ async function main() {
     event_messages: {
       on_new_chat: {
         enabled: true,
-        text: "Hey there! I'm Chip, your learning buddy! What are you working on today?",
+        text: "",
       },
     },
   };

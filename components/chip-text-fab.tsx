@@ -26,11 +26,27 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { voiceBridge } from "@/lib/hume/voice-bridge";
 import { cn } from "@/lib/utils";
+
+// ---------------------------------------------------------------------------
+// Stable refs for useSyncExternalStore (avoids re-subscribe churn)
+// ---------------------------------------------------------------------------
+
+function subscribeToLessonContext(cb: () => void): () => void {
+  return voiceBridge.subscribeLessonContext(cb);
+}
+function getLessonContext() {
+  return voiceBridge.lessonContext;
+}
+function getServerLessonContext() {
+  return null;
+}
 
 // ---------------------------------------------------------------------------
 // Props
@@ -151,7 +167,14 @@ export function ChipTextFab({ kidName, age, band }: ChipTextFabProps) {
     };
   }, []);
 
-  // Chat transport
+  // Subscribe to lesson context from the voice bridge (set by LessonVoiceSync)
+  const lessonContext = useSyncExternalStore(
+    subscribeToLessonContext,
+    getLessonContext,
+    getServerLessonContext,
+  );
+
+  // Chat transport -- includes lesson context when on a lesson page
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -160,9 +183,12 @@ export function ChipTextFab({ kidName, age, band }: ChipTextFabProps) {
           kidName,
           age,
           band,
+          currentSubject: lessonContext?.subjectSlug,
+          currentLesson: lessonContext?.title,
+          currentLessonId: lessonContext?.lessonId,
         },
       }),
-    [kidName, age, band],
+    [kidName, age, band, lessonContext?.subjectSlug, lessonContext?.title, lessonContext?.lessonId],
   );
 
   const { messages, sendMessage, status, error } = useChat({
@@ -254,7 +280,10 @@ export function ChipTextFab({ kidName, age, band }: ChipTextFabProps) {
   // If the Hume voice FAB is active, don't render this one
   if (humePresent) return null;
 
-  const greeting = `Hey ${kidName}! I'm Chip, your learning buddy! What would you like to explore today?`;
+  // On lesson pages, skip the greeting — Chip should just be ready to help
+  const greeting = lessonContext
+    ? null
+    : `Hey ${kidName}! I'm Chip, your learning buddy! What would you like to explore today?`;
 
   return (
     <>
@@ -338,8 +367,8 @@ export function ChipTextFab({ kidName, age, band }: ChipTextFabProps) {
                     <span className="text-sm font-semibold leading-tight text-foreground">
                       Chip
                     </span>
-                    <span className="text-xs leading-tight text-muted-foreground">
-                      Your learning buddy
+                    <span className="text-xs leading-tight text-muted-foreground truncate">
+                      {lessonContext ? `Helping with ${lessonContext.title}` : "Your learning buddy"}
                     </span>
                   </div>
                   <Button
@@ -357,8 +386,8 @@ export function ChipTextFab({ kidName, age, band }: ChipTextFabProps) {
               {/* Messages */}
               <div className="min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
                 <div className="flex flex-col gap-2 p-3">
-                  {/* Initial greeting */}
-                  {messages.length === 0 && (
+                  {/* Initial greeting (skipped on lesson pages) */}
+                  {messages.length === 0 && greeting && (
                     <ChatBubble
                       role="assistant"
                       text={greeting}
@@ -413,7 +442,7 @@ export function ChipTextFab({ kidName, age, band }: ChipTextFabProps) {
                     ref={inputRef}
                     name="message"
                     type="text"
-                    placeholder="Ask Chip anything..."
+                    placeholder={lessonContext ? `Ask about ${lessonContext.title}...` : "Ask Chip anything..."}
                     autoComplete="off"
                     disabled={isLoading}
                     className="h-10 flex-1 rounded-full border border-primary/30 bg-accent/50 px-4 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 disabled:opacity-50"

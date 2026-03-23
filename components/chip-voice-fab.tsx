@@ -89,6 +89,22 @@ function useVoiceBridgeLessonContext(): VoiceLessonContext | null {
 }
 
 // ---------------------------------------------------------------------------
+// Greeting helper: builds a lesson-aware greeting for Chip
+// ---------------------------------------------------------------------------
+
+function buildChipGreeting(
+  childName: string | undefined,
+  lessonContext: VoiceLessonContext | null,
+  suffix: string,
+): string {
+  const name = childName ? ` ${childName}` : "";
+  if (lessonContext) {
+    return `Hey${name}! I see you're working on "${lessonContext.title}" in ${lessonContext.subjectName}. ${suffix}`;
+  }
+  return `Hey${name}! ${suffix}`;
+}
+
+// ---------------------------------------------------------------------------
 // Hook: subscribe to voiceBridge activity feedback
 // ---------------------------------------------------------------------------
 
@@ -301,7 +317,9 @@ function TextFallbackChat({ pageContext, lessonContext, pathname }: TextFallback
             <span className="mb-0.5 block text-[11px] font-semibold opacity-60">
               Chip
             </span>
-            {`Hey${pageContext?.childName ? ` ${pageContext.childName}` : ""}! My voice is resting, but you can still type to chat with me!`}
+            {lessonContext
+              ? `My voice is resting, but type here and I'll help with "${lessonContext.title}"!`
+              : buildChipGreeting(pageContext?.childName, null, "My voice is resting, but you can still type to chat with me!")}
           </div>
         )}
 
@@ -1034,9 +1052,11 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
                         <span className="mb-0.5 block text-[11px] font-semibold opacity-60">
                           Chip
                         </span>
-                        {isNewUser
-                          ? `Hey${pageContext?.childName ? ` ${pageContext.childName}` : ""}! I'm Chip, your learning buddy! Tap the mic and let's get started!`
-                          : `Hey${pageContext?.childName ? ` ${pageContext.childName}` : ""}! Tap the mic to talk to me!`}
+                        {lessonContext
+                          ? `Tap the mic and I'll help with "${lessonContext.title}"!`
+                          : isNewUser
+                            ? buildChipGreeting(pageContext?.childName, null, "I'm Chip, your learning buddy! Tap the mic and let's get started!")
+                            : buildChipGreeting(pageContext?.childName, null, "Tap the mic to talk to me!")}
                       </div>
                     )}
 
@@ -1047,6 +1067,10 @@ function FabUI({ accessToken, configId, pageContext, providerError, onClearProvi
                           const isChip = msg.type === "assistant_message";
                           const content = msg.message?.content ?? "";
                           if (!content) return null;
+
+                          // Hide the generic Hume on_new_chat greeting on lesson pages —
+                          // the system prompt tells Chip to jump straight into lesson content
+                          if (i === 0 && isChip && lessonContext) return null;
 
                           return (
                             <div

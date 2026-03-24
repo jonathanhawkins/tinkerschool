@@ -6,6 +6,7 @@ import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 // ---------------------------------------------------------------------------
 
 const mockRecordAnswer = vi.fn();
+const mockNextQuestion = vi.fn();
 const mockPlay = vi.fn();
 
 let mockState = {
@@ -61,6 +62,7 @@ vi.mock("@/lib/activities/activity-context", () => ({
     currentActivity,
     state: mockState,
     recordAnswer: mockRecordAnswer,
+    nextQuestion: mockNextQuestion,
     subjectColor: "#F97316",
   }),
 }));
@@ -289,5 +291,55 @@ describe("TapAndReveal", () => {
     const feedbackParagraph = screen.getByText(/Keep looking/);
     expect(feedbackParagraph).toBeDefined();
     expect(feedbackParagraph.textContent).toContain("Star");
+  });
+
+  // -------------------------------------------------------------------------
+  // Advancement — Next button
+  // -------------------------------------------------------------------------
+
+  it("shows 'Next' button after completing explore mode", () => {
+    render(<TapAndReveal />);
+
+    const buttons = screen.getAllByRole("button");
+    fireEvent.click(buttons[0]);
+    fireEvent.click(buttons[1]);
+    fireEvent.click(buttons[2]);
+
+    expect(screen.getByText("Next")).toBeDefined();
+  });
+
+  it("calls nextQuestion when 'Next' is clicked after explore completion", () => {
+    render(<TapAndReveal />);
+
+    const buttons = screen.getAllByRole("button");
+    fireEvent.click(buttons[0]);
+    fireEvent.click(buttons[1]);
+    fireEvent.click(buttons[2]);
+
+    fireEvent.click(screen.getByText("Next"));
+    expect(mockNextQuestion).toHaveBeenCalled();
+  });
+
+  it("shows 'Next' button after completing find mode", () => {
+    currentActivity = MOCK_FIND_ACTIVITY;
+    render(<TapAndReveal />);
+
+    const buttons = screen.getAllByRole("button");
+    fireEvent.click(buttons[0]); // Cat (target)
+    fireEvent.click(buttons[2]); // Cat (target)
+
+    expect(screen.getByText("Next")).toBeDefined();
+  });
+
+  it("calls nextQuestion when 'Next' is clicked after find completion", () => {
+    currentActivity = MOCK_FIND_ACTIVITY;
+    render(<TapAndReveal />);
+
+    const buttons = screen.getAllByRole("button");
+    fireEvent.click(buttons[0]); // Cat (target)
+    fireEvent.click(buttons[2]); // Cat (target)
+
+    fireEvent.click(screen.getByText("Next"));
+    expect(mockNextQuestion).toHaveBeenCalled();
   });
 });

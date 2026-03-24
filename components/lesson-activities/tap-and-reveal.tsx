@@ -2,9 +2,10 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { PartyPopper, Search } from "lucide-react";
+import { ArrowRight, PartyPopper, Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { useActivity } from "@/lib/activities/activity-context";
 import { useSound } from "@/lib/activities/use-sound";
 import type { TapAndRevealContent } from "@/lib/activities/types";
@@ -14,7 +15,7 @@ import type { TapAndRevealContent } from "@/lib/activities/types";
 // ---------------------------------------------------------------------------
 
 export function TapAndReveal() {
-  const { currentActivity, state, recordAnswer, subjectColor } = useActivity();
+  const { currentActivity, state, recordAnswer, nextQuestion, subjectColor } = useActivity();
   const { play } = useSound();
   const activity = currentActivity as TapAndRevealContent;
   const question = activity.questions[state.currentQuestionIndex];
@@ -249,7 +250,7 @@ export function TapAndReveal() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="flex flex-col items-center gap-2 text-center"
+          className="flex flex-col items-center gap-3 text-center"
         >
           <motion.div
             initial={prefersReducedMotion ? {} : { scale: 0 }}
@@ -266,6 +267,15 @@ export function TapAndReveal() {
               ? "You found them all!"
               : "You discovered everything!"}
           </p>
+          <Button
+            size="lg"
+            className="mt-1 rounded-xl text-base"
+            style={{ backgroundColor: subjectColor }}
+            onClick={() => nextQuestion()}
+          >
+            Next
+            <ArrowRight className="ml-1 size-4" />
+          </Button>
         </motion.div>
       )}
     </div>

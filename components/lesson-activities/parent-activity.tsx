@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { HandHeart, Lightbulb, PartyPopper, Star } from "lucide-react";
+import { ArrowRight, HandHeart, Lightbulb, PartyPopper, Star } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -55,7 +55,7 @@ function CelebrationBurst() {
 // ---------------------------------------------------------------------------
 
 export function ParentActivity() {
-  const { currentActivity, recordAnswer, subjectColor } = useActivity();
+  const { currentActivity, recordAnswer, nextQuestion, subjectColor } = useActivity();
   const { play } = useSound();
   const activity = currentActivity as ParentActivityContent;
   const prefersReducedMotion = useReducedMotion();
@@ -200,7 +200,7 @@ export function ParentActivity() {
             initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3, type: "spring", stiffness: 200, damping: 15 }}
-            className="flex flex-col items-center gap-2"
+            className="flex flex-col items-center gap-3"
           >
             <div
               className="flex size-12 items-center justify-center rounded-full"
@@ -218,6 +218,15 @@ export function ParentActivity() {
             >
               Great job!
             </p>
+            <Button
+              onClick={nextQuestion}
+              size="lg"
+              className="mt-1 rounded-xl px-8 text-base"
+              style={{ backgroundColor: subjectColor }}
+            >
+              Done! Next
+              <ArrowRight className="size-5" />
+            </Button>
           </motion.div>
         )}
       </div>

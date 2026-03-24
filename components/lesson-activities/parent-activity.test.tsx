@@ -6,6 +6,7 @@ import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 // ---------------------------------------------------------------------------
 
 const mockRecordAnswer = vi.fn();
+const mockNextQuestion = vi.fn();
 const mockPlay = vi.fn();
 
 const mockState = {
@@ -50,6 +51,7 @@ vi.mock("@/lib/activities/activity-context", () => ({
     currentActivity: currentMockActivity,
     state: mockState,
     recordAnswer: mockRecordAnswer,
+    nextQuestion: mockNextQuestion,
     subjectColor: "#3B82F6",
   }),
 }));
@@ -172,6 +174,21 @@ describe("ParentActivity", () => {
     fireEvent.click(screen.getByText("We did it!"));
 
     expect(screen.queryByText("We did it!")).toBeNull();
+  });
+
+  it("shows 'Done! Next' button after completion", () => {
+    render(<ParentActivity />);
+    fireEvent.click(screen.getByText("We did it!"));
+
+    expect(screen.getByText("Done! Next")).toBeDefined();
+  });
+
+  it("calls nextQuestion when 'Done! Next' is clicked", () => {
+    render(<ParentActivity />);
+    fireEvent.click(screen.getByText("We did it!"));
+    fireEvent.click(screen.getByText("Done! Next"));
+
+    expect(mockNextQuestion).toHaveBeenCalled();
   });
 
   it("does not render parentTip when not provided", () => {

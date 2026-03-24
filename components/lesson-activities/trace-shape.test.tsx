@@ -6,6 +6,7 @@ import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 // ---------------------------------------------------------------------------
 
 const mockRecordAnswer = vi.fn();
+const mockNextQuestion = vi.fn();
 const mockPlay = vi.fn();
 
 let mockState = {
@@ -48,6 +49,7 @@ vi.mock("@/lib/activities/activity-context", () => ({
     currentActivity: MOCK_ACTIVITY,
     state: mockState,
     recordAnswer: mockRecordAnswer,
+    nextQuestion: mockNextQuestion,
     subjectColor: "#3B82F6",
   }),
 }));
@@ -258,5 +260,58 @@ describe("TraceShape", () => {
     render(<TraceShape />);
     const svg = screen.getByRole("img");
     expect(svg.style.touchAction).toBe("none");
+  });
+
+  // -------------------------------------------------------------------------
+  // Advancement — Next button after completion
+  // -------------------------------------------------------------------------
+
+  it("shows 'Next' button and 'Great tracing!' after all checkpoints hit", () => {
+    vi.useFakeTimers();
+    render(<TraceShape />);
+    const svg = screen.getByRole("img");
+    setupSvgBounds(svg);
+
+    const checkpoints = screen.getAllByTestId(/^checkpoint-/);
+
+    fireEvent.pointerDown(svg, { clientX: 100, clientY: 20 });
+    for (const cp of checkpoints) {
+      const cx = Number(cp.getAttribute("cx"));
+      const cy = Number(cp.getAttribute("cy"));
+      fireEvent.pointerMove(svg, { clientX: cx, clientY: cy });
+    }
+    fireEvent.pointerUp(svg);
+
+    // Advance past recordAnswer timeout
+    vi.advanceTimersByTime(1600);
+
+    expect(screen.getByText("Great tracing!")).toBeDefined();
+    expect(screen.getByText("Next")).toBeDefined();
+
+    vi.useRealTimers();
+  });
+
+  it("calls nextQuestion when 'Next' is clicked after completion", () => {
+    vi.useFakeTimers();
+    render(<TraceShape />);
+    const svg = screen.getByRole("img");
+    setupSvgBounds(svg);
+
+    const checkpoints = screen.getAllByTestId(/^checkpoint-/);
+
+    fireEvent.pointerDown(svg, { clientX: 100, clientY: 20 });
+    for (const cp of checkpoints) {
+      const cx = Number(cp.getAttribute("cx"));
+      const cy = Number(cp.getAttribute("cy"));
+      fireEvent.pointerMove(svg, { clientX: cx, clientY: cy });
+    }
+    fireEvent.pointerUp(svg);
+
+    vi.advanceTimersByTime(1600);
+
+    fireEvent.click(screen.getByText("Next"));
+    expect(mockNextQuestion).toHaveBeenCalled();
+
+    vi.useRealTimers();
   });
 });

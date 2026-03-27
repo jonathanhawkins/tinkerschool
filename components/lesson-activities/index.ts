@@ -22,7 +22,4 @@ export { SoundToggle } from "./sound-toggle";
 
 // Audio narration for Pre-K activities
 export { AudioReplayButton } from "@/components/audio-replay-button";
-
-// Re-export hooks used by activity widgets
-export { useAudioNarration } from "@/hooks/use-audio-narration";
-export { usePreKMode } from "@/hooks/use-pre-k-mode";
+export { PreKAutoNarrator } from "./prek-auto-narrator";

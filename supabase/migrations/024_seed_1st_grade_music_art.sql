@@ -1129,7 +1129,7 @@ INSERT INTO public.lessons (
           {
             "id": "fc-square",
             "front": "SQUARE",
-            "back": "A square has 4 equal sides and 4 corners! Think of a window, a cracker, or a block."
+            "back": "A square has 4 equal sides and 4 corners! Think of a cheese cracker or one square on a checkerboard."
           },
           {
             "id": "fc-triangle",
@@ -1313,14 +1313,14 @@ INSERT INTO public.lessons (
           },
           {
             "id": "sw-3",
-            "prompt": "What shape is a picture frame?",
+            "prompt": "What shape is a door?",
             "options": [
               {"id": "a", "text": "Triangle"},
               {"id": "b", "text": "Circle"},
               {"id": "c", "text": "Rectangle"}
             ],
             "correctOptionId": "c",
-            "hint": "Picture frames have 4 sides, and some sides are longer than others!"
+            "hint": "Doors have 4 sides, and two sides are longer than the other two!"
           },
           {
             "id": "sw-4",

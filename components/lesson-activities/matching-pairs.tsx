@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { CheckCircle2, Link2 } from "lucide-react";
 
@@ -40,8 +40,8 @@ export function MatchingPairs({ isPreK = false }: MatchingPairsProps) {
     ? { ...rawActivity, pairs: rawActivity.pairs.slice(0, 4) }
     : rawActivity;
 
-  // Shuffled right-side items (only shuffled once on mount)
-  const [shuffledRight] = useState(() =>
+  // Shuffled right-side items — reset when a new matching activity begins
+  const [shuffledRight, setShuffledRight] = useState(() =>
     shuffle(activity.pairs.map((p) => p.right)),
   );
 
@@ -51,6 +51,22 @@ export function MatchingPairs({ isPreK = false }: MatchingPairsProps) {
   const [matches, setMatches] = useState<Map<string, string>>(new Map());
   // Track incorrect shake animation
   const [shakeId, setShakeId] = useState<string | null>(null);
+  const shakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Reset all state when the activity index changes (e.g. second matching_pairs activity)
+  useEffect(() => {
+    setShuffledRight(shuffle(activity.pairs.map((p) => p.right)));
+    setSelectedLeftId(null);
+    setMatches(new Map());
+    setShakeId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.currentActivityIndex]);
+
+  useEffect(() => {
+    return () => {
+      if (shakeTimerRef.current) clearTimeout(shakeTimerRef.current);
+    };
+  }, []);
 
   const totalPairs = activity.pairs.length;
   const allMatched = matches.size === totalPairs;
@@ -85,14 +101,16 @@ export function MatchingPairs({ isPreK = false }: MatchingPairsProps) {
       } else if (isPreK) {
         // Pre-K: gentle deselect, no shake — just clear selection
         play("tap");
+        recordAnswer(rightId, false);
         setSelectedLeftId(null);
       } else {
         // Shake animation for wrong match
         setShakeId(rightId);
-        setTimeout(() => setShakeId(null), 500);
+        if (shakeTimerRef.current) clearTimeout(shakeTimerRef.current);
+        shakeTimerRef.current = setTimeout(() => setShakeId(null), 500);
       }
     },
-    [selectedLeftId, matches, activity.pairs, totalPairs, recordAnswer, play],
+    [selectedLeftId, matches, activity.pairs, totalPairs, recordAnswer, play, isPreK],
   );
 
   const handleLeftSelect = useCallback(

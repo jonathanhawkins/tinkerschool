@@ -5,7 +5,12 @@ import { convertToModelMessages, streamText, type UIMessage } from "ai";
 // Demo chat API -- no auth, IP rate-limited, cost-efficient
 // ---------------------------------------------------------------------------
 
-/** In-memory rate limiter for demo (per-IP, resets on restart). */
+/**
+ * In-memory rate limiter for demo (per-IP, resets on restart).
+ * NOTE: Not enforced across Vercel instances — each serverless instance has its
+ * own Map and cold starts reset the counter. Upgrade to Upstash/Redis for
+ * production-grade rate limiting.
+ */
 const ipHits = new Map<string, { count: number; resetAt: number }>();
 const MAX_DEMO_HITS = 20; // per hour per IP
 const WINDOW_MS = 60 * 60 * 1000; // 1 hour
@@ -111,7 +116,35 @@ export async function POST(request: Request) {
     );
   }
 
+  // Validate individual message content length to prevent cost amplification.
+  // Each message's parts array may contain text parts -- cap total text at 2000 chars.
+  const MAX_DEMO_MESSAGE_LENGTH = 2000;
+  for (const msg of messages) {
+    if (msg && typeof msg === "object" && "content" in msg) {
+      const content = (msg as { content?: string }).content;
+      if (typeof content === "string" && content.length > MAX_DEMO_MESSAGE_LENGTH) {
+        return new Response(
+          JSON.stringify({ error: "Message too long." }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+    }
+  }
+
   // 3. Stream with GPT-5 Nano for cost efficiency ($0.05/$0.40 per M tokens)
+  if (!process.env.OPENAI_API_KEY) {
+    return new Response(
+      JSON.stringify({ error: "Demo chat is not available right now. Please try again later." }),
+      {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+
   const modelMessages = await convertToModelMessages(messages);
 
   const result = streamText({

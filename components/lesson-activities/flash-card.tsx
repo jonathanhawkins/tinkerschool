@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 
@@ -59,6 +59,13 @@ export function FlashCard({ isPreK = false }: FlashCardProps) {
 
   const questionKey = rawCard?.id ?? state.currentQuestionIndex;
 
+  const handleNext = useCallback(() => {
+    // Record as seen/correct — flash cards are exposure-based learning
+    recordAnswer("seen", true);
+    setIsFlipped(false);
+    nextQuestion();
+  }, [recordAnswer, nextQuestion]);
+
   // Pre-K: auto-advance 3 seconds after flipping
   useEffect(() => {
     if (!isPreK || !isFlipped) return;
@@ -70,8 +77,7 @@ export function FlashCard({ isPreK = false }: FlashCardProps) {
         clearTimeout(autoAdvanceTimerRef.current);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPreK, isFlipped, questionKey]);
+  }, [isPreK, isFlipped, questionKey, handleNext]);
 
   if (!rawCard) return null;
 
@@ -85,13 +91,6 @@ export function FlashCard({ isPreK = false }: FlashCardProps) {
   function handleFlip() {
     play("flip");
     setIsFlipped((prev) => !prev);
-  }
-
-  function handleNext() {
-    // Record as seen/correct — flash cards are exposure-based learning
-    recordAnswer("seen", true);
-    setIsFlipped(false);
-    nextQuestion();
   }
 
   return (

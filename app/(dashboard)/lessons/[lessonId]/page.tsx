@@ -51,6 +51,7 @@ import { NarrativeLesson } from "@/components/narrative-lesson";
 import { ConceptIntro } from "@/components/concept-intro";
 import { CodingLessonIntro } from "@/components/coding-lesson-intro";
 import { detectConceptsForLesson } from "@/lib/tutorials/detect-concepts";
+import { PreKLessonHeader } from "@/components/prek-lesson-header";
 
 // ---------------------------------------------------------------------------
 // Page
@@ -128,7 +129,7 @@ export default async function LessonPage({
     safeLesson.lesson_type,
     safeLesson.content,
   );
-  const activityConfig = isInteractive
+  let activityConfig = isInteractive
     ? parseActivityConfig(safeLesson.content)
     : null;
 
@@ -146,9 +147,9 @@ export default async function LessonPage({
     ? await computeDifficulty(supabase, activeProfile.id, safeLesson.subject_id, activeProfile.current_band)
     : null;
 
-  // Apply difficulty adjustments to config
+  // Apply difficulty adjustments to config (spread to avoid mutating the parsed content object)
   if (activityConfig && difficulty) {
-    activityConfig.passingScore = difficulty.passingScore;
+    activityConfig = { ...activityConfig, passingScore: difficulty.passingScore };
   }
 
   // Query next lesson for "Next Lesson" navigation
@@ -220,7 +221,91 @@ export default async function LessonPage({
     safeSubject,
     activityConfig,
     isInteractive,
+    activeProfile.current_band,
   );
+
+  // Pre-K detection — simplified, voice-first UI
+  const isPreK = activeProfile.current_band === 0;
+
+  // Extract hero emoji from first activity (for visual display)
+  const heroEmoji = (() => {
+    if (!activityConfig) return undefined;
+    const firstActivity = activityConfig.activities[0];
+    if (!firstActivity) return undefined;
+    if ("questions" in firstActivity && Array.isArray(firstActivity.questions)) {
+      const q = firstActivity.questions[0];
+      if (q && "emoji" in q && typeof q.emoji === "string") return q.emoji;
+      if (q && "scenarioEmoji" in q && typeof q.scenarioEmoji === "string") return q.scenarioEmoji;
+    }
+    if ("cards" in firstActivity && Array.isArray(firstActivity.cards)) {
+      const card = firstActivity.cards[0];
+      if (card && typeof card.front === "object" && "emoji" in card.front) return card.front.emoji;
+    }
+    return undefined;
+  })();
+
+  // ── Pre-K Voice-First Layout ──
+  // For band 0, render a drastically simplified page: big visuals,
+  // minimal text, and Chip's voice as the primary interface.
+  if (isPreK) {
+    return (
+      <div className="mx-auto max-w-lg space-y-4 pb-8">
+        <LessonVoiceSync lessonContext={voiceLessonContext} />
+
+        {/* Simple back button — just an arrow, no text */}
+        <FadeIn>
+          <div className="flex items-center justify-between">
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className="size-12 rounded-full"
+              aria-label="Go back"
+            >
+              <Link href="/home">
+                <ArrowLeft className="size-6" />
+              </Link>
+            </Button>
+            <FullscreenToggle />
+          </div>
+        </FadeIn>
+
+        {/* Pre-K visual header — big emoji, title, Chip intro */}
+        <PreKLessonHeader
+          title={safeLesson.title}
+          storyText={safeLesson.story_text}
+          subjectColor={subjectColor}
+          heroEmoji={heroEmoji}
+        />
+
+        {/* Interactive activities — same widgets, just rendered in the simpler context */}
+        {isInteractive && activityConfig && (
+          <FadeIn delay={0.15}>
+            <Card
+              className="rounded-2xl border-2"
+              style={{ borderColor: `${subjectColor}40` }}
+            >
+              <CardContent className="p-4 sm:p-5">
+                <InteractiveLesson
+                  config={activityConfig}
+                  lessonId={lessonId}
+                  profileId={activeProfile.id}
+                  subjectColor={subjectColor}
+                  lessonTitle={safeLesson.title}
+                  difficultyLevel={difficulty?.level ?? "standard"}
+                  encouragementMessage={difficulty?.encouragementMessage}
+                  isFirstLesson={isFirstLesson}
+                  nextLessonId={nextLessonId}
+                  nextLessonTitle={nextLessonTitle}
+                  band={activeProfile.current_band}
+                />
+              </CardContent>
+            </Card>
+          </FadeIn>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">

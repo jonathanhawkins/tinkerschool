@@ -241,6 +241,8 @@ export function ActivityProvider({
   const attemptCount = useRef<number>(1);
   // Track hint usage for current question
   const hintUsedForQuestion = useRef<boolean>(false);
+  // Guard so onComplete fires exactly once even if metrics changes after completion
+  const onCompleteFiredRef = useRef(false);
 
   // Reset timers when question changes
   useEffect(() => {
@@ -278,94 +280,58 @@ export function ActivityProvider({
   const recordAnswer = useCallback(
     (givenAnswer: string, isCorrect: boolean) => {
       const timeMs = Date.now() - questionStartTime.current;
-
-      // Determine question ID based on current activity
-      const activity = config.activities[state.currentActivityIndex];
-      let questionId = "unknown";
-      switch (activity.type) {
-        case "multiple_choice":
-          questionId =
-            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
-          break;
-        case "counting":
-          questionId =
-            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
-          break;
-        case "matching_pairs":
-          questionId = "matching";
-          break;
-        case "sequence_order":
-          questionId =
-            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
-          break;
-        case "flash_card":
-          questionId =
-            activity.cards[state.currentQuestionIndex]?.id ?? "unknown";
-          break;
-        case "fill_in_blank":
-          questionId =
-            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
-          break;
-        case "number_bond":
-          questionId =
-            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
-          break;
-        case "ten_frame":
-          questionId =
-            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
-          break;
-        case "number_line":
-          questionId =
-            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
-          break;
-        case "rekenrek":
-          questionId =
-            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
-          break;
-        case "emotion_picker":
-          questionId =
-            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
-          break;
-        case "tap_and_reveal":
-          questionId =
-            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
-          break;
-        case "listen_and_find":
-          questionId =
-            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
-          break;
-        case "drag_to_sort":
-          questionId =
-            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
-          break;
-        case "trace_shape":
-          questionId =
-            activity.questions[state.currentQuestionIndex]?.id ?? "unknown";
-          break;
-        case "parent_activity":
-          questionId = "parent_activity";
-          break;
-      }
-
-      const event: AnswerEvent = {
-        questionId,
-        givenAnswer,
-        isCorrect,
-        timeMs,
-        hintUsed: hintUsedForQuestion.current,
-        attemptNumber: attemptCount.current,
-      };
+      // Capture synchronously before setState to avoid reading the ref
+      // after it may have been incremented by a concurrent call.
+      const currentAttemptNumber = attemptCount.current;
+      const hintUsed = hintUsedForQuestion.current;
 
       setState((prev) => {
+        // Determine question ID based on current activity
+        const activity = config.activities[prev.currentActivityIndex];
+        let questionId = "unknown";
+        switch (activity.type) {
+          case "matching_pairs":
+            questionId = `matching-${prev.currentActivityIndex}`;
+            break;
+          case "parent_activity":
+            questionId = `parent_activity-${prev.currentActivityIndex}`;
+            break;
+          case "flash_card":
+            questionId =
+              activity.cards[prev.currentQuestionIndex]?.id ?? "unknown";
+            break;
+          default:
+            if (
+              "questions" in activity &&
+              Array.isArray((activity as { questions: unknown }).questions)
+            ) {
+              questionId =
+                (
+                  activity as {
+                    questions: Array<{ id: string }>;
+                  }
+                ).questions[prev.currentQuestionIndex]?.id ?? "unknown";
+            }
+        }
+
+        const event: AnswerEvent = {
+          questionId,
+          givenAnswer,
+          isCorrect,
+          timeMs,
+          hintUsed,
+          attemptNumber: currentAttemptNumber,
+        };
+
         const newAnswers = [...prev.metrics.answers, event];
         const newCorrectFirstTry =
           prev.metrics.correctFirstTry +
-          (isCorrect && attemptCount.current === 1 ? 1 : 0);
+          (isCorrect && currentAttemptNumber === 1 ? 1 : 0);
         const newCorrectTotal =
           prev.metrics.correctTotal + (isCorrect ? 1 : 0);
         const newTotalQuestions = prev.metrics.totalQuestions + 1;
         const newHintsUsed =
-          prev.metrics.hintsUsed + (hintUsedForQuestion.current ? 1 : 0);
+          prev.metrics.hintsUsed + (hintUsed ? 1 : 0);
         const newTotalTimeMs = prev.metrics.totalTimeMs + timeMs;
 
         // Score = percentage of correct first tries
@@ -399,7 +365,7 @@ export function ActivityProvider({
         attemptCount.current += 1;
       }
     },
-    [config.activities, state.currentActivityIndex, state.currentQuestionIndex, totalQuestions],
+    [config.activities, totalQuestions],
   );
 
   const useHint = useCallback(() => {
@@ -457,12 +423,14 @@ export function ActivityProvider({
     });
   }, [config]);
 
-  // Notify parent when complete
+  // Notify parent when complete — guarded so onComplete fires exactly once
+  // even if state.metrics changes after isComplete becomes true.
   useEffect(() => {
-    if (state.isComplete && onComplete) {
+    if (state.isComplete && onComplete && !onCompleteFiredRef.current) {
+      onCompleteFiredRef.current = true;
       onComplete(state.metrics);
     }
-  }, [state.isComplete, state.metrics, onComplete]);
+  }, [state.isComplete, onComplete]);
 
   const value = useMemo<ActivityContextValue>(
     () => ({

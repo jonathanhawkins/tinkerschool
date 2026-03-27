@@ -325,78 +325,78 @@ export function ActivityComplete({ onRetry }: ActivityCompleteProps) {
               </div>
             </div>
           </div>
+          {/* Action buttons — inside the card so they stay within the border */}
+          <div className="flex w-full flex-col gap-3">
+            {/* Primary action: full width */}
+            {!hasPassed && onRetry && (
+              <Button
+                onClick={onRetry}
+                size="lg"
+                className="w-full rounded-xl"
+                style={{ backgroundColor: subjectColor }}
+              >
+                <RotateCcw className="size-4" />
+                Try Again
+              </Button>
+            )}
+
+            {hasPassed && nextLessonId && (
+              <Button
+                asChild
+                size="lg"
+                className="w-full rounded-xl"
+                style={{ backgroundColor: subjectColor }}
+              >
+                <Link href={`/lessons/${nextLessonId}`}>
+                  {nextLessonTitle ? `Next: ${nextLessonTitle}` : "Next Lesson"}
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            )}
+
+            {/* Secondary actions: row */}
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button
+                asChild
+                size="sm"
+                variant={hasPassed && nextLessonId ? "outline" : hasPassed ? "default" : "outline"}
+                className="rounded-xl"
+              >
+                <Link href="/">
+                  <ArrowLeft className="size-4" />
+                  Back to Mission Control
+                </Link>
+              </Button>
+
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="rounded-xl border-primary/30 text-primary hover:bg-primary/10"
+              >
+                <Link href="/chat">
+                  <MessageCircle className="size-4" />
+                  Chat with Chip
+                </Link>
+              </Button>
+
+              {hasPassed && (
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="rounded-xl"
+                >
+                  <Link href={playAgainUrl ?? `/lessons/${lessonId}`}>
+                    <RotateCcw className="size-4" />
+                    Play Again
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </div>
         </CardContent>
       </Card>
-
-      {/* Action buttons */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-        {/* Failed: Try Again is primary */}
-        {!hasPassed && onRetry && (
-          <Button
-            onClick={onRetry}
-            size="lg"
-            className="rounded-xl"
-            style={{ backgroundColor: subjectColor }}
-          >
-            <RotateCcw className="size-4" />
-            Try Again
-          </Button>
-        )}
-
-        {/* Passed + has next: Next Lesson is primary */}
-        {hasPassed && nextLessonId && (
-          <Button
-            asChild
-            size="lg"
-            className="rounded-xl"
-            style={{ backgroundColor: subjectColor }}
-          >
-            <Link href={`/lessons/${nextLessonId}`}>
-              {nextLessonTitle ? `Next: ${nextLessonTitle}` : "Next Lesson"}
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
-        )}
-
-        <Button
-          asChild
-          size="lg"
-          variant={hasPassed && nextLessonId ? "outline" : hasPassed ? "default" : "outline"}
-          className="rounded-xl"
-        >
-          <Link href="/">
-            <ArrowLeft className="size-4" />
-            Back to Mission Control
-          </Link>
-        </Button>
-
-        {/* Chat with Chip CTA */}
-        <Button
-          asChild
-          size="lg"
-          variant="outline"
-          className="rounded-xl border-primary/30 text-primary hover:bg-primary/10"
-        >
-          <Link href="/chat">
-            <MessageCircle className="size-4" />
-            Chat with Chip
-          </Link>
-        </Button>
-
-        {hasPassed && (
-          <Button
-            asChild
-            size="lg"
-            variant="outline"
-            className="rounded-xl"
-          >
-            <Link href={playAgainUrl ?? `/lessons/${lessonId}`}>
-              <RotateCcw className="size-4" />
-              Play Again
-            </Link>
-          </Button>
-        )}
-      </div>
 
       {/* Supporter nudge — parent-facing, shown at milestone completions */}
       {milestoneNudge && (

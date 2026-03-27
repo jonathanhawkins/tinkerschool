@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Check, RotateCcw } from "lucide-react";
 
@@ -118,6 +118,13 @@ export function Rekenrek() {
   const [bottomRow, setBottomRow] = useState(0);
 
   const questionKey = question?.id ?? state.currentQuestionIndex;
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+  }, []);
 
   // Reset on question change
   useEffect(() => {
@@ -127,8 +134,8 @@ export function Rekenrek() {
 
   if (!question) return null;
 
-  const totalActive = topRow + bottomRow;
   const { targetNumber } = question;
+  const totalActive = topRow + bottomRow;
 
   const isCorrectFeedback =
     state.showingFeedback && state.feedbackType === "correct";
@@ -153,7 +160,8 @@ export function Rekenrek() {
     recordAnswer(String(totalActive), isCorrect);
 
     if (!isCorrect) {
-      setTimeout(() => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = setTimeout(() => {
         setTopRow(0);
         setBottomRow(0);
       }, 2000);

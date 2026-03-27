@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
@@ -77,7 +77,7 @@ function CelebrationSparkles() {
 // ---------------------------------------------------------------------------
 
 export function EmotionPicker() {
-  const { currentActivity, state, recordAnswer, nextQuestion } = useActivity();
+  const { currentActivity, state, recordAnswer, nextQuestion, dismissFeedback } = useActivity();
   const { play } = useSound();
   const activity = currentActivity as EmotionPickerContent;
   const question = activity.questions[state.currentQuestionIndex];
@@ -89,12 +89,31 @@ export function EmotionPicker() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationText, setCelebrationText] = useState("");
 
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const encouragementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isProcessingRef = useRef(false);
+
+  useEffect(() => {
+    // Reset all UI state and processing guard on question change
+    isProcessingRef.current = false;
+    setSelectedEmotion(null);
+    setShowEncouragement(false);
+    setShowCelebration(false);
+    setEncouragementText("");
+    setCelebrationText("");
+    return () => {
+      if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+      if (encouragementTimerRef.current) clearTimeout(encouragementTimerRef.current);
+    };
+  }, [state.currentQuestionIndex]);
+
   const questionKey = question?.id ?? state.currentQuestionIndex;
 
   const handleSelectEmotion = useCallback(
     (emotion: string) => {
-      // Don't allow selection during celebration
-      if (showCelebration) return;
+      // Don't allow selection during celebration or while processing a previous tap
+      if (showCelebration || isProcessingRef.current) return;
+      isProcessingRef.current = true;
 
       play("tap");
       setSelectedEmotion(emotion);
@@ -110,7 +129,8 @@ export function EmotionPicker() {
         recordAnswer(emotion, true);
 
         // Auto-advance after celebration delay
-        setTimeout(() => {
+        if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+        advanceTimerRef.current = setTimeout(() => {
           nextQuestion();
         }, 1800);
       } else {
@@ -122,13 +142,16 @@ export function EmotionPicker() {
         recordAnswer(emotion, false);
 
         // Dismiss encouragement after a moment so the child can try again
-        setTimeout(() => {
+        if (encouragementTimerRef.current) clearTimeout(encouragementTimerRef.current);
+        encouragementTimerRef.current = setTimeout(() => {
           setShowEncouragement(false);
           setSelectedEmotion(null);
+          isProcessingRef.current = false; // Allow next tap
+          dismissFeedback(); // Reset context showingFeedback so child can retry cleanly
         }, 2000);
       }
     },
-    [question, showCelebration, play, recordAnswer, nextQuestion],
+    [question, showCelebration, play, recordAnswer, nextQuestion, dismissFeedback],
   );
 
   if (!question) return null;

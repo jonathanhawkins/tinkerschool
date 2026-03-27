@@ -77,7 +77,7 @@ function CelebrationSparkles() {
 // ---------------------------------------------------------------------------
 
 export function ListenAndFind() {
-  const { currentActivity, state, recordAnswer, subjectColor } = useActivity();
+  const { currentActivity, state, recordAnswer, nextQuestion, subjectColor } = useActivity();
   const { play } = useSound();
   const { speak } = useAudioNarration({ autoPlay: false });
   const prefersReducedMotion = useReducedMotion();
@@ -148,6 +148,7 @@ export function ListenAndFind() {
           setShowCelebration(false);
           setSelectedId(null);
           setIsLocked(false);
+          nextQuestion();
         }, CORRECT_DELAY_MS);
       } else {
         // --- Incorrect answer: gentle encouragement, no failure state ---
@@ -167,7 +168,7 @@ export function ListenAndFind() {
         }, INCORRECT_FLASH_MS + 200);
       }
     },
-    [isLocked, play, question, recordAnswer, speak],
+    [isLocked, play, question, recordAnswer, speak, nextQuestion],
   );
 
   if (!question) return null;

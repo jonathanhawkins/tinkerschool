@@ -39,6 +39,7 @@ function makeRequest(
 describe("POST /api/demo-chat", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.OPENAI_API_KEY = "test-key";
   });
 
   it("returns 400 for invalid JSON body", async () => {

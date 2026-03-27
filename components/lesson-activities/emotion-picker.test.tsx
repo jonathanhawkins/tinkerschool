@@ -51,12 +51,15 @@ const MOCK_ACTIVITY = {
   ],
 };
 
+const mockDismissFeedback = vi.fn();
+
 vi.mock("@/lib/activities/activity-context", () => ({
   useActivity: () => ({
     currentActivity: MOCK_ACTIVITY,
     state: mockState,
     recordAnswer: mockRecordAnswer,
     nextQuestion: mockNextQuestion,
+    dismissFeedback: mockDismissFeedback,
     subjectColor: "#EC4899",
   }),
 }));

@@ -222,8 +222,8 @@ describe("parseActivityConfig", () => {
   it("parses config with multiple activities", () => {
     const config = {
       activities: [
-        { type: "matching_pairs", prompt: "Match!", pairs: [] },
-        { type: "sequence_order", questions: [] },
+        { type: "matching_pairs", prompt: "Match!", pairs: [{ id: "p1", left: { id: "l1", text: "A" }, right: { id: "r1", text: "B" } }] },
+        { type: "sequence_order", questions: [{ id: "s1", prompt: "Order these", items: [] }] },
       ],
     };
 
@@ -234,7 +234,7 @@ describe("parseActivityConfig", () => {
 
   it("preserves passingScore and estimatedMinutes", () => {
     const config = {
-      activities: [{ type: "flash_card", prompt: "Flip!", cards: [] }],
+      activities: [{ type: "flash_card", prompt: "Flip!", cards: [{ id: "c1", front: { text: "A" }, back: { text: "B" } }] }],
       passingScore: 80,
       estimatedMinutes: 10,
     };
@@ -245,19 +245,16 @@ describe("parseActivityConfig", () => {
     expect(result!.estimatedMinutes).toBe(10);
   });
 
-  it("accepts all valid activity types", () => {
-    const validTypes = [
+  it("accepts all valid activity types with required fields", () => {
+    const typesWithQuestions = [
       "multiple_choice",
       "counting",
-      "matching_pairs",
       "sequence_order",
-      "flash_card",
       "fill_in_blank",
       "number_bond",
       "ten_frame",
       "number_line",
       "rekenrek",
-      "parent_activity",
       "emotion_picker",
       "drag_to_sort",
       "tap_and_reveal",
@@ -265,11 +262,51 @@ describe("parseActivityConfig", () => {
       "trace_shape",
     ];
 
-    for (const type of validTypes) {
-      const config = { activities: [{ type }] };
-      const result = parseActivityConfig(config);
-      expect(result).not.toBeNull();
+    for (const type of typesWithQuestions) {
+      const config = { activities: [{ type, questions: [{ id: "q1" }] }] };
+      expect(parseActivityConfig(config)).not.toBeNull();
     }
+
+    // flash_card uses cards
+    expect(parseActivityConfig({ activities: [{ type: "flash_card", cards: [{ id: "c1" }] }] })).not.toBeNull();
+    // matching_pairs uses pairs
+    expect(parseActivityConfig({ activities: [{ type: "matching_pairs", pairs: [{ id: "p1" }] }] })).not.toBeNull();
+    // parent_activity has no collection field
+    expect(parseActivityConfig({ activities: [{ type: "parent_activity", prompt: "Do this!", instructions: "...", completionPrompt: "Done?" }] })).not.toBeNull();
+  });
+
+  // --- New tests for sub-field validation (added with parseActivityConfig hardening) ---
+
+  it("returns null when flash_card has missing cards field", () => {
+    expect(parseActivityConfig({ activities: [{ type: "flash_card" }] })).toBeNull();
+  });
+
+  it("returns null when flash_card has empty cards array", () => {
+    expect(parseActivityConfig({ activities: [{ type: "flash_card", cards: [] }] })).toBeNull();
+  });
+
+  it("returns null when matching_pairs has missing pairs field", () => {
+    expect(parseActivityConfig({ activities: [{ type: "matching_pairs" }] })).toBeNull();
+  });
+
+  it("returns null when matching_pairs has empty pairs array", () => {
+    expect(parseActivityConfig({ activities: [{ type: "matching_pairs", pairs: [] }] })).toBeNull();
+  });
+
+  it("returns null when multiple_choice has missing questions field", () => {
+    expect(parseActivityConfig({ activities: [{ type: "multiple_choice" }] })).toBeNull();
+  });
+
+  it("returns null when multiple_choice has empty questions array", () => {
+    expect(parseActivityConfig({ activities: [{ type: "multiple_choice", questions: [] }] })).toBeNull();
+  });
+
+  it("allows parent_activity with no collection field", () => {
+    const result = parseActivityConfig({
+      activities: [{ type: "parent_activity", prompt: "Try this!", instructions: "Count your toys", completionPrompt: "Did you count?" }],
+    });
+    expect(result).not.toBeNull();
+    expect(result!.activities[0].type).toBe("parent_activity");
   });
 
   it("parses valid number_bond config", () => {
@@ -383,7 +420,7 @@ describe("parseActivityConfig", () => {
 
 describe("isInteractiveLesson", () => {
   const validContent = {
-    activities: [{ type: "multiple_choice", questions: [] }],
+    activities: [{ type: "multiple_choice", questions: [{ id: "q1", prompt: "?", options: [], correctOptionId: "a" }] }],
   };
 
   it("returns true for interactive lesson_type with valid content", () => {

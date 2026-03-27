@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 
@@ -14,13 +14,22 @@ import { ActivityFeedback } from "./activity-feedback";
 // MultipleChoice - Pick the right answer from 2-4 options
 // ---------------------------------------------------------------------------
 
+function isVisualOnlyOptionText(text: string): boolean {
+  const trimmed = text.trim();
+  return (
+    trimmed.length > 0 &&
+    /[\p{Extended_Pictographic}\p{So}]/u.test(trimmed) &&
+    !/[\p{L}\p{N}]/u.test(trimmed)
+  );
+}
+
 interface MultipleChoiceProps {
   /** Pre-K mode: max 3 options, larger buttons, gentle wrong-answer handling */
   isPreK?: boolean;
 }
 
 export function MultipleChoice({ isPreK = false }: MultipleChoiceProps) {
-  const { currentActivity, state, recordAnswer, subjectColor } = useActivity();
+  const { currentActivity, state, recordAnswer } = useActivity();
   const { play } = useSound();
   const activity = currentActivity as MultipleChoiceContent;
   const rawQuestion = activity.questions[state.currentQuestionIndex];
@@ -28,6 +37,13 @@ export function MultipleChoice({ isPreK = false }: MultipleChoiceProps) {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [preKHighlightCorrect, setPreKHighlightCorrect] = useState(false);
+  const preKTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (preKTimerRef.current) clearTimeout(preKTimerRef.current);
+    };
+  }, []);
 
   // Reset selection when question changes
   const questionKey = rawQuestion?.id ?? state.currentQuestionIndex;
@@ -58,7 +74,8 @@ export function MultipleChoice({ isPreK = false }: MultipleChoiceProps) {
     if (isPreK && !isCorrect) {
       // Pre-K: no error state — gently highlight the correct answer
       setPreKHighlightCorrect(true);
-      setTimeout(() => {
+      if (preKTimerRef.current) clearTimeout(preKTimerRef.current);
+      preKTimerRef.current = setTimeout(() => {
         setPreKHighlightCorrect(false);
         setSelectedId(null);
       }, 2500);
@@ -106,6 +123,10 @@ export function MultipleChoice({ isPreK = false }: MultipleChoiceProps) {
         {question.options.map((option, i) => {
           const isSelected = selectedId === option.id;
           const isCorrectOption = option.id === question.correctOptionId;
+          const visualOnlyText =
+            !option.emoji &&
+            Boolean(option.text) &&
+            isVisualOnlyOptionText(option.text);
           const showCorrect =
             state.showingFeedback &&
             state.feedbackType === "correct" &&
@@ -123,6 +144,7 @@ export function MultipleChoice({ isPreK = false }: MultipleChoiceProps) {
           return (
             <motion.button
               key={option.id}
+              data-testid="activity-option"
               initial={
                 prefersReducedMotion
                   ? { opacity: 1 }
@@ -137,8 +159,7 @@ export function MultipleChoice({ isPreK = false }: MultipleChoiceProps) {
               }
               className={cn(
                 "relative flex items-center gap-3 rounded-2xl border-2 p-4 transition-all duration-200",
-                // Center emoji-only options, left-align text options
-                option.emoji && !option.text ? "justify-center" : "text-left",
+                "justify-center text-center",
                 "hover:shadow-md active:scale-[0.98]",
                 isPreK ? "min-h-[64px]" : "min-h-[56px]",
                 // Default state
@@ -169,8 +190,14 @@ export function MultipleChoice({ isPreK = false }: MultipleChoiceProps) {
               {/* Option text — hidden when emoji-only, smaller in Pre-K */}
               {option.text && (
                 <span className={cn(
-                  "flex-1 font-medium text-foreground",
-                  isPreK && option.emoji ? "text-sm" : "text-base",
+                  "text-center text-foreground",
+                  visualOnlyText
+                    ? isPreK
+                      ? "text-3xl leading-none"
+                      : "text-2xl leading-none"
+                    : "font-medium",
+                  !visualOnlyText &&
+                    (isPreK && option.emoji ? "text-sm" : "text-base"),
                 )}>
                   {option.text}
                 </span>

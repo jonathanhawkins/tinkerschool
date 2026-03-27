@@ -592,6 +592,25 @@ export function parseActivityConfig(
     ];
 
     if (!validTypes.includes(activity.type as ActivityWidgetType)) return null;
+
+    // Validate required collection fields per activity type
+    if (activity.type === "flash_card") {
+      if (!Array.isArray(activity.cards) || activity.cards.length === 0)
+        return null;
+    } else if (activity.type === "matching_pairs") {
+      if (!Array.isArray(activity.pairs) || activity.pairs.length === 0)
+        return null;
+    } else if (activity.type === "parent_activity") {
+      // parent_activity has no collection field but requires these three string props
+      if (
+        typeof activity.prompt !== "string" ||
+        typeof activity.instructions !== "string" ||
+        typeof activity.completionPrompt !== "string"
+      ) return null;
+    } else {
+      if (!Array.isArray(activity.questions) || activity.questions.length === 0)
+        return null;
+    }
   }
 
   return content as unknown as LessonActivityConfig;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, Reorder, useReducedMotion } from "framer-motion";
 import { GripVertical, Check } from "lucide-react";
 
@@ -43,7 +43,14 @@ function normalizeItems(question: RawSequenceQuestion): SequenceItem[] {
       const pos = question.correctOrder.indexOf(item.id);
       return { ...item, correctPosition: pos >= 0 ? pos + 1 : 0 };
     }
-    // Fallback: assume items are already in correct order
+    // Fallback: assume items are already in correct order.
+    // This indicates malformed seed data — warn in development.
+    if (process.env.NODE_ENV === "development") {
+      console.warn(
+        `[SequenceOrder] Question "${question.id}" has no correctPosition or correctOrder. ` +
+        "Falling back to insertion order — verify seed data.",
+      );
+    }
     const idx = question.items.indexOf(item);
     return { ...item, correctPosition: idx + 1 };
   });
@@ -89,10 +96,29 @@ export function SequenceOrder({ isPreK = false }: SequenceOrderProps) {
     shuffle(normalizedItems),
   );
 
+  // Tap-to-swap: simpler interaction for young kids (must be before early return)
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
   // Pre-K: track whether to show a hint
   const [preKShowHint, setPreKShowHint] = useState(false);
+  const preKHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const questionKey = question?.id ?? state.currentQuestionIndex;
+
+  // Reset items, selection, and hint state on question change
+  useEffect(() => {
+    setItems(shuffle(normalizedItems));
+    setSelectedIndex(null);
+    setPreKShowHint(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questionKey]);
+
+  // Cancel hint timer on unmount or question change
+  useEffect(() => {
+    return () => {
+      if (preKHintTimerRef.current) clearTimeout(preKHintTimerRef.current);
+    };
+  }, [state.currentQuestionIndex]);
 
   if (!question) return null;
 
@@ -107,7 +133,8 @@ export function SequenceOrder({ isPreK = false }: SequenceOrderProps) {
       // Pre-K: no error — show encouraging hint instead
       play("tap");
       setPreKShowHint(true);
-      setTimeout(() => setPreKShowHint(false), 2500);
+      if (preKHintTimerRef.current) clearTimeout(preKHintTimerRef.current);
+      preKHintTimerRef.current = setTimeout(() => setPreKShowHint(false), 2500);
       return;
     }
 
@@ -118,9 +145,6 @@ export function SequenceOrder({ isPreK = false }: SequenceOrderProps) {
       // Don't reset - let them keep rearranging after dismissing feedback
     }
   }
-
-  // Tap-to-swap: simpler interaction for young kids
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   function handleTapItem(index: number) {
     if (state.showingFeedback && state.feedbackType === "correct") return;

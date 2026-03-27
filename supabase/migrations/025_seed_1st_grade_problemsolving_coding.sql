@@ -522,7 +522,7 @@ INSERT INTO public.lessons (
           },
           {
             "id": "ps5-mc2",
-            "prompt": "A window is usually shaped like a ___.",
+            "prompt": "Which shape has 4 equal sides and 4 corners?",
             "options": [
               { "id": "a", "text": "Circle" },
               { "id": "b", "text": "Square" },
@@ -530,7 +530,7 @@ INSERT INTO public.lessons (
               { "id": "d", "text": "Star" }
             ],
             "correctOptionId": "b",
-            "hint": "Windows have four equal sides and four corners!"
+            "hint": "A square has 4 equal sides and 4 corners!"
           },
           {
             "id": "ps5-mc3",

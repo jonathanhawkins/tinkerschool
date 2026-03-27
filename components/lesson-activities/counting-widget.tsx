@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Plus, Minus, Check } from "lucide-react";
 
@@ -62,6 +62,13 @@ export function CountingWidget({ isPreK = false }: CountingWidgetProps) {
   const [isEditingCount, setIsEditingCount] = useState(false);
   const [editValue, setEditValue] = useState("");
   const countInputRef = useRef<HTMLInputElement>(null);
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    };
+  }, []);
 
   const questionKey = question?.id ?? state.currentQuestionIndex;
 
@@ -118,7 +125,8 @@ export function CountingWidget({ isPreK = false }: CountingWidgetProps) {
     if (isPreK && !isCorrect) {
       // Pre-K: no failure state — just encourage and reset gently
       play("tap");
-      setTimeout(() => {
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = setTimeout(() => {
         setSubmitted(false);
         setCount(0);
         setTappedItems(new Set());
@@ -130,7 +138,8 @@ export function CountingWidget({ isPreK = false }: CountingWidgetProps) {
 
     if (!isCorrect) {
       // Reset for retry
-      setTimeout(() => {
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = setTimeout(() => {
         setSubmitted(false);
         setCount(0);
         setTappedItems(new Set());
@@ -358,7 +367,7 @@ export function CountingWidget({ isPreK = false }: CountingWidgetProps) {
       )}
 
       {/* Submit button */}
-      {!state.showingFeedback && count > 0 && (
+      {!state.showingFeedback && count > 0 && !submitted && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}

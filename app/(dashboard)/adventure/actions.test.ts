@@ -172,14 +172,29 @@ describe("completeAdventure", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock the from() call for adventure fetch + session insert
+    // Mock the from() call for profile resolution + adventure fetch + session insert.
+    // The single() mock returns different data on successive calls:
+    //   1st call (resolveKidProfileId): profile data
+    //   2nd call (adventure fetch): adventure data with profile_id matching the profile
+    const singleMock = vi.fn()
+      .mockResolvedValueOnce({
+        data: { id: "profile-1", role: "kid", family_id: "fam-1" },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: { id: "adventure-1", skill_ids: ["skill-1"], profile_id: "profile-1" },
+        error: null,
+      })
+      // Additional calls (e.g., for event tracking profile lookup)
+      .mockResolvedValue({
+        data: { id: "profile-1", family_id: "fam-1" },
+        error: null,
+      });
+
     mockFrom.mockReturnValue({
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
-      single: vi.fn().mockResolvedValue({
-        data: { id: "adventure-1", skill_ids: ["skill-1"] },
-        error: null,
-      }),
+      single: singleMock,
       insert: vi.fn().mockResolvedValue({ error: null }),
       update: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),

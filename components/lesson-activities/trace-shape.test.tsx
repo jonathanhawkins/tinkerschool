@@ -286,12 +286,13 @@ describe("TraceShape", () => {
     vi.advanceTimersByTime(1600);
 
     expect(screen.getByText("Great tracing!")).toBeDefined();
-    expect(screen.getByText("Next")).toBeDefined();
+    // The "Next" button was removed — ActivityFeedback auto-advances via recordAnswer
+    expect(screen.queryByText("Next")).toBeNull();
 
     vi.useRealTimers();
   });
 
-  it("calls nextQuestion when 'Next' is clicked after completion", () => {
+  it("calls recordAnswer after all checkpoints hit (auto-advances via ActivityFeedback)", () => {
     vi.useFakeTimers();
     render(<TraceShape />);
     const svg = screen.getByRole("img");
@@ -309,8 +310,8 @@ describe("TraceShape", () => {
 
     vi.advanceTimersByTime(1600);
 
-    fireEvent.click(screen.getByText("Next"));
-    expect(mockNextQuestion).toHaveBeenCalled();
+    // recordAnswer is called with the shape name — ActivityFeedback handles auto-advance
+    expect(mockRecordAnswer).toHaveBeenCalledWith("triangle", true);
 
     vi.useRealTimers();
   });

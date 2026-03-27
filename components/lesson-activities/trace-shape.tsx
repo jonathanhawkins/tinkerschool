@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { ArrowRight, RotateCcw, Sparkles } from "lucide-react";
+import { RotateCcw, Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ const DEFAULT_GUIDE_COLOR = "#CBD5E1"; // slate-300
 // ---------------------------------------------------------------------------
 
 export function TraceShape() {
-  const { currentActivity, state, recordAnswer, nextQuestion, subjectColor } = useActivity();
+  const { currentActivity, state, recordAnswer, subjectColor } = useActivity();
   const { play } = useSound();
   const prefersReducedMotion = useReducedMotion();
   const activity = currentActivity as TraceShapeContent;
@@ -49,6 +49,16 @@ export function TraceShape() {
   const [isComplete, setIsComplete] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cancel any pending auto-advance on unmount to prevent state corruption
+  useEffect(() => {
+    return () => {
+      if (advanceTimerRef.current !== null) {
+        clearTimeout(advanceTimerRef.current);
+      }
+    };
+  }, []);
 
   const guideColor = question?.strokeColor ?? subjectColor ?? DEFAULT_GUIDE_COLOR;
   const traceColor = question?.traceColor ?? DEFAULT_TRACE_COLOR;
@@ -109,8 +119,9 @@ export function TraceShape() {
           setShowCelebration(true);
           play("correct");
 
-          // Auto-advance after celebration
-          setTimeout(() => {
+          // Auto-advance after celebration — store ref so it can be cancelled on unmount
+          advanceTimerRef.current = setTimeout(() => {
+            advanceTimerRef.current = null;
             recordAnswer(question?.shape ?? "", true);
           }, 1500);
         }
@@ -397,26 +408,17 @@ export function TraceShape() {
         </motion.div>
       )}
 
-      {/* Next button after completion */}
+      {/* Completion message — ActivityFeedback handles auto-advance after recordAnswer */}
       {isComplete && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.3 }}
-          className="flex flex-col items-center gap-2"
+          className="flex justify-center"
         >
           <p className="text-base font-semibold text-foreground">
             Great tracing!
           </p>
-          <Button
-            size="lg"
-            className="rounded-xl text-base"
-            style={{ backgroundColor: subjectColor }}
-            onClick={() => nextQuestion()}
-          >
-            Next
-            <ArrowRight className="ml-1 size-4" />
-          </Button>
         </motion.div>
       )}
     </motion.div>

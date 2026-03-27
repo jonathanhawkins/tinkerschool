@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Check, RotateCcw } from "lucide-react";
 
@@ -94,6 +94,13 @@ export function TenFrame() {
   );
 
   const questionKey = question?.id ?? state.currentQuestionIndex;
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+  }, []);
 
   // Reset on question change
   useEffect(() => {
@@ -102,11 +109,12 @@ export function TenFrame() {
 
   const filledCount = cells.filter((c) => c !== null).length;
 
-  // Compute the correct answer
+  // Compute the correct answer (safe: question?.operation uses optional chaining
+  // before the null guard; below the null guard we can rely on question being defined)
   const correctCount = question?.operation
     ? question.operation.type === "add"
       ? question.operation.a + question.operation.b
-      : question.operation.a - question.operation.b
+      : Math.max(0, question.operation.a - question.operation.b)
     : question?.targetNumber ?? 0;
 
   const secondColor = "#3B82F6"; // Blue for second addend (distinct from subject color)
@@ -144,7 +152,8 @@ export function TenFrame() {
     recordAnswer(String(filledCount), isCorrect);
 
     if (!isCorrect) {
-      setTimeout(() => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = setTimeout(() => {
         setCells(Array(totalCells).fill(null));
       }, 2000);
     }

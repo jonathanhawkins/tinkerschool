@@ -65,15 +65,9 @@ export function NumberBond() {
   const correctPart2 =
     question.part2 ?? correctWhole - (question.part1 ?? 0);
 
-  // Track which ref should be the first empty input
-  let firstEmptyAssigned = false;
-  function getFirstEmptyRef() {
-    if (!firstEmptyAssigned) {
-      firstEmptyAssigned = true;
-      return firstEmptyRef;
-    }
-    return undefined;
-  }
+  // Determine which circle (in render order: whole, part1, part2) gets the ref
+  // for focusing. Computed once before render, not mutated during JSX evaluation.
+  const firstEmptyField = !wholeGiven ? "whole" : !part1Given ? "part1" : "part2";
 
   function handleSubmit() {
     let allCorrect = true;
@@ -125,6 +119,7 @@ export function NumberBond() {
     setInput: (v: string) => void,
     isGiven: boolean,
     correctValue: number,
+    isFirstEmpty: boolean,
   ) {
     return (
       <div className="flex flex-col items-center gap-1">
@@ -152,7 +147,7 @@ export function NumberBond() {
             <span style={{ color: subjectColor }}>{value}</span>
           ) : (
             <input
-              ref={getFirstEmptyRef()}
+              ref={isFirstEmpty ? firstEmptyRef : undefined}
               type="number"
               inputMode="numeric"
               name={`${label}-${questionKey}`}
@@ -197,7 +192,7 @@ export function NumberBond() {
       {/* Number bond diagram */}
       <div className="flex flex-col items-center gap-2">
         {/* Whole (top) */}
-        {renderCircle("Whole", question.whole, wholeInput, setWholeInput, wholeGiven, correctWhole)}
+        {renderCircle("Whole", question.whole, wholeInput, setWholeInput, wholeGiven, correctWhole, firstEmptyField === "whole")}
 
         {/* Connecting lines (SVG) */}
         <svg
@@ -229,8 +224,8 @@ export function NumberBond() {
 
         {/* Parts (bottom) */}
         <div className="flex items-center gap-8 sm:gap-12">
-          {renderCircle("Part", question.part1, part1Input, setPart1Input, part1Given, correctPart1)}
-          {renderCircle("Part", question.part2, part2Input, setPart2Input, part2Given, correctPart2)}
+          {renderCircle("Part", question.part1, part1Input, setPart1Input, part1Given, correctPart1, firstEmptyField === "part1")}
+          {renderCircle("Part", question.part2, part2Input, setPart2Input, part2Given, correctPart2, firstEmptyField === "part2")}
         </div>
       </div>
 

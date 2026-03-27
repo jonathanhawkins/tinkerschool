@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireAuth } from "@/lib/auth/require-auth";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { isValidUUID } from "@/lib/utils";
 import type {
   Feedback,
   FeedbackCategory,
@@ -231,6 +232,11 @@ export async function updateFeedback(
   input: UpdateFeedbackInput,
 ): Promise<UpdateFeedbackResult> {
   await requireSiteAdmin();
+
+  // Validate feedbackId format to prevent injection
+  if (!isValidUUID(input.feedbackId)) {
+    return { success: false, error: "Invalid feedback ID." };
+  }
 
   // Validate status if provided
   if (input.status && !VALID_STATUSES.includes(input.status)) {

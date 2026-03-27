@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { CheckCircle2, GripVertical } from "lucide-react";
 
@@ -49,6 +49,16 @@ export function DragToSort() {
     shuffle(question?.items ?? []),
   );
 
+  const shakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Guard against recordAnswer being called twice when the last item drops
+  const hasRecordedRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (shakeTimerRef.current) clearTimeout(shakeTimerRef.current);
+    };
+  }, []);
+
   // Track which items are in each bucket: bucketId -> item[]
   const [bucketContents, setBucketContents] = useState<
     Record<string, DragToSortItem[]>
@@ -95,8 +105,9 @@ export function DragToSort() {
         const remainingAfterThis = unsortedItems.filter(
           (i) => i.id !== itemId,
         );
-        if (remainingAfterThis.length === 0) {
+        if (remainingAfterThis.length === 0 && !hasRecordedRef.current) {
           // All sorted correctly
+          hasRecordedRef.current = true;
           recordAnswer("all_sorted", true);
         }
       } else {
@@ -104,7 +115,8 @@ export function DragToSort() {
         play("incorrect");
         setShakeItemId(itemId);
         setEncouragement(randomEncouragement());
-        setTimeout(() => {
+        if (shakeTimerRef.current) clearTimeout(shakeTimerRef.current);
+        shakeTimerRef.current = setTimeout(() => {
           setShakeItemId(null);
         }, 600);
       }

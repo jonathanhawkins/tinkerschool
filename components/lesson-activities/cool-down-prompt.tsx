@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import {
@@ -76,6 +76,7 @@ interface CoolDownPromptProps {
 
 export function CoolDownPrompt({ onContinue, seed = 0 }: CoolDownPromptProps) {
   const [isExiting, setIsExiting] = useState(false);
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pick a suggestion based on the seed so it varies between breaks
   const suggestion = useMemo(() => {
@@ -85,10 +86,17 @@ export function CoolDownPrompt({ onContinue, seed = 0 }: CoolDownPromptProps) {
 
   const IconComponent = suggestion.icon;
 
+  useEffect(() => {
+    return () => {
+      if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+    };
+  }, []);
+
   const handleContinue = useCallback(() => {
     setIsExiting(true);
     // Small delay so the exit animation plays
-    setTimeout(() => {
+    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+    exitTimerRef.current = setTimeout(() => {
       onContinue();
     }, 300);
   }, [onContinue]);

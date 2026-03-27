@@ -62,6 +62,17 @@ export function ActivityFeedback({
   const isCorrect = state.feedbackType === "correct";
   const isIncorrect = state.feedbackType === "incorrect";
 
+  // Stable message ref — only updated when showingFeedback transitions to true
+  const messageRef = useRef<string>("");
+  const prevShowingRef = useRef(false);
+
+  if (state.showingFeedback && !prevShowingRef.current) {
+    messageRef.current = isCorrect
+      ? randomMessage(CORRECT_MESSAGES)
+      : randomMessage(INCORRECT_MESSAGES);
+  }
+  prevShowingRef.current = state.showingFeedback;
+
   // Play sound on feedback change
   useEffect(() => {
     if (!state.showingFeedback) {
@@ -127,9 +138,7 @@ export function ActivityFeedback({
         {/* Message */}
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-sm font-semibold">
-            {isCorrect
-              ? randomMessage(CORRECT_MESSAGES)
-              : randomMessage(INCORRECT_MESSAGES)}
+            {messageRef.current}
           </p>
 
           {/* Hint on incorrect */}

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ActivityVoiceSync } from "@/components/activity-voice-sync";
 import { ParentPromptBar } from "@/components/parent-prompt-bar";
+import { PreKAutoNarrator } from "./prek-auto-narrator";
 
 import { SessionTimer } from "@/lib/activities/session-timer";
 import { CoolDownPrompt } from "./cool-down-prompt";
@@ -244,6 +245,9 @@ export function ActivityRouter({
         difficultyLevel={difficultyLevel}
         encouragementMessage={encouragementMessage}
       />
+
+      {/* Auto-narrate prompts and feedback for Pre-K kids who can't read */}
+      <PreKAutoNarrator enabled={isPreK} />
 
       <div className="relative space-y-6">
         {/* Progress bar + sound toggle + timer */}

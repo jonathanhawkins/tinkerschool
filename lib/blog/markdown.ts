@@ -14,7 +14,35 @@ function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/**
+ * Sanitize a URL for use in an href attribute.
+ * Only allows http:, https:, and mailto: protocols. Rejects javascript:,
+ * data:, vbscript:, and other dangerous schemes to prevent XSS.
+ */
+function sanitizeUrl(url: string): string {
+  const trimmed = url.trim();
+  // Reject empty or whitespace-only URLs
+  if (!trimmed) return "";
+  // Check for safe protocols (case-insensitive)
+  const lower = trimmed.toLowerCase();
+  if (
+    lower.startsWith("http://") ||
+    lower.startsWith("https://") ||
+    lower.startsWith("mailto:") ||
+    lower.startsWith("/") ||
+    lower.startsWith("#")
+  ) {
+    return escapeHtml(trimmed);
+  }
+  // Block everything else (javascript:, data:, vbscript:, etc.)
+  return "";
+}
+
 function processInline(line: string): string {
+  // First, escape all HTML in the raw text to prevent XSS injection.
+  // Then selectively re-introduce safe markdown-derived HTML elements.
+  line = escapeHtml(line);
+
   // Inline code (must run before bold/italic to avoid conflicts inside backticks)
   line = line.replace(/`([^`]+)`/g, '<code class="blog-inline-code">$1</code>');
 
@@ -24,10 +52,14 @@ function processInline(line: string): string {
   // Italic (single asterisk, but not inside a word boundary like a*b*c)
   line = line.replace(/(?<!\w)\*(.+?)\*(?!\w)/g, "<em>$1</em>");
 
-  // Links
+  // Links -- sanitize the URL to prevent javascript: and other dangerous schemes
   line = line.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2" class="blog-link" target="_blank" rel="noopener noreferrer">$1</a>'
+    (_match, text: string, url: string) => {
+      const safeUrl = sanitizeUrl(url);
+      if (!safeUrl) return text; // Strip the link, keep the text
+      return `<a href="${safeUrl}" class="blog-link" target="_blank" rel="noopener noreferrer">${text}</a>`;
+    }
   );
 
   return line;

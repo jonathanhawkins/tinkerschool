@@ -387,14 +387,9 @@ export default function PrivacyPolicyPage() {
                 data="Processes parent subscription payments. Stripe receives parent billing information (name, email, payment method) but never receives any child data. Stripe is PCI DSS Level 1 compliant."
               />
               <ServiceRow
-                name="Vercel"
-                purpose="Application hosting and analytics"
-                data="Hosts the application. Vercel Analytics and Speed Insights collect anonymous page view metrics and Web Vitals performance data. These analytics scripts are only loaded on public marketing pages and the parent dashboard -- they are never loaded on kid-facing authenticated pages. Standard web server logs include IP addresses and request metadata. No personal child data is stored by Vercel."
-              />
-              <ServiceRow
                 name="Cloudflare"
-                purpose="Web analytics"
-                data="Collects anonymous, aggregated page view statistics on public marketing pages and the parent dashboard only. Cloudflare analytics scripts are never loaded on kid-facing authenticated pages. No cookies are set and no personal data is collected. Used to understand overall site traffic."
+                purpose="Application hosting and web analytics"
+                data="Hosts the application via Cloudflare Workers. Cloudflare also collects anonymous, aggregated page view statistics on public marketing pages and the parent dashboard only. Analytics scripts are never loaded on kid-facing authenticated pages. No cookies are set and no personal data is collected. Standard server logs include IP addresses and request metadata. No personal child data is stored by Cloudflare."
               />
               <ServiceRow
                 name="Upstash"

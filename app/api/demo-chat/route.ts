@@ -7,9 +7,8 @@ import { convertToModelMessages, streamText, type UIMessage } from "ai";
 
 /**
  * In-memory rate limiter for demo (per-IP, resets on restart).
- * NOTE: Not enforced across Vercel instances — each serverless instance has its
- * own Map and cold starts reset the counter. Upgrade to Upstash/Redis for
- * production-grade rate limiting.
+ * NOTE: Not enforced across Cloudflare Worker restarts — the Map resets on each
+ * new Worker instance. Upgrade to Upstash/Redis for production-grade rate limiting.
  */
 const ipHits = new Map<string, { count: number; resetAt: number }>();
 const MAX_DEMO_HITS = 20; // per hour per IP

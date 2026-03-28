@@ -8,7 +8,7 @@ export type BillingInterval = "monthly" | "yearly";
 
 /**
  * Price IDs from Stripe, configured via environment variables.
- * These are set in `.env.local` (dev) and Vercel env vars (prod).
+ * These are set in `.env.local` (dev) and via `wrangler secret put` (prod).
  */
 export function getPriceId(interval: BillingInterval): string {
   const envKey =

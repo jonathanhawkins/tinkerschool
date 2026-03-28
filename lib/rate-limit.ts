@@ -6,7 +6,7 @@ import type { SubscriptionTier } from "@/lib/stripe/config";
 /**
  * Distributed rate limiter using Upstash Redis.
  *
- * Works correctly across multiple Vercel serverless instances, unlike
+ * Works correctly across multiple Cloudflare Worker instances, unlike
  * an in-memory Map which resets per-instance.
  *
  * Configuration:

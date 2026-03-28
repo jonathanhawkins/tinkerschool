@@ -5,7 +5,7 @@ import { Resend } from "resend";
 // ---------------------------------------------------------------------------
 
 // RESEND_API_KEY — required for email delivery.
-// Add to .env.local for local dev, Vercel env vars for production.
+// Add to .env.local for local dev, set via `wrangler secret put` for production.
 // When not set, email sending is silently skipped (graceful degradation).
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 

@@ -21,8 +21,6 @@
 
 import { usePathname } from "next/navigation";
 import Script from "next/script";
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 
 /**
  * Pathname prefixes where analytics are ALLOWED.
@@ -58,14 +56,10 @@ export function CoppaAnalytics() {
   }
 
   return (
-    <>
-      <Analytics />
-      <SpeedInsights />
-      <Script
-        defer
-        src="https://static.cloudflareinsights.com/beacon.min.js"
-        data-cf-beacon='{"token": "5d17afae58b64c0798cc717bae46bbb1"}'
-      />
-    </>
+    <Script
+      defer
+      src="https://static.cloudflareinsights.com/beacon.min.js"
+      data-cf-beacon='{"token": "5d17afae58b64c0798cc717bae46bbb1"}'
+    />
   );
 }

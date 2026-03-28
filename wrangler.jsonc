@@ -1,0 +1,71 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": ".open-next/worker.js",
+  "name": "tinkerschool",
+  "compatibility_date": "2025-05-05",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page"
+  },
+
+  // Required for OpenNext to call itself for ISR revalidation
+  "services": [
+    { "binding": "WORKER_SELF_REFERENCE", "service": "tinkerschool" }
+  ],
+
+  // R2 bucket for ISR cache (gallery page uses revalidate: 60)
+  // Create with: npx wrangler r2 bucket create tinkerschool-isr-cache
+  "r2_buckets": [
+    {
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "tinkerschool-isr-cache"
+    }
+  ],
+
+  // Durable Object queue for time-based ISR revalidation
+  "durable_objects": {
+    "bindings": [
+      { "name": "NEXT_CACHE_DO_QUEUE", "class_name": "DOQueueHandler" }
+    ]
+  },
+
+  // Required migration for the Durable Object class
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["DOQueueHandler"]
+    }
+  ],
+
+  "images": { "binding": "IMAGES" },
+
+  // Public env vars (non-secret, safe to commit)
+  // Secrets go via: npx wrangler secret put SECRET_NAME
+  "vars": {
+    "NEXT_PUBLIC_APP_URL": "https://tinkerschool.ai",
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsudGlua2Vyc2Nob29sLmFpJA",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://rhenfscqndmpmiuhyazl.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoZW5mc2NxbmRtcG1pdWh5YXpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0MzkzNDYsImV4cCI6MjA4NjAxNTM0Nn0.7Ag1JNCDyhcXsBeqa-FvgLT9kDSsNUc2CSvDOzmyJKo",
+    "NEXT_PUBLIC_CLERK_SIGN_IN_URL": "/sign-in",
+    "NEXT_PUBLIC_CLERK_SIGN_UP_URL": "/sign-up",
+    "NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL": "/home",
+    "NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL": "/onboarding",
+    "NEXT_PUBLIC_HUME_CONFIG_ID": "95db4db9-2068-43e9-9e90-2f44795c8abf"
+  }
+
+  // Secrets set via CLI (never in this file):
+  //   npx wrangler secret put CLERK_SECRET_KEY
+  //   npx wrangler secret put CLERK_WEBHOOK_SECRET
+  //   npx wrangler secret put ANTHROPIC_API_KEY
+  //   npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+  //   npx wrangler secret put STRIPE_SECRET_KEY
+  //   npx wrangler secret put STRIPE_WEBHOOK_SECRET
+  //   npx wrangler secret put UPSTASH_REDIS_REST_URL
+  //   npx wrangler secret put UPSTASH_REDIS_REST_TOKEN
+  //   npx wrangler secret put RESEND_API_KEY
+  //   npx wrangler secret put OPENAI_API_KEY
+  //   npx wrangler secret put HUME_API_KEY
+}

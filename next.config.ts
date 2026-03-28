@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const nextConfig: NextConfig = {
   // Blockly 12.x focus-tree registry doesn't survive React StrictMode's
@@ -15,14 +16,14 @@ const nextConfig: NextConfig = {
             // Only allow scripts from our own origin and Clerk's auth widgets
             // Include both dev (*.clerk.accounts.dev) and prod (*.clerk.com, *.tinkerschool.ai) FAPI domains
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com https://storage.googleapis.com",
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-            "font-src 'self' https://fonts.gstatic.com",
-            "img-src 'self' data: blob: https://img.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://blockly-demo.appspot.com",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.tinkerschool.ai https://challenges.cloudflare.com https://storage.googleapis.com https://static.cloudflareinsights.com",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://clerk.tinkerschool.ai https://*.clerk.accounts.dev https://*.clerk.com",
+            "font-src 'self' https://fonts.gstatic.com https://clerk.tinkerschool.ai https://*.clerk.accounts.dev https://*.clerk.com",
+            "img-src 'self' data: blob: https://img.clerk.com https://clerk.tinkerschool.ai https://*.clerk.accounts.dev https://*.clerk.com https://blockly-demo.appspot.com",
             "media-src 'self' blob: https://blockly-demo.appspot.com",
-            "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://*.clerk.accounts.dev https://*.clerk.com https://clerk.tinkerschool.ai https://clerk-telemetry.com https://challenges.cloudflare.com https://api.hume.ai wss://api.hume.ai https://storage.googleapis.com",
-            "frame-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com",
-            "worker-src 'self' blob:",
+            "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://*.clerk.accounts.dev https://*.clerk.com https://clerk.tinkerschool.ai https://clerk-telemetry.com https://challenges.cloudflare.com https://api.hume.ai wss://api.hume.ai https://storage.googleapis.com https://cloudflareinsights.com",
+            "frame-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.tinkerschool.ai https://challenges.cloudflare.com",
+            "worker-src 'self' blob: https://clerk.tinkerschool.ai https://*.clerk.accounts.dev https://*.clerk.com",
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",
@@ -52,3 +53,5 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+initOpenNextCloudflareForDev();

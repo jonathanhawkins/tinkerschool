@@ -14,16 +14,10 @@ export const metadata: Metadata = {
 };
 
 export default async function OnboardingPage() {
-  let userId: string | null = null;
   let parentName = "";
   let hasProfile = false;
 
-  try {
-    const authResult = await auth();
-    userId = authResult.userId;
-  } catch (err) {
-    console.error("[onboarding/page] auth() threw:", err);
-  }
+  const { userId } = await auth();
 
   if (!userId) {
     redirect("/sign-in");

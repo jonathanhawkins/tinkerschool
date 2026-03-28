@@ -8,7 +8,9 @@ import { DashboardSidebar } from "@/components/dashboard-sidebar";
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
-import { requireAuth, getActiveKidProfile, getFamilyKids } from "@/lib/auth/require-auth";
+import { getActiveKidProfile, getFamilyKids } from "@/lib/auth/require-auth";
+import type { Profile } from "@/lib/supabase/types";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type { KidSwitcherOption } from "@/components/kid-switcher";
 import { MobileNav } from "@/components/mobile-nav";
 import { TabletBottomNav } from "@/components/tablet-bottom-nav";
@@ -37,8 +39,16 @@ export default async function DashboardLayout({
   let kids: KidSwitcherOption[] = [];
   let activeKidId: string | null = null;
   try {
-    const { profile, supabase } = await requireAuth();
-    if (profile.role === "parent") {
+    // Use admin client directly (not requireAuth) so that a missing profile
+    // doesn't throw redirect("/onboarding") into this catch and silently swallow it.
+    // The child page will call requireAuth() itself and handle the redirect properly.
+    const supabase = createAdminSupabaseClient();
+    const { data: profile } = (await supabase
+      .from("profiles")
+      .select("*")
+      .eq("clerk_id", userId)
+      .single()) as { data: Profile | null };
+    if (profile?.role === "parent") {
       const familyKids = await getFamilyKids(profile, supabase);
       kids = familyKids.map((k) => ({
         id: k.id,

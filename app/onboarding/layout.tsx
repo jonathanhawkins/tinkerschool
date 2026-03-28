@@ -14,14 +14,7 @@ export default async function OnboardingLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  let userId: string | null = null;
-
-  try {
-    const authResult = await auth();
-    userId = authResult.userId;
-  } catch (err) {
-    console.error("[onboarding/layout] auth() threw:", err);
-  }
+  const { userId } = await auth();
 
   if (!userId) {
     redirect("/sign-in");

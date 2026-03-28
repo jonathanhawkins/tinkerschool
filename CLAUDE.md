@@ -25,7 +25,7 @@ Full PRD: `./docs/PRD.md` (TinkerSchool multi-subject PRD)
 | Terminal | xterm.js | 5.x |
 | Firmware Flash | esptool-js | 0.5.x |
 | Testing | Vitest + Playwright | latest |
-| Hosting | Vercel | - |
+| Hosting | Cloudflare Workers (@opennextjs/cloudflare) | 1.18.x |
 
 ## Architecture Principles
 
@@ -248,6 +248,16 @@ npx supabase db reset     # Reset + reseed
 
 # Type generation
 npx supabase gen types typescript --project-id <id> > lib/supabase/types.ts
+
+# Deploy to Cloudflare Workers (manual — no CI/CD yet)
+npm run build:cf              # Build for Cloudflare (opennextjs-cloudflare build)
+npx wrangler deploy           # Deploy to Cloudflare (use this, not opennextjs-cloudflare deploy)
+# Note: `opennextjs-cloudflare deploy` fails at populate-cache step — use wrangler deploy directly
+
+# Cloudflare secrets (set once, persist across deploys)
+npx wrangler secret put CLERK_SECRET_KEY        # Must be sk_live_... not sk_test_...
+npx wrangler secret put ANTHROPIC_API_KEY
+# etc. — see wrangler.jsonc for full secrets list
 ```
 
 ## M5StickC Plus 2 Device Details

@@ -1,0 +1,8 @@
+[{"id":"71c781e1-71c9-455e-8e18-aea0676b490a","slug":"math","name":"Number World","display_name":"Math","color":"#3B82F6","icon":"calculator","sort_order":1,"created_at":"2026-02-07T20:20:54.445737+00:00"}, 
+ {"id":"f04d2171-6b54-41bf-900d-d3d082ba65ed","slug":"reading","name":"Word World","display_name":"Reading","color":"#22C55E","icon":"book-open","sort_order":2,"created_at":"2026-02-07T20:20:54.445737+00:00"}, 
+ {"id":"9e6554ec-668a-4d27-b66d-412f4ce05d6d","slug":"science","name":"Discovery Lab","display_name":"Science","color":"#F97316","icon":"flask-conical","sort_order":3,"created_at":"2026-02-07T20:20:54.445737+00:00"}, 
+ {"id":"87ee4010-8b16-4f55-9627-b1961a87e726","slug":"music","name":"Sound Studio","display_name":"Music","color":"#A855F7","icon":"music","sort_order":4,"created_at":"2026-02-07T20:20:54.445737+00:00"}, 
+ {"id":"5a848c8e-f476-4cd5-8d04-c67492961bc8","slug":"art","name":"Pixel Studio","display_name":"Art","color":"#EC4899","icon":"palette","sort_order":5,"created_at":"2026-02-07T20:20:54.445737+00:00"}, 
+ {"id":"f4c1f559-85c6-412e-a788-d6efc8bf4c9d","slug":"problem-solving","name":"Puzzle Lab","display_name":"Problem Solving","color":"#EAB308","icon":"puzzle","sort_order":6,"created_at":"2026-02-07T20:20:54.445737+00:00"}, 
+ {"id":"99c7ad43-0481-46b3-ace1-b88f90e6e070","slug":"coding","name":"Code Lab","display_name":"Coding","color":"#14B8A6","icon":"code-2","sort_order":7,"created_at":"2026-02-07T20:20:54.445737+00:00"}, 
+ {"id":"14488b71-34d3-4ad7-9221-736ce3a4c386","slug":"social_emotional","name":"Feelings & Friends","display_name":"Social-Emotional","color":"#F472B6","icon":"heart-handshake","sort_order":8,"created_at":"2026-02-27T10:56:08.073561+00:00"}]

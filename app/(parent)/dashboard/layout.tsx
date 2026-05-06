@@ -22,8 +22,8 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { ParentNav } from "@/components/parent-nav";
+import { ParentMobileMenu } from "@/components/parent-mobile-menu";
 import { KidSelector } from "@/components/kid-selector";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type { Profile } from "@/lib/supabase/types";
@@ -121,42 +121,45 @@ export default async function ParentDashboardLayout({
     <div className="flex min-h-screen flex-col bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          {/* Left: branding */}
-          <div className="flex items-center gap-3">
+        {/* Top row: hamburger (mobile) + branding + back to kid view */}
+        <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 sm:h-16 sm:gap-3 sm:px-6">
+          <Suspense>
+            <ParentMobileMenu items={parentNavItems} />
+          </Suspense>
+
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             <Image
               src="/images/chip.png"
               alt="Chip"
               width={36}
               height={36}
-              className="size-9 rounded-xl"
+              className="size-9 shrink-0 rounded-xl"
             />
-            <div className="hidden sm:block">
-              <p className="text-sm font-semibold text-foreground leading-tight">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold leading-tight text-foreground">
                 TinkerSchool
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="truncate text-xs text-muted-foreground">
                 Parent Dashboard
               </p>
             </div>
           </div>
 
-          {/* Center: navigation */}
-          <Suspense>
-            <ParentNav items={parentNavItems} />
-          </Suspense>
-
-          {/* Right: back to kid view */}
-          <Button asChild variant="outline" size="sm" className="gap-2 rounded-xl">
+          <Button asChild variant="outline" size="sm" className="shrink-0 gap-2 rounded-xl">
             <Link href="/">
               <ArrowLeft className="size-4" />
               <span className="hidden sm:inline">Kid View</span>
             </Link>
           </Button>
         </div>
-      </header>
 
-      <Separator />
+        {/* Bottom row: navigation tabs (desktop only -- mobile uses the hamburger menu) */}
+        <div className="mx-auto hidden max-w-6xl border-t border-border/60 px-4 sm:px-6 lg:block">
+          <Suspense>
+            <ParentNav items={parentNavItems} />
+          </Suspense>
+        </div>
+      </header>
 
       {/* Main content */}
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">

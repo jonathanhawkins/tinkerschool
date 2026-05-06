@@ -23,7 +23,13 @@ export function ParentNav({ items }: ParentNavProps) {
   const kidParam = searchParams.get("kid");
 
   return (
-    <nav className="flex items-center gap-1">
+    <nav
+      className={cn(
+        "-mx-4 flex items-center gap-1 overflow-x-auto px-4 sm:-mx-6 sm:px-6",
+        // Hide the horizontal scrollbar — items still scroll via touch/wheel.
+        "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+      )}
+    >
       {items.map((item) => {
         const isActive =
           item.href === "/dashboard"
@@ -37,7 +43,7 @@ export function ParentNav({ items }: ParentNavProps) {
             key={item.href}
             href={href}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
               "hover:bg-accent hover:text-accent-foreground",
               isActive
                 ? "bg-primary/10 text-primary"
@@ -45,7 +51,7 @@ export function ParentNav({ items }: ParentNavProps) {
             )}
           >
             {item.icon}
-            <span className="hidden sm:inline">{item.label}</span>
+            <span>{item.label}</span>
           </Link>
         );
       })}
